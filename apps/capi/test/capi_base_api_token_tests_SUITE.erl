@@ -126,6 +126,7 @@
     get_payment_institution_payment_terms/1,
     get_payment_institution_payout_terms/1,
     get_payment_institution_payout_schedules/1,
+    get_service_provider_by_id/1,
     check_no_payment_by_external_id_test/1,
     check_no_internal_id_for_external_id_test/1,
     retrieve_payment_by_external_id_test/1,
@@ -247,6 +248,7 @@ groups() ->
             get_payment_institution_payment_terms,
             get_payment_institution_payout_terms,
             get_payment_institution_payout_schedules,
+            get_service_provider_by_id,
 
             get_category_by_ref_ok_test,
             get_schedule_by_ref_ok_test,
@@ -2495,6 +2497,26 @@ get_payment_institution_payout_schedules(Config) ->
         ?INTEGER,
         <<"USD">>,
         <<"BankAccount">>
+    ).
+
+-spec get_service_provider_by_id(config()) -> _.
+get_service_provider_by_id(Config) ->
+    _ = capi_ct_helper_bouncer:mock_assert_op_ctx(<<"GetServiceProviderByID">>, Config),
+    ?assertEqual(
+        {ok, #{
+            <<"id">> => <<"qiwi">>,
+            <<"brandName">> => <<"QIWI">>,
+            <<"category">> => <<"wallets">>,
+            <<"metadata">> => #{
+                <<"test.ns">> => #{
+                    <<"answer">> => 42,
+                    <<"localization">> => #{
+                        <<"ru_RU">> => [<<"КИВИ Кошелёк">>]
+                    }
+                }
+            }
+        }},
+        capi_client_payment_institutions:get_service_provider_by_id(?config(context, Config), <<"qiwi">>)
     ).
 
 -spec get_country_by_id_test(config()) -> _.

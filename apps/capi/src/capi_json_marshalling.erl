@@ -6,6 +6,8 @@
 -export([marshal/1]).
 -export([unmarshal/1]).
 
+-export_type([value/0]).
+
 %%
 
 -type value() :: term().

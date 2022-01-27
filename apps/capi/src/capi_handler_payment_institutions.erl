@@ -94,6 +94,19 @@ prepare(OperationID = 'GetPaymentInstitutionPayoutSchedules', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
+prepare(OperationID = 'GetServiceProviderByID', Req, Context) ->
+    Authorize = mk_authorize_operation(OperationID, Context),
+    Process = fun() ->
+        ServiceProviderID = maps:get(serviceProviderID, Req),
+        PaymentServiceRef = {payment_service, #domain_PaymentServiceRef{id = ServiceProviderID}},
+        case capi_domain:get(PaymentServiceRef, Context) of
+            {ok, #domain_PaymentServiceObject{data = PaymentService}} ->
+                {ok, {200, #{}, decode_payment_service(ServiceProviderID, PaymentService)}};
+            {error, not_found} ->
+                {ok, general_error(404, <<"Service provider not found">>)}
+        end
+    end,
+    {ok, #{authorize => Authorize, process => Process}};
 prepare(_OperationID, _Req, _Context) ->
     {error, noimpl}.
 
@@ -197,3 +210,16 @@ decode_business_schedules_selector({value, Val}) when is_list(Val) ->
     lists:map(fun capi_handler_decoder_utils:decode_business_schedule_ref/1, Val);
 decode_business_schedules_selector(_) ->
     [].
+
+%%
+
+decode_payment_service(ID, PaymentService = #domain_PaymentService{}) ->
+    genlib_map:compact(#{
+        <<"id">> => ID,
+        <<"brandName">> => PaymentService#domain_PaymentService.brand_name,
+        <<"category">> => PaymentService#domain_PaymentService.category,
+        <<"metadata">> => capi_utils:maybe(
+            PaymentService#domain_PaymentService.metadata,
+            fun capi_handler_decoder_utils:decode_namespaced_metadata/1
+        )
+    }).

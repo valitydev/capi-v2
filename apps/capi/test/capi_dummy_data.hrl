@@ -1132,7 +1132,19 @@
         {payment_service, #domain_PaymentServiceRef{id = <<"qiwi">>}} =>
             {payment_service, #domain_PaymentServiceObject{
                 ref = #domain_PaymentServiceRef{id = <<"qiwi">>},
-                data = #domain_PaymentService{name = <<"Qiwi">>}
+                data = #domain_PaymentService{
+                    name = <<"Qiwi">>,
+                    brand_name = <<"QIWI">>,
+                    category = <<"wallets">>,
+                    metadata = #{
+                        <<"test.ns">> => {obj, #{
+                            <<"answer">> => {i, 42},
+                            <<"localization">> => {obj, #{
+                                <<"ru_RU">> => {arr, [{str, <<"КИВИ Кошелёк">>}]}
+                            }}
+                        }}
+                    }
+                }
             }},
 
         {payment_system_legacy, #domain_LegacyBankCardPaymentSystemRef{id = visa}} =>

@@ -14,6 +14,9 @@
 -export([decode_category_ref/1]).
 -export([decode_context/1]).
 -export([decode_optional/2]).
+-export([decode_metadata/1]).
+-export([decode_namespaced_metadata/1]).
+
 -export([convert_crypto_currency_to_swag/1]).
 
 -export_type([decode_data/0]).
@@ -86,6 +89,17 @@ decode_optional(Arg, DecodeFun) when Arg /= undefined ->
     DecodeFun(Arg);
 decode_optional(undefined, _) ->
     undefined.
+
+-spec decode_metadata(dmsl_domain_thrift:'Metadata'()) -> capi_json_marshalling:value().
+decode_metadata(MD) ->
+    capi_json_marshalling:unmarshal(MD).
+
+-spec decode_namespaced_metadata(#{NS => dmsl_domain_thrift:'Metadata'()}) ->
+    #{NS => capi_json_marshalling:value()}
+when
+    NS :: binary().
+decode_namespaced_metadata(NamespacedMD) ->
+    maps:map(fun(_NS, MD) -> decode_metadata(MD) end, NamespacedMD).
 
 -spec convert_crypto_currency_to_swag(atom()) -> binary().
 convert_crypto_currency_to_swag(bitcoin_cash) ->
