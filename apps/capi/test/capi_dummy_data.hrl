@@ -1137,12 +1137,14 @@
                     brand_name = <<"QIWI">>,
                     category = <<"wallets">>,
                     metadata = #{
-                        <<"test.ns">> => {obj, #{
-                            <<"answer">> => {i, 42},
-                            <<"localization">> => {obj, #{
-                                <<"ru_RU">> => {arr, [{str, <<"КИВИ Кошелёк">>}]}
+                        <<"test.ns">> =>
+                            {obj, #{
+                                <<"answer">> => {i, 42},
+                                <<"localization">> =>
+                                    {obj, #{
+                                        <<"ru_RU">> => {arr, [{str, <<"КИВИ Кошелёк">>}]}
+                                    }}
                             }}
-                        }}
                     }
                 }
             }},
