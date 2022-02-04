@@ -205,7 +205,7 @@ encode_invoice_line_meta(Line) ->
 
 encode_invoice_line_tax_mode(#{<<"type">> := <<"InvoiceLineTaxVAT">>} = TaxMode) ->
     %% for more info about taxMode look here:
-    %% https://github.com/rbkmoney/starrys/blob/master/docs/settings.md
+    %% https://github.com/valitydev/starrys/blob/master/docs/settings.md
     genlib_map:get(<<"rate">>, TaxMode).
 
 -spec encode_invoice_bank_account(request_data()) -> dmsl_domain_thrift:'InvoiceBankAccount'() | undefined.

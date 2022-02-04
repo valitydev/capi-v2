@@ -28,8 +28,8 @@
 -define(CAPI_HOST_NAME, "localhost").
 -define(CAPI_URL, ?CAPI_HOST_NAME ++ ":" ++ integer_to_list(?CAPI_PORT)).
 
--define(TK_META_NS_KEYCLOAK, <<"test.rbkmoney.keycloak">>).
--define(TK_META_NS_APIKEYMGMT, <<"test.rbkmoney.apikeymgmt">>).
+-define(TK_META_NS_KEYCLOAK, <<"dev.vality.keycloak">>).
+-define(TK_META_NS_APIKEYMGMT, <<"dev.vality.apikeymgmt">>).
 
 %%
 -type config() :: [{atom(), any()}].

@@ -453,7 +453,7 @@ decode_invoice_bank_account(undefined) ->
 -spec decode_invoice_line_tax_mode(map()) -> decode_data() | undefined.
 decode_invoice_line_tax_mode(#{<<"TaxMode">> := {str, TM}}) ->
     %% for more info about taxMode look here:
-    %% https://github.com/rbkmoney/starrys/blob/master/docs/settings.md
+    %% https://github.com/valitydev/starrys/blob/master/docs/settings.md
     #{
         <<"type">> => <<"InvoiceLineTaxVAT">>,
         <<"rate">> => TM
