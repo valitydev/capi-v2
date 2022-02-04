@@ -98,7 +98,6 @@
     get_webhooks/1,
     get_webhook_by_id/1,
     delete_webhook_by_id/1,
-    get_locations_names_ok_test/1,
     search_invoices_ok_test/1,
     search_payments_ok_test/1,
     search_refunds_ok_test/1,
@@ -198,8 +197,6 @@ groups() ->
             get_shops_ok_test,
             activate_shop_ok_test,
             suspend_shop_ok_test,
-
-            get_locations_names_ok_test,
 
             get_account_by_id_ok_test,
             get_categories_ok_test,
@@ -1906,19 +1903,6 @@ delete_webhook_by_id(Config) ->
         Config
     ),
     ok = capi_client_webhooks:delete_webhook_by_id(?config(context, Config), ?INTEGER_BINARY).
-
--spec get_locations_names_ok_test(config()) -> _.
-get_locations_names_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [{geo_ip_service, fun('GetLocationName', _) -> {ok, #{123 => ?STRING}} end}],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_op_ctx(<<"GetLocationsNames">>, Config),
-    Query = #{
-        <<"geoIDs">> => <<"5,3,6,5,4">>,
-        <<"language">> => <<"ru">>
-    },
-    {ok, _} = capi_client_geo:get_location_names(?config(context, Config), Query).
 
 -spec search_invoices_ok_test(config()) -> _.
 search_invoices_ok_test(Config) ->

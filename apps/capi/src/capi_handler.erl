@@ -104,7 +104,6 @@ get_handlers() ->
         capi_handler_contracts,
         capi_handler_countries,
         capi_handler_customers,
-        capi_handler_geo,
         capi_handler_invoice_templates,
         capi_handler_invoices,
         capi_handler_parties,
