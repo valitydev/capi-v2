@@ -81,8 +81,8 @@ get_payment_institution_payout_schedules(Context, PaymentInstitutionID, Currency
             <<"paymentInstitutionID">> => genlib:to_list(PaymentInstitutionID)
         },
         qs_val => genlib_map:compact(#{
-            currency => Currency,
-            payoutMethod => Method
+            'currency' => Currency,
+            'payoutMethod' => Method
         })
     },
     {Url, PreparedParams, Opts} = capi_client_lib:make_request(Context, Params),

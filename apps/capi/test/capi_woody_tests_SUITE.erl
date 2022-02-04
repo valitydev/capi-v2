@@ -22,7 +22,7 @@
     woody_unknown_test/1
 ]).
 
--define(badresp(Code), {error, {invalid_response_code, Code}}).
+-define(BADRESP(Code), {error, {invalid_response_code, Code}}).
 
 -type test_case_name() :: atom().
 -type config() :: [{atom(), any()}].
@@ -93,7 +93,7 @@ end_per_testcase(_Name, C) ->
 -spec woody_unexpected_test(config()) -> _.
 woody_unexpected_test(Config) ->
     _ = capi_ct_helper:mock_services([{invoicing, fun('Get', _) -> {ok, "spanish inquisition"} end}], Config),
-    ?badresp(500) = capi_client_invoices:get_invoice_by_id(?config(context, Config), ?STRING).
+    ?BADRESP(500) = capi_client_invoices:get_invoice_by_id(?config(context, Config), ?STRING).
 
 -spec woody_unavailable_test(config()) -> _.
 woody_unavailable_test(Config) ->
@@ -102,7 +102,7 @@ woody_unavailable_test(Config) ->
             invoicing => #{url => <<"http://spanish.inquision/v1/partymgmt">>}
         }}
     ]),
-    ?badresp(503) = capi_client_invoices:get_invoice_by_id(?config(context, Config), ?STRING).
+    ?BADRESP(503) = capi_client_invoices:get_invoice_by_id(?config(context, Config), ?STRING).
 
 -spec woody_retry_test(config()) -> _.
 woody_retry_test(Config) ->
@@ -120,10 +120,10 @@ woody_retry_test(Config) ->
             invoicing => 5000
         }}
     ]),
-    {Time, ?badresp(503)} = timer:tc(capi_client_invoices, get_invoice_by_id, [?config(context, Config), ?STRING]),
+    {Time, ?BADRESP(503)} = timer:tc(capi_client_invoices, get_invoice_by_id, [?config(context, Config), ?STRING]),
     true = (Time > 3000000) and (Time < 10000000).
 
 -spec woody_unknown_test(config()) -> _.
 woody_unknown_test(Config) ->
     _ = capi_ct_helper:mock_services([{invoicing, fun('Get', _) -> timer:sleep(60000) end}], Config),
-    ?badresp(504) = capi_client_invoices:get_invoice_by_id(?config(context, Config), ?STRING).
+    ?BADRESP(504) = capi_client_invoices:get_invoice_by_id(?config(context, Config), ?STRING).

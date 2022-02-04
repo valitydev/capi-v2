@@ -28,16 +28,17 @@ prepare('CreateWebhook' = OperationID, Req, Context) ->
         ShopID = validate_webhook_params(WebhookParams),
         case capi_party:get_shop(PartyID, ShopID, Context) of
             {ok, _} ->
-                case capi_handler_utils:service_call({webhook_manager, 'Create', {WebhookParams}}, Context) of
-                    {ok, Webhook} ->
-                        {ok, {201, #{}, decode_webhook(Webhook)}};
-                    {exception, #webhooker_LimitExceeded{}} ->
-                        {ok, general_error(429, <<"Webhook limit exceeded">>)}
-                end;
+                ok;
             {error, #payproc_InvalidUser{}} ->
-                {ok, logic_error(invalidPartyID, <<"Party not found">>)};
+                capi_handler:respond(logic_error('invalidPartyID', <<"Party not found">>));
             {error, #payproc_ShopNotFound{}} ->
-                {ok, logic_error(invalidShopID, <<"Shop not found">>)}
+                capi_handler:respond(logic_error('invalidShopID', <<"Shop not found">>))
+        end,
+        case capi_handler_utils:service_call({webhook_manager, 'Create', {WebhookParams}}, Context) of
+            {ok, Webhook} ->
+                {ok, {201, #{}, decode_webhook(Webhook)}};
+            {exception, #webhooker_LimitExceeded{}} ->
+                {ok, general_error(429, <<"Webhook limit exceeded">>)}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -56,7 +57,7 @@ prepare('GetWebhooks' = OperationID, _Req, Context) ->
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare('GetWebhookByID' = OperationID, Req, Context) ->
-    WebhookID = maps:get(webhookID, Req),
+    WebhookID = maps:get('webhookID', Req),
     Webhook =
         case encode_webhook_id(WebhookID) of
             {ok, ID} ->
@@ -83,7 +84,7 @@ prepare('GetWebhookByID' = OperationID, Req, Context) ->
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare('DeleteWebhookByID' = OperationID, Req, Context) ->
-    WebhookID = maps:get(webhookID, Req),
+    WebhookID = maps:get('webhookID', Req),
     {EncodedWebhookID, Webhook} =
         case encode_webhook_id(WebhookID) of
             {ok, ID} ->
@@ -177,53 +178,53 @@ encode_webhook_scope(#{<<"topic">> := <<"CustomersTopic">>, <<"shopID">> := Shop
         types = ordsets:from_list([encode_customer_event_type(V) || V <- EventTypes])
     }}.
 
--define(invpaid(), {paid, #webhooker_InvoicePaid{}}).
--define(invcancelled(), {cancelled, #webhooker_InvoiceCancelled{}}).
--define(invfulfilled(), {fulfilled, #webhooker_InvoiceFulfilled{}}).
+-define(INVPAID(), {paid, #webhooker_InvoicePaid{}}).
+-define(INVCANCELLED(), {cancelled, #webhooker_InvoiceCancelled{}}).
+-define(INVFULFILLED(), {fulfilled, #webhooker_InvoiceFulfilled{}}).
 
--define(pmtprocessed(), {processed, #webhooker_InvoicePaymentProcessed{}}).
--define(pmtcaptured(), {captured, #webhooker_InvoicePaymentCaptured{}}).
--define(pmtcancelled(), {cancelled, #webhooker_InvoicePaymentCancelled{}}).
--define(pmtrefunded(), {refunded, #webhooker_InvoicePaymentRefunded{}}).
--define(pmtfailed(), {failed, #webhooker_InvoicePaymentFailed{}}).
+-define(PMTPROCESSED(), {processed, #webhooker_InvoicePaymentProcessed{}}).
+-define(PMTCAPTURED(), {captured, #webhooker_InvoicePaymentCaptured{}}).
+-define(PMTCANCELLED(), {cancelled, #webhooker_InvoicePaymentCancelled{}}).
+-define(PMTREFUNDED(), {refunded, #webhooker_InvoicePaymentRefunded{}}).
+-define(PMTFAILED(), {failed, #webhooker_InvoicePaymentFailed{}}).
 
--define(pmtrfndcreated(), {invoice_payment_refund_created, #webhooker_InvoicePaymentRefundCreated{}}).
--define(pmtrfndstatus(Value),
+-define(PMTRFNDCREATED(), {invoice_payment_refund_created, #webhooker_InvoicePaymentRefundCreated{}}).
+-define(PMTRFNDSTATUS(Value),
     {
         invoice_payment_refund_status_changed,
         #webhooker_InvoicePaymentRefundStatusChanged{value = Value}
     }
 ).
 
--define(pmtrfndfailed(), {failed, #webhooker_InvoicePaymentRefundFailed{}}).
--define(pmtrfndsucceeded(), {succeeded, #webhooker_InvoicePaymentRefundSucceeded{}}).
+-define(PMTRFNDFAILED(), {failed, #webhooker_InvoicePaymentRefundFailed{}}).
+-define(PMTRFNDSUCCEEDED(), {succeeded, #webhooker_InvoicePaymentRefundSucceeded{}}).
 
 encode_invoice_event_type(<<"InvoiceCreated">>) ->
     {created, #webhooker_InvoiceCreated{}};
 encode_invoice_event_type(<<"InvoicePaid">>) ->
-    {status_changed, #webhooker_InvoiceStatusChanged{value = ?invpaid()}};
+    {status_changed, #webhooker_InvoiceStatusChanged{value = ?INVPAID()}};
 encode_invoice_event_type(<<"InvoiceCancelled">>) ->
-    {status_changed, #webhooker_InvoiceStatusChanged{value = ?invcancelled()}};
+    {status_changed, #webhooker_InvoiceStatusChanged{value = ?INVCANCELLED()}};
 encode_invoice_event_type(<<"InvoiceFulfilled">>) ->
-    {status_changed, #webhooker_InvoiceStatusChanged{value = ?invfulfilled()}};
+    {status_changed, #webhooker_InvoiceStatusChanged{value = ?INVFULFILLED()}};
 encode_invoice_event_type(<<"PaymentStarted">>) ->
     {payment, {created, #webhooker_InvoicePaymentCreated{}}};
 encode_invoice_event_type(<<"PaymentProcessed">>) ->
-    {payment, {status_changed, #webhooker_InvoicePaymentStatusChanged{value = ?pmtprocessed()}}};
+    {payment, {status_changed, #webhooker_InvoicePaymentStatusChanged{value = ?PMTPROCESSED()}}};
 encode_invoice_event_type(<<"PaymentCaptured">>) ->
-    {payment, {status_changed, #webhooker_InvoicePaymentStatusChanged{value = ?pmtcaptured()}}};
+    {payment, {status_changed, #webhooker_InvoicePaymentStatusChanged{value = ?PMTCAPTURED()}}};
 encode_invoice_event_type(<<"PaymentCancelled">>) ->
-    {payment, {status_changed, #webhooker_InvoicePaymentStatusChanged{value = ?pmtcancelled()}}};
+    {payment, {status_changed, #webhooker_InvoicePaymentStatusChanged{value = ?PMTCANCELLED()}}};
 encode_invoice_event_type(<<"PaymentRefunded">>) ->
-    {payment, {status_changed, #webhooker_InvoicePaymentStatusChanged{value = ?pmtrefunded()}}};
+    {payment, {status_changed, #webhooker_InvoicePaymentStatusChanged{value = ?PMTREFUNDED()}}};
 encode_invoice_event_type(<<"PaymentFailed">>) ->
-    {payment, {status_changed, #webhooker_InvoicePaymentStatusChanged{value = ?pmtfailed()}}};
+    {payment, {status_changed, #webhooker_InvoicePaymentStatusChanged{value = ?PMTFAILED()}}};
 encode_invoice_event_type(<<"PaymentRefundCreated">>) ->
-    {payment, {invoice_payment_refund_change, ?pmtrfndcreated()}};
+    {payment, {invoice_payment_refund_change, ?PMTRFNDCREATED()}};
 encode_invoice_event_type(<<"PaymentRefundFailed">>) ->
-    {payment, {invoice_payment_refund_change, ?pmtrfndstatus(?pmtrfndfailed())}};
+    {payment, {invoice_payment_refund_change, ?PMTRFNDSTATUS(?PMTRFNDFAILED())}};
 encode_invoice_event_type(<<"PaymentRefundSucceeded">>) ->
-    {payment, {invoice_payment_refund_change, ?pmtrfndstatus(?pmtrfndsucceeded())}}.
+    {payment, {invoice_payment_refund_change, ?PMTRFNDSTATUS(?PMTRFNDSUCCEEDED())}}.
 
 encode_customer_event_type(<<"CustomerCreated">>) ->
     {created, #webhooker_CustomerCreated{}};
@@ -269,9 +270,9 @@ decode_invoice_event_type({status_changed, #webhooker_InvoiceStatusChanged{value
     [
         decode_invoice_status_event_type(V)
      || V <- [
-            ?invpaid(),
-            ?invcancelled(),
-            ?invfulfilled()
+            ?INVPAID(),
+            ?INVCANCELLED(),
+            ?INVFULFILLED()
         ]
     ];
 decode_invoice_event_type({status_changed, #webhooker_InvoiceStatusChanged{value = Value}}) ->
@@ -283,32 +284,32 @@ decode_invoice_event_type({payment, {status_changed, #webhooker_InvoicePaymentSt
     [
         decode_payment_status_event_type(V)
      || V <- [
-            ?pmtprocessed(),
-            ?pmtcaptured(),
-            ?pmtcancelled(),
-            ?pmtrefunded(),
-            ?pmtfailed()
+            ?PMTPROCESSED(),
+            ?PMTCAPTURED(),
+            ?PMTCANCELLED(),
+            ?PMTREFUNDED(),
+            ?PMTFAILED()
         ]
     ];
 decode_invoice_event_type({payment, {status_changed, #webhooker_InvoicePaymentStatusChanged{value = Value}}}) ->
     [decode_payment_status_event_type(Value)];
-decode_invoice_event_type({payment, {invoice_payment_refund_change, ?pmtrfndcreated()}}) ->
+decode_invoice_event_type({payment, {invoice_payment_refund_change, ?PMTRFNDCREATED()}}) ->
     [<<"PaymentRefundCreated">>];
-decode_invoice_event_type({payment, {invoice_payment_refund_change, ?pmtrfndstatus(Value)}}) ->
+decode_invoice_event_type({payment, {invoice_payment_refund_change, ?PMTRFNDSTATUS(Value)}}) ->
     [decode_payment_refund_status_event_type(Value)].
 
-decode_invoice_status_event_type(?invpaid()) -> <<"InvoicePaid">>;
-decode_invoice_status_event_type(?invcancelled()) -> <<"InvoiceCancelled">>;
-decode_invoice_status_event_type(?invfulfilled()) -> <<"InvoiceFulfilled">>.
+decode_invoice_status_event_type(?INVPAID()) -> <<"InvoicePaid">>;
+decode_invoice_status_event_type(?INVCANCELLED()) -> <<"InvoiceCancelled">>;
+decode_invoice_status_event_type(?INVFULFILLED()) -> <<"InvoiceFulfilled">>.
 
-decode_payment_status_event_type(?pmtprocessed()) -> <<"PaymentProcessed">>;
-decode_payment_status_event_type(?pmtcaptured()) -> <<"PaymentCaptured">>;
-decode_payment_status_event_type(?pmtcancelled()) -> <<"PaymentCancelled">>;
-decode_payment_status_event_type(?pmtrefunded()) -> <<"PaymentRefunded">>;
-decode_payment_status_event_type(?pmtfailed()) -> <<"PaymentFailed">>.
+decode_payment_status_event_type(?PMTPROCESSED()) -> <<"PaymentProcessed">>;
+decode_payment_status_event_type(?PMTCAPTURED()) -> <<"PaymentCaptured">>;
+decode_payment_status_event_type(?PMTCANCELLED()) -> <<"PaymentCancelled">>;
+decode_payment_status_event_type(?PMTREFUNDED()) -> <<"PaymentRefunded">>;
+decode_payment_status_event_type(?PMTFAILED()) -> <<"PaymentFailed">>.
 
-decode_payment_refund_status_event_type(?pmtrfndfailed()) -> <<"PaymentRefundFailed">>;
-decode_payment_refund_status_event_type(?pmtrfndsucceeded()) -> <<"PaymentRefundSucceeded">>.
+decode_payment_refund_status_event_type(?PMTRFNDFAILED()) -> <<"PaymentRefundFailed">>;
+decode_payment_refund_status_event_type(?PMTRFNDSUCCEEDED()) -> <<"PaymentRefundSucceeded">>.
 
 decode_customer_event_type({created, #webhooker_CustomerCreated{}}) ->
     <<"CustomerCreated">>;

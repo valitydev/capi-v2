@@ -161,7 +161,7 @@ handle_function_(OperationID, Req, SwagContext0, HandlerOpts) ->
         throw:{handler_respond, HandlerResponse} ->
             {ok, HandlerResponse};
         throw:{bad_deadline, _Deadline} ->
-            {ok, logic_error(invalidDeadline, <<"Invalid data in X-Request-Deadline header">>)};
+            {ok, logic_error('invalidDeadline', <<"Invalid data in X-Request-Deadline header">>)};
         throw:{handler_function_clause, _OperationID} ->
             _ = logger:error("Operation ~p failed due to missing handler", [OperationID]),
             {error, {501, #{}, undefined}};
@@ -299,13 +299,13 @@ set_context_meta(Context) ->
 -spec set_request_meta(operation_id(), request_data()) -> ok.
 set_request_meta(OperationID, Req) ->
     InterestParams = [
-        invoiceID,
-        invoiceTemplateID,
-        contractID,
-        webhookID,
-        reportID,
-        shopID,
-        customerID
+        'invoiceID',
+        'invoiceTemplateID',
+        'contractID',
+        'webhookID',
+        'reportID',
+        'shopID',
+        'customerID'
     ],
     Meta = #{
         operation_id => OperationID,

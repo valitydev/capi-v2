@@ -31,21 +31,21 @@ prepare('CreateCustomer' = OperationID, Req, Context) ->
                 {ok, Customer} ->
                     {ok, {201, #{}, make_customer_and_token(Customer, Context)}};
                 {exception, #payproc_InvalidUser{}} ->
-                    {ok, logic_error(invalidPartyID, <<"Party not found">>)};
+                    {ok, logic_error('invalidPartyID', <<"Party not found">>)};
                 {exception, #payproc_InvalidPartyStatus{}} ->
-                    {ok, logic_error(<<"invalidPartyStatus">>, <<"Invalid party status">>)};
+                    {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
                 {exception, #payproc_InvalidShopStatus{}} ->
-                    {ok, logic_error(invalidShopStatus, <<"Invalid shop status">>)};
+                    {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)};
                 {exception, #payproc_ShopNotFound{}} ->
-                    {ok, logic_error(invalidShopID, <<"Shop not found">>)};
+                    {ok, logic_error('invalidShopID', <<"Shop not found">>)};
                 {exception, #payproc_PartyNotFound{}} ->
-                    {ok, logic_error(<<"invalidPartyID">>, <<"Party not found">>)};
+                    {ok, logic_error('invalidPartyID', <<"Party not found">>)};
                 {exception, #payproc_OperationNotPermitted{}} ->
-                    {ok, logic_error(operationNotPermitted, <<"Operation not permitted">>)}
+                    {ok, logic_error('operationNotPermitted', <<"Operation not permitted">>)}
             end
         catch
             throw:{external_id_conflict, ID, UsedExternalID, _Schema} ->
-                {ok, logic_error(externalIDConflict, {ID, UsedExternalID})}
+                {ok, logic_error('externalIDConflict', {ID, UsedExternalID})}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -87,9 +87,9 @@ prepare('DeleteCustomer' = OperationID, Req, Context) ->
             {exception, #payproc_CustomerNotFound{}} ->
                 {ok, general_error(404, <<"Customer not found">>)};
             {exception, #payproc_InvalidPartyStatus{}} ->
-                {ok, logic_error(invalidPartyStatus, <<"Invalid party status">>)};
+                {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
             {exception, #payproc_InvalidShopStatus{}} ->
-                {ok, logic_error(invalidShopStatus, <<"Invalid shop status">>)}
+                {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -114,7 +114,7 @@ prepare('CreateCustomerAccessToken' = OperationID, Req, Context) ->
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare('CreateBinding' = OperationID, Req, Context) ->
-    CustomerID = maps:get(customerID, Req),
+    CustomerID = maps:get('customerID', Req),
     Authorize = fun() ->
         Prototypes = [
             {operation, #{id => OperationID, customer => CustomerID}},
@@ -149,28 +149,28 @@ prepare('CreateBinding' = OperationID, Req, Context) ->
             end,
         case Result of
             {ok, CustomerBinding} ->
-                {ok, {201, #{}, decode_customer_binding(CustomerBinding, Context)}};
+                {ok, {201, #{}, decode_customer_binding(CustomerBinding)}};
             {exception, #payproc_InvalidUser{}} ->
                 {ok, general_error(404, <<"Customer not found">>)};
             {exception, #payproc_CustomerNotFound{}} ->
                 {ok, general_error(404, <<"Customer not found">>)};
             {exception, #payproc_InvalidPartyStatus{}} ->
-                {ok, logic_error(invalidPartyStatus, <<"Invalid party status">>)};
+                {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
             {exception, #payproc_InvalidShopStatus{}} ->
-                {ok, logic_error(invalidShopStatus, <<"Invalid shop status">>)};
+                {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)};
             {exception, #payproc_InvalidContractStatus{}} ->
-                {ok, logic_error(invalidRequest, <<"Invalid contract status">>)};
+                {ok, logic_error('invalidRequest', <<"Invalid contract status">>)};
             {exception, #payproc_OperationNotPermitted{}} ->
-                {ok, logic_error(operationNotPermitted, <<"Operation not permitted">>)};
+                {ok, logic_error('operationNotPermitted', <<"Operation not permitted">>)};
             {error, invalid_payment_session} ->
-                {ok, logic_error(invalidPaymentSession, <<"Specified payment session is invalid">>)};
+                {ok, logic_error('invalidPaymentSession', <<"Specified payment session is invalid">>)};
             {error, {external_id_conflict, ID, UsedExternalID, _Schema}} ->
-                {ok, logic_error(externalIDConflict, {ID, UsedExternalID})}
+                {ok, logic_error('externalIDConflict', {ID, UsedExternalID})}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare('GetBindings' = OperationID, Req, Context) ->
-    CustomerID = maps:get(customerID, Req),
+    CustomerID = maps:get('customerID', Req),
     Customer = map_service_result(get_customer_by_id(CustomerID, Context)),
     Authorize = fun() ->
         Prototypes = [
@@ -180,17 +180,13 @@ prepare('GetBindings' = OperationID, Req, Context) ->
         {ok, mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context))}
     end,
     Process = fun() ->
-        case Customer of
-            #payproc_Customer{bindings = Bindings} ->
-                {ok, {200, #{}, [decode_customer_binding(B, Context) || B <- Bindings]}};
-            undefined ->
-                {ok, general_error(404, <<"Customer not found">>)}
-        end
+        _ = capi_handler:respond_if_undefined(Customer, general_error(404, <<"Customer not found">>)),
+        {ok, {200, #{}, [decode_customer_binding(B) || B <- Customer#payproc_Customer.bindings]}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare('GetBinding' = OperationID, Req, Context) ->
-    CustomerID = maps:get(customerID, Req),
-    CustomerBindingID = maps:get(customerBindingID, Req),
+    CustomerID = maps:get('customerID', Req),
+    CustomerBindingID = maps:get('customerBindingID', Req),
     Customer = map_service_result(get_customer_by_id(CustomerID, Context)),
     Authorize = fun() ->
         Prototypes = [
@@ -200,21 +196,18 @@ prepare('GetBinding' = OperationID, Req, Context) ->
         {ok, mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context))}
     end,
     Process = fun() ->
-        case Customer of
-            #payproc_Customer{bindings = Bindings} ->
-                case lists:keyfind(CustomerBindingID, #payproc_CustomerBinding.id, Bindings) of
-                    #payproc_CustomerBinding{} = B ->
-                        {ok, {200, #{}, decode_customer_binding(B, Context)}};
-                    false ->
-                        {ok, general_error(404, <<"Customer binding not found">>)}
-                end;
-            undefined ->
-                {ok, general_error(404, <<"Customer not found">>)}
+        _ = capi_handler:respond_if_undefined(Customer, general_error(404, <<"Customer not found">>)),
+        Bindings = Customer#payproc_Customer.bindings,
+        case lists:keyfind(CustomerBindingID, #payproc_CustomerBinding.id, Bindings) of
+            #payproc_CustomerBinding{} = B ->
+                {ok, {200, #{}, decode_customer_binding(B)}};
+            false ->
+                {ok, general_error(404, <<"Customer binding not found">>)}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare('GetCustomerEvents' = OperationID, Req, Context) ->
-    CustomerID = maps:get(customerID, Req),
+    CustomerID = maps:get('customerID', Req),
     Authorize = fun() ->
         Prototypes = [
             {operation, #{id => OperationID, customer => CustomerID}},
@@ -230,11 +223,10 @@ prepare('GetCustomerEvents' = OperationID, Req, Context) ->
             )
         end,
         Result = capi_handler_utils:collect_events(
-            maps:get(limit, Req),
-            genlib_map:get(eventID, Req),
+            maps:get('limit', Req),
+            genlib_map:get('eventID', Req),
             GetterFun,
-            fun decode_customer_event/2,
-            undefined
+            fun decode_customer_event/1
         ),
         case Result of
             {ok, Events} when is_list(Events) ->
@@ -249,7 +241,7 @@ prepare('GetCustomerEvents' = OperationID, Req, Context) ->
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare('GetCustomerPaymentMethods' = OperationID, Req, Context) ->
-    CustomerID = maps:get(customerID, Req),
+    CustomerID = maps:get('customerID', Req),
     Customer = map_service_result(get_customer_by_id(CustomerID, Context)),
     Authorize = fun() ->
         Prototypes = [
@@ -270,13 +262,10 @@ prepare('GetCustomerPaymentMethods' = OperationID, Req, Context) ->
                 PaymentMethods1 = capi_utils:deduplicate_payment_methods(PaymentMethods0),
                 PaymentMethods = capi_handler_utils:emplace_token_provider_data(Customer, PaymentMethods1, Context),
                 {ok, {200, #{}, PaymentMethods}};
-            {exception, Exception} ->
-                case Exception of
-                    #payproc_InvalidUser{} ->
-                        {ok, general_error(404, <<"Customer not found">>)};
-                    #payproc_CustomerNotFound{} ->
-                        {ok, general_error(404, <<"Customer not found">>)}
-                end
+            {exception, #payproc_InvalidUser{}} ->
+                {ok, general_error(404, <<"Customer not found">>)};
+            {exception, #payproc_CustomerNotFound{}} ->
+                {ok, general_error(404, <<"Customer not found">>)}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -377,7 +366,7 @@ encode_payment_tool_token(Token) ->
             case capi_utils:deadline_is_reached(ValidUntil) of
                 true ->
                     logger:warning("Payment tool token expired: ~p", [capi_utils:deadline_to_binary(ValidUntil)]),
-                    capi_handler:respond(logic_error(invalidPaymentToolToken));
+                    capi_handler:respond(logic_error('invalidPaymentToolToken'));
                 _ ->
                     PaymentTool
             end;
@@ -385,7 +374,7 @@ encode_payment_tool_token(Token) ->
             encode_legacy_payment_tool_token(Token);
         {error, {decryption_failed, Error}} ->
             logger:warning("Payment tool token decryption failed: ~p", [Error]),
-            capi_handler:respond(logic_error(invalidPaymentToolToken))
+            capi_handler:respond(logic_error('invalidPaymentToolToken'))
     end.
 
 encode_legacy_payment_tool_token(Token) ->
@@ -393,7 +382,7 @@ encode_legacy_payment_tool_token(Token) ->
         capi_handler_encoder:encode_payment_tool(capi_utils:base64url_to_map(Token))
     catch
         error:badarg ->
-            capi_handler:respond(logic_error(invalidPaymentToolToken))
+            capi_handler:respond(logic_error('invalidPaymentToolToken'))
     end.
 
 make_customer_and_token(Customer, ProcessingContext) ->
@@ -418,7 +407,7 @@ decode_customer_status({Status, _}) ->
 decode_customer_metadata(Meta) ->
     capi_json_marshalling:unmarshal(Meta).
 
-decode_customer_binding(CustomerBinding, Context) ->
+decode_customer_binding(CustomerBinding) ->
     capi_handler_utils:merge_and_compact(
         #{
             <<"id">> => CustomerBinding#payproc_CustomerBinding.id,
@@ -427,14 +416,14 @@ decode_customer_binding(CustomerBinding, Context) ->
                     CustomerBinding#payproc_CustomerBinding.payment_resource
                 )
         },
-        decode_customer_binding_status(CustomerBinding#payproc_CustomerBinding.status, Context)
+        decode_customer_binding_status(CustomerBinding#payproc_CustomerBinding.status)
     ).
 
-decode_customer_binding_status({Status, StatusInfo}, Context) ->
+decode_customer_binding_status({Status, StatusInfo}) ->
     Error =
         case StatusInfo of
             #payproc_CustomerBindingFailed{failure = OperationFailure} ->
-                capi_handler_decoder_utils:decode_operation_failure(OperationFailure, Context);
+                capi_handler_decoder_utils:decode_operation_failure(OperationFailure);
             _ ->
                 undefined
         end,
@@ -443,8 +432,8 @@ decode_customer_binding_status({Status, StatusInfo}, Context) ->
         <<"error">> => Error
     }.
 
-decode_customer_event(Event = #payproc_Event{source = {customer_id, _}, payload = Payload}, Context) ->
-    case decode_customer_changes(Payload, Context) of
+decode_customer_event(Event = #payproc_Event{source = {customer_id, _}, payload = Payload}) ->
+    case decode_customer_changes(Payload) of
         [_Something | _] = Changes ->
             {true, #{
                 <<"id">> => Event#payproc_Event.id,
@@ -455,25 +444,22 @@ decode_customer_event(Event = #payproc_Event{source = {customer_id, _}, payload 
             false
     end.
 
-decode_customer_changes({customer_changes, CustomerChanges}, Context) ->
-    lists:filtermap(
-        fun(V) -> decode_customer_change(V, Context) end,
-        CustomerChanges
-    ).
+decode_customer_changes({customer_changes, CustomerChanges}) ->
+    lists:filtermap(fun decode_customer_change/1, CustomerChanges).
 
-decode_customer_change({customer_binding_changed, CustomerBindingChanged}, Context) ->
+decode_customer_change({customer_binding_changed, CustomerBindingChanged}) ->
     #payproc_CustomerBindingChanged{id = BindingID, payload = Payload} = CustomerBindingChanged,
-    decode_customer_binding_change(BindingID, Payload, Context);
-decode_customer_change(_, _) ->
+    decode_customer_binding_change(BindingID, Payload);
+decode_customer_change(_) ->
     false.
 
-decode_customer_binding_change(_, {started, Start}, Context) ->
+decode_customer_binding_change(_, {started, Start}) ->
     #payproc_CustomerBindingStarted{binding = CustomerBinding} = Start,
     {true, #{
         <<"changeType">> => <<"CustomerBindingStarted">>,
-        <<"customerBinding">> => decode_customer_binding(CustomerBinding, Context)
+        <<"customerBinding">> => decode_customer_binding(CustomerBinding)
     }};
-decode_customer_binding_change(BindingID, {status_changed, StatusChange}, Context) ->
+decode_customer_binding_change(BindingID, {status_changed, StatusChange}) ->
     #payproc_CustomerBindingStatusChanged{status = Status} = StatusChange,
     {true,
         capi_handler_utils:merge_and_compact(
@@ -481,9 +467,9 @@ decode_customer_binding_change(BindingID, {status_changed, StatusChange}, Contex
                 <<"changeType">> => <<"CustomerBindingStatusChanged">>,
                 <<"customerBindingID">> => BindingID
             },
-            decode_customer_binding_status(Status, Context)
+            decode_customer_binding_status(Status)
         )};
-decode_customer_binding_change(BindingID, {interaction_requested, InteractionRequest}, _) ->
+decode_customer_binding_change(BindingID, {interaction_requested, InteractionRequest}) ->
     #payproc_CustomerBindingInteractionRequested{interaction = UserInteraction} = InteractionRequest,
     {true, #{
         <<"changeType">> => <<"CustomerBindingInteractionRequested">>,

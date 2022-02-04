@@ -36,27 +36,24 @@ prepare('CreateInvoiceTemplate' = OperationID, Req, Context) ->
         of
             {ok, InvoiceTpl} ->
                 {ok, {201, #{}, make_invoice_tpl_and_token(InvoiceTpl, Context)}};
-            {exception, Exception} ->
-                case Exception of
-                    #'InvalidRequest'{errors = Errors} ->
-                        FormattedErrors = capi_handler_utils:format_request_errors(Errors),
-                        {ok, logic_error(invalidRequest, FormattedErrors)};
-                    #payproc_InvalidUser{} ->
-                        {ok, logic_error(invalidPartyID, <<"Party not found">>)};
-                    #payproc_ShopNotFound{} ->
-                        {ok, logic_error(invalidShopID, <<"Shop not found">>)};
-                    #payproc_InvalidPartyStatus{} ->
-                        {ok, logic_error(invalidPartyStatus, <<"Invalid party status">>)};
-                    #payproc_InvalidShopStatus{} ->
-                        {ok, logic_error(invalidShopStatus, <<"Invalid shop status">>)}
-                end
+            {exception, #'InvalidRequest'{errors = Errors}} ->
+                FormattedErrors = capi_handler_utils:format_request_errors(Errors),
+                {ok, logic_error('invalidRequest', FormattedErrors)};
+            {exception, #payproc_InvalidUser{}} ->
+                {ok, logic_error('invalidPartyID', <<"Party not found">>)};
+            {exception, #payproc_ShopNotFound{}} ->
+                {ok, logic_error('invalidShopID', <<"Shop not found">>)};
+            {exception, #payproc_InvalidPartyStatus{}} ->
+                {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
+            {exception, #payproc_InvalidShopStatus{}} ->
+                {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)}
         catch
             throw:invoice_cart_empty ->
-                {ok, logic_error(invalidInvoiceCart, <<"Wrong size. Path to item: cart">>)};
+                {ok, logic_error('invalidInvoiceCart', <<"Wrong size. Path to item: cart">>)};
             throw:zero_invoice_lifetime ->
-                {ok, logic_error(invalidRequest, <<"Lifetime cannot be zero">>)};
+                {ok, logic_error('invalidRequest', <<"Lifetime cannot be zero">>)};
             throw:{external_id_conflict, ID, UsedExternalID, _Schema} ->
-                {ok, logic_error(externalIDConflict, {ID, UsedExternalID})}
+                {ok, logic_error('externalIDConflict', {ID, UsedExternalID})}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -94,22 +91,19 @@ prepare('UpdateInvoiceTemplate' = OperationID, Req, Context) ->
         of
             {ok, UpdatedInvoiceTpl} ->
                 {ok, {200, #{}, decode_invoice_tpl(UpdatedInvoiceTpl)}};
-            {exception, Exception} ->
-                case Exception of
-                    #payproc_InvalidUser{} ->
-                        {ok, general_error(404, <<"Invoice Template not found">>)};
-                    #'InvalidRequest'{errors = Errors} ->
-                        FormattedErrors = capi_handler_utils:format_request_errors(Errors),
-                        {ok, logic_error(invalidRequest, FormattedErrors)};
-                    #payproc_InvalidPartyStatus{} ->
-                        {ok, logic_error(invalidPartyStatus, <<"Invalid party status">>)};
-                    #payproc_InvalidShopStatus{} ->
-                        {ok, logic_error(invalidShopStatus, <<"Invalid shop status">>)};
-                    #payproc_InvoiceTemplateNotFound{} ->
-                        {ok, general_error(404, <<"Invoice Template not found">>)};
-                    #payproc_InvoiceTemplateRemoved{} ->
-                        {ok, general_error(404, <<"Invoice Template not found">>)}
-                end
+            {exception, #payproc_InvalidUser{}} ->
+                {ok, general_error(404, <<"Invoice Template not found">>)};
+            {exception, #'InvalidRequest'{errors = Errors}} ->
+                FormattedErrors = capi_handler_utils:format_request_errors(Errors),
+                {ok, logic_error('invalidRequest', FormattedErrors)};
+            {exception, #payproc_InvalidPartyStatus{}} ->
+                {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
+            {exception, #payproc_InvalidShopStatus{}} ->
+                {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)};
+            {exception, #payproc_InvoiceTemplateNotFound{}} ->
+                {ok, general_error(404, <<"Invoice Template not found">>)};
+            {exception, #payproc_InvoiceTemplateRemoved{}} ->
+                {ok, general_error(404, <<"Invoice Template not found">>)}
         catch
             throw:#payproc_InvalidUser{} ->
                 {ok, general_error(404, <<"Invoice Template not found">>)};
@@ -118,9 +112,9 @@ prepare('UpdateInvoiceTemplate' = OperationID, Req, Context) ->
             throw:#payproc_InvoiceTemplateRemoved{} ->
                 {ok, general_error(404, <<"Invoice Template not found">>)};
             throw:invoice_cart_empty ->
-                {ok, logic_error(invalidInvoiceCart, <<"Wrong size. Path to item: cart">>)};
+                {ok, logic_error('invalidInvoiceCart', <<"Wrong size. Path to item: cart">>)};
             throw:zero_invoice_lifetime ->
-                {ok, logic_error(invalidRequest, <<"Lifetime cannot be zero">>)}
+                {ok, logic_error('invalidRequest', <<"Lifetime cannot be zero">>)}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -139,19 +133,16 @@ prepare('DeleteInvoiceTemplate' = OperationID, Req, Context) ->
         case capi_handler_utils:service_call_with([user_info], Call, Context) of
             {ok, _R} ->
                 {ok, {204, #{}, undefined}};
-            {exception, Exception} ->
-                case Exception of
-                    #payproc_InvalidUser{} ->
-                        {ok, general_error(404, <<"Invoice Template not found">>)};
-                    #payproc_InvalidPartyStatus{} ->
-                        {ok, logic_error(invalidPartyStatus, <<"Invalid party status">>)};
-                    #payproc_InvalidShopStatus{} ->
-                        {ok, logic_error(invalidShopStatus, <<"Invalid shop status">>)};
-                    #payproc_InvoiceTemplateNotFound{} ->
-                        {ok, general_error(404, <<"Invoice Template not found">>)};
-                    #payproc_InvoiceTemplateRemoved{} ->
-                        {ok, general_error(404, <<"Invoice Template not found">>)}
-                end
+            {exception, #payproc_InvalidUser{}} ->
+                {ok, general_error(404, <<"Invoice Template not found">>)};
+            {exception, #payproc_InvalidPartyStatus{}} ->
+                {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
+            {exception, #payproc_InvalidShopStatus{}} ->
+                {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)};
+            {exception, #payproc_InvoiceTemplateNotFound{}} ->
+                {ok, general_error(404, <<"Invoice Template not found">>)};
+            {exception, #payproc_InvoiceTemplateRemoved{}} ->
+                {ok, general_error(404, <<"Invoice Template not found">>)}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -173,31 +164,28 @@ prepare('CreateInvoiceWithTemplate' = OperationID, Req, Context) ->
         try create_invoice(PartyID, InvoiceTplID, InvoiceParams, Context, OperationID) of
             {ok, #'payproc_Invoice'{invoice = Invoice}} ->
                 {ok, {201, #{}, capi_handler_decoder_invoicing:make_invoice_and_token(Invoice, Context)}};
-            {exception, Reason} ->
-                case Reason of
-                    #payproc_InvalidUser{} ->
-                        {ok, general_error(404, <<"Invoice Template not found">>)};
-                    #'InvalidRequest'{errors = Errors} ->
-                        FormattedErrors = capi_handler_utils:format_request_errors(Errors),
-                        {ok, logic_error(invalidRequest, FormattedErrors)};
-                    #payproc_InvalidPartyStatus{} ->
-                        {ok, logic_error(invalidPartyStatus, <<"Invalid party status">>)};
-                    #payproc_InvalidShopStatus{} ->
-                        {ok, logic_error(invalidShopStatus, <<"Invalid shop status">>)};
-                    #payproc_InvoiceTemplateNotFound{} ->
-                        {ok, general_error(404, <<"Invoice Template not found">>)};
-                    #payproc_InvoiceTemplateRemoved{} ->
-                        {ok, general_error(404, <<"Invoice Template not found">>)};
-                    #payproc_InvoiceTermsViolated{} ->
-                        {ok, logic_error(invoiceTermsViolated, <<"Invoice parameters violate contract terms">>)}
-                end
+            {exception, #payproc_InvalidUser{}} ->
+                {ok, general_error(404, <<"Invoice Template not found">>)};
+            {exception, #'InvalidRequest'{errors = Errors}} ->
+                FormattedErrors = capi_handler_utils:format_request_errors(Errors),
+                {ok, logic_error('invalidRequest', FormattedErrors)};
+            {exception, #payproc_InvalidPartyStatus{}} ->
+                {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
+            {exception, #payproc_InvalidShopStatus{}} ->
+                {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)};
+            {exception, #payproc_InvoiceTemplateNotFound{}} ->
+                {ok, general_error(404, <<"Invoice Template not found">>)};
+            {exception, #payproc_InvoiceTemplateRemoved{}} ->
+                {ok, general_error(404, <<"Invoice Template not found">>)};
+            {exception, #payproc_InvoiceTermsViolated{}} ->
+                {ok, logic_error('invoiceTermsViolated', <<"Invoice parameters violate contract terms">>)}
         catch
             throw:{bad_invoice_params, currency_no_amount} ->
-                {ok, logic_error(invalidRequest, <<"Amount is required for the currency">>)};
+                {ok, logic_error('invalidRequest', <<"Amount is required for the currency">>)};
             throw:{bad_invoice_params, amount_no_currency} ->
-                {ok, logic_error(invalidRequest, <<"Currency is required for the amount">>)};
+                {ok, logic_error('invalidRequest', <<"Currency is required for the amount">>)};
             throw:{external_id_conflict, InvoiceID, ExternalID, _Schema} ->
-                {ok, logic_error(externalIDConflict, {InvoiceID, ExternalID})}
+                {ok, logic_error('externalIDConflict', {InvoiceID, ExternalID})}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};

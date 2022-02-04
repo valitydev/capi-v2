@@ -1931,23 +1931,23 @@ search_invoices_ok_test_(BankCardTokenProvider, Config) ->
         {limit, 2},
         {from_time, {{2015, 08, 11}, {19, 42, 35}}},
         {to_time, {{2020, 08, 11}, {19, 42, 35}}},
-        {invoiceStatus, <<"fulfilled">>},
-        {payerEmail, <<"test@test.ru">>},
-        {payerIP, <<"192.168.0.1">>},
-        {paymentStatus, <<"processed">>},
-        {paymentFlow, <<"instant">>},
-        {paymentMethod, <<"bankCard">>},
-        {invoiceID, <<"testInvoiceID">>},
-        {paymentID, <<"testPaymentID">>},
-        {customerID, <<"testCustomerID">>},
-        {payerFingerprint, <<"blablablalbalbal">>},
-        {first6, <<"424242">>},
-        {last4, <<"2222">>},
-        {rrn, <<"090909090909">>},
-        {bankCardTokenProvider, BankCardTokenProvider},
-        {bankCardPaymentSystem, <<"visa">>},
-        {paymentAmount, 10000},
-        {continuationToken, <<"come_back_next_time">>}
+        {'invoiceStatus', <<"fulfilled">>},
+        {'payerEmail', <<"test@test.ru">>},
+        {'payerIP', <<"192.168.0.1">>},
+        {'paymentStatus', <<"processed">>},
+        {'paymentFlow', <<"instant">>},
+        {'paymentMethod', <<"bankCard">>},
+        {'invoiceID', <<"testInvoiceID">>},
+        {'paymentID', <<"testPaymentID">>},
+        {'customerID', <<"testCustomerID">>},
+        {'payerFingerprint', <<"blablablalbalbal">>},
+        {'first6', <<"424242">>},
+        {'last4', <<"2222">>},
+        {'rrn', <<"090909090909">>},
+        {'bankCardTokenProvider', BankCardTokenProvider},
+        {'bankCardPaymentSystem', <<"visa">>},
+        {'paymentAmount', 10000},
+        {'continuationToken', <<"come_back_next_time">>}
     ],
     {ok, _, _} = capi_client_searches:search_invoices(?config(context, Config), ?STRING, Query),
     ok.
@@ -1977,22 +1977,22 @@ search_payments_ok_(BankCardTokenProvider, Config) ->
         {limit, 2},
         {from_time, {{2015, 08, 11}, {19, 42, 35}}},
         {to_time, {{2020, 08, 11}, {19, 42, 35}}},
-        {payerEmail, <<"test@test.ru">>},
-        {payerIP, <<"192.168.0.1">>},
-        {paymentStatus, <<"processed">>},
-        {paymentFlow, <<"instant">>},
-        {paymentMethod, <<"bankCard">>},
-        {invoiceID, <<"testInvoiceID">>},
-        {paymentID, <<"testPaymentID">>},
-        {payerFingerprint, <<"blablablalbalbal">>},
-        {first6, <<"424242">>},
-        {last4, <<"2222">>},
-        {rrn, <<"090909090909">>},
-        {approvalCode, <<"808080">>},
-        {bankCardTokenProvider, BankCardTokenProvider},
-        {bankCardPaymentSystem, <<"visa">>},
-        {paymentAmount, 10000},
-        {continuationToken, <<"come_back_next_time">>}
+        {'payerEmail', <<"test@test.ru">>},
+        {'payerIP', <<"192.168.0.1">>},
+        {'paymentStatus', <<"processed">>},
+        {'paymentFlow', <<"instant">>},
+        {'paymentMethod', <<"bankCard">>},
+        {'invoiceID', <<"testInvoiceID">>},
+        {'paymentID', <<"testPaymentID">>},
+        {'payerFingerprint', <<"blablablalbalbal">>},
+        {'first6', <<"424242">>},
+        {'last4', <<"2222">>},
+        {'rrn', <<"090909090909">>},
+        {'approvalCode', <<"808080">>},
+        {'bankCardTokenProvider', BankCardTokenProvider},
+        {'bankCardPaymentSystem', <<"visa">>},
+        {'paymentAmount', 10000},
+        {'continuationToken', <<"come_back_next_time">>}
     ],
     {ok, _, _} = capi_client_searches:search_payments(?config(context, Config), ?STRING, Query),
     ok.
@@ -2022,13 +2022,13 @@ search_refunds_ok_test(Config) ->
         {offset, 2},
         {from_time, {{2015, 08, 11}, {19, 42, 35}}},
         {to_time, {{2020, 08, 11}, {19, 42, 35}}},
-        {shopID, ShopID},
-        {invoiceID, <<"testInvoiceID">>},
-        {paymentID, <<"testPaymentID">>},
-        {refundID, <<"testRefundID">>},
+        {'shopID', ShopID},
+        {'invoiceID', <<"testInvoiceID">>},
+        {'paymentID', <<"testPaymentID">>},
+        {'refundID', <<"testRefundID">>},
         % {rrn, <<"090909090909">>},
         % {approvalCode, <<"808080">>},
-        {refundStatus, <<"succeeded">>}
+        {'refundStatus', <<"succeeded">>}
     ],
 
     {ok, _, _} = capi_client_searches:search_refunds(?config(context, Config), ShopID, Query).
@@ -2052,8 +2052,8 @@ search_payouts_ok_test(Config) ->
         {offset, 2},
         {from_time, {{2015, 08, 11}, {19, 42, 35}}},
         {to_time, {{2020, 08, 11}, {19, 42, 35}}},
-        {payoutID, <<"testPayoutID">>},
-        {payoutToolType, <<"Wallet">>}
+        {'payoutID', <<"testPayoutID">>},
+        {'payoutToolType', <<"Wallet">>}
     ],
 
     {ok, _, _} = capi_client_searches:search_payouts(?config(context, Config), ShopID, Query).
@@ -2150,7 +2150,7 @@ get_payment_method_stats_ok_test(Config) ->
         {to_time, {{2020, 08, 11}, {19, 42, 35}}},
         {split_unit, minute},
         {split_size, 1},
-        {paymentMethod, <<"bankCard">>}
+        {'paymentMethod', <<"bankCard">>}
     ],
     {ok, _} = capi_client_analytics:get_payment_method_stats(?config(context, Config), ?STRING, Query).
 

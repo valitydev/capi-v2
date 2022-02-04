@@ -38,13 +38,9 @@ prepare(OperationID = 'GetClaimByID', Req, Context) ->
     Process = fun() ->
         case capi_party:get_claim(PartyID, genlib:to_int(ClaimID), Context) of
             {ok, Claim} ->
-                case is_wallet_claim(Claim) of
-                    true ->
-                        %% filter this out
-                        {ok, general_error(404, <<"Claim not found">>)};
-                    false ->
-                        {ok, {200, #{}, decode_claim(Claim)}}
-                end;
+                %% filter this out
+                _ = is_wallet_claim(Claim) andalso capi_handler:respond(general_error(404, <<"Claim not found">>)),
+                {ok, {200, #{}, decode_claim(Claim)}};
             {error, #payproc_ClaimNotFound{}} ->
                 {ok, general_error(404, <<"Claim not found">>)}
         end
@@ -64,30 +60,27 @@ prepare(OperationID = 'CreateClaim', Req, Context) ->
             case capi_party:create_claim(PartyID, Changeset, Context) of
                 {ok, Claim} ->
                     {ok, {201, #{}, decode_claim(Claim)}};
-                {error, Exception} ->
-                    case Exception of
-                        #payproc_InvalidPartyStatus{} ->
-                            {ok, logic_error(invalidPartyStatus, <<"Invalid party status">>)};
-                        #payproc_ChangesetConflict{} ->
-                            {ok, logic_error(changesetConflict, <<"Changeset conflict">>)};
-                        #payproc_InvalidChangeset{} ->
-                            {ok, logic_error(invalidChangeset, <<"Invalid changeset">>)};
-                        #'InvalidRequest'{errors = Errors} ->
-                            FormattedErrors = capi_handler_utils:format_request_errors(Errors),
-                            {ok, logic_error(invalidRequest, FormattedErrors)}
-                    end
+                {error, #payproc_InvalidPartyStatus{}} ->
+                    {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
+                {error, #payproc_ChangesetConflict{}} ->
+                    {ok, logic_error('changesetConflict', <<"Changeset conflict">>)};
+                {error, #payproc_InvalidChangeset{}} ->
+                    {ok, logic_error('invalidChangeset', <<"Invalid changeset">>)};
+                {error, #'InvalidRequest'{errors = Errors}} ->
+                    FormattedErrors = capi_handler_utils:format_request_errors(Errors),
+                    {ok, logic_error('invalidRequest', FormattedErrors)}
             end
         end,
         {ok, #{authorize => Authorize, process => Process}}
     catch
         throw:{encode_contract_modification, adjustment_creation_not_supported} ->
             ErrorResp = logic_error(
-                invalidChangeset,
+                'invalidChangeset',
                 <<"Contract adjustment creation not supported">>
             ),
             capi_handler:respond(ErrorResp);
         throw:{encode_residence, invalid_residence} ->
-            capi_handler:respond(logic_error(invalidRequest, <<"Invalid residence">>))
+            capi_handler:respond(logic_error('invalidRequest', <<"Invalid residence">>))
     end;
 % TODO disabled temporary, exception handling must be fixed befor enabling
 % prepare(OperationID = 'UpdateClaimByID', Req, Context) ->
@@ -130,17 +123,14 @@ prepare(OperationID = 'RevokeClaimByID', Req, Context) ->
         case Result of
             ok ->
                 {ok, {204, #{}, undefined}};
-            {error, Exception} ->
-                case Exception of
-                    #payproc_InvalidPartyStatus{} ->
-                        {ok, logic_error(invalidPartyStatus, <<"Invalid party status">>)};
-                    #payproc_ClaimNotFound{} ->
-                        {ok, general_error(404, <<"Claim not found">>)};
-                    #payproc_InvalidClaimStatus{} ->
-                        {ok, logic_error(invalidClaimStatus, <<"Invalid claim status">>)};
-                    #payproc_InvalidClaimRevision{} ->
-                        {ok, logic_error(invalidClaimRevision, <<"Invalid claim revision">>)}
-                end
+            {error, #payproc_InvalidPartyStatus{}} ->
+                {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
+            {error, #payproc_ClaimNotFound{}} ->
+                {ok, general_error(404, <<"Claim not found">>)};
+            {error, #payproc_InvalidClaimStatus{}} ->
+                {ok, logic_error('invalidClaimStatus', <<"Invalid claim status">>)};
+            {error, #payproc_InvalidClaimRevision{}} ->
+                {ok, logic_error('invalidClaimRevision', <<"Invalid claim revision">>)}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};

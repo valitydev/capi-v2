@@ -10,7 +10,7 @@
 -export([decode_bank_card_bin/1]).
 -export([decode_last_digits/1]).
 -export([decode_masked_pan/2]).
--export([decode_operation_failure/2]).
+-export([decode_operation_failure/1]).
 -export([decode_category_ref/1]).
 -export([decode_context/1]).
 -export([decode_optional/2]).
@@ -64,10 +64,10 @@ decode_last_digits(MaskedPan) when byte_size(MaskedPan) > ?MASKED_PAN_MAX_LENGTH
 decode_last_digits(MaskedPan) ->
     MaskedPan.
 
--spec decode_operation_failure(_, _) -> decode_data().
-decode_operation_failure({operation_timeout, _}, _) ->
+-spec decode_operation_failure(_) -> decode_data().
+decode_operation_failure({operation_timeout, _}) ->
     logic_error(timeout, <<"timeout">>);
-decode_operation_failure({failure, #domain_Failure{code = Code, reason = Reason}}, _) ->
+decode_operation_failure({failure, #domain_Failure{code = Code, reason = Reason}}) ->
     logic_error(Code, Reason).
 
 logic_error(Code, Message) ->

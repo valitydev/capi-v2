@@ -56,13 +56,9 @@ prepare(OperationID = 'GetContractAdjustments', Req, Context) ->
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
     Process = fun() ->
-        case capi_party:get_contract(PartyID, ContractID, Context) of
-            {ok, #domain_Contract{adjustments = Adjustments}} ->
-                Resp = [decode_contract_adjustment(A) || A <- Adjustments],
-                {ok, {200, #{}, Resp}};
-            {error, #payproc_ContractNotFound{}} ->
-                {ok, general_error(404, <<"Contract not found">>)}
-        end
+        Contract = get_contract(PartyID, ContractID, Context),
+        Resp = [decode_contract_adjustment(A) || A <- Contract#domain_Contract.adjustments],
+        {ok, {200, #{}, Resp}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'GetContractAdjustmentByID', Req, Context) ->
@@ -75,17 +71,14 @@ prepare(OperationID = 'GetContractAdjustmentByID', Req, Context) ->
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
     Process = fun() ->
-        case capi_party:get_contract(PartyID, ContractID, Context) of
-            {ok, #domain_Contract{adjustments = Adjustments}} ->
-                AdjustmentID = maps:get('adjustmentID', Req),
-                case lists:keyfind(AdjustmentID, #domain_ContractAdjustment.id, Adjustments) of
-                    #domain_ContractAdjustment{} = A ->
-                        {ok, {200, #{}, decode_contract_adjustment(A)}};
-                    false ->
-                        {ok, general_error(404, <<"Adjustment not found">>)}
-                end;
-            {error, #payproc_ContractNotFound{}} ->
-                {ok, general_error(404, <<"Contract not found">>)}
+        Contract = get_contract(PartyID, ContractID, Context),
+        AdjustmentID = maps:get('adjustmentID', Req),
+        Adjustments = Contract#domain_Contract.adjustments,
+        case lists:keyfind(AdjustmentID, #domain_ContractAdjustment.id, Adjustments) of
+            #domain_ContractAdjustment{} = A ->
+                {ok, {200, #{}, decode_contract_adjustment(A)}};
+            false ->
+                {ok, general_error(404, <<"Adjustment not found">>)}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -118,14 +111,10 @@ prepare(OperationID = 'GetContractByIDForParty', Req, Context) ->
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
     Process = fun() ->
-        case capi_party:get_contract(PartyID, ContractID, Context) of
-            {ok, Contract} ->
-                % Получение Party требуется для извлечения domain_Party.contractors
-                {ok, Party} = capi_party:get_party(PartyID, Context),
-                {ok, {200, #{}, decode_contract(Contract, Party#domain_Party.contractors)}};
-            {error, #payproc_ContractNotFound{}} ->
-                {ok, general_error(404, <<"Contract not found">>)}
-        end
+        Contract = get_contract(PartyID, ContractID, Context),
+        % Получение Party требуется для извлечения domain_Party.contractors
+        {ok, Party} = capi_party:get_party(PartyID, Context),
+        {ok, {200, #{}, decode_contract(Contract, Party#domain_Party.contractors)}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'GetContractAdjustmentsForParty', Req, Context) ->
@@ -138,17 +127,9 @@ prepare(OperationID = 'GetContractAdjustmentsForParty', Req, Context) ->
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
     Process = fun() ->
-        case capi_party:get_contract(PartyID, ContractID, Context) of
-            {ok, #domain_Contract{adjustments = Adjustments}} ->
-                Resp = [decode_contract_adjustment(A) || A <- Adjustments],
-                {ok, {200, #{}, Resp}};
-            {error, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Party not found">>)};
-            {error, #payproc_PartyNotFound{}} ->
-                {ok, general_error(404, <<"Party not found">>)};
-            {error, #payproc_ContractNotFound{}} ->
-                {ok, general_error(404, <<"Contract not found">>)}
-        end
+        Contract = get_contract(PartyID, ContractID, Context),
+        Resp = [decode_contract_adjustment(A) || A <- Contract#domain_Contract.adjustments],
+        {ok, {200, #{}, Resp}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'GetContractAdjustmentByIDForParty', Req, Context) ->
@@ -161,26 +142,31 @@ prepare(OperationID = 'GetContractAdjustmentByIDForParty', Req, Context) ->
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
     Process = fun() ->
-        case capi_party:get_contract(PartyID, ContractID, Context) of
-            {ok, #domain_Contract{adjustments = Adjustments}} ->
-                AdjustmentID = maps:get('adjustmentID', Req),
-                case lists:keyfind(AdjustmentID, #domain_ContractAdjustment.id, Adjustments) of
-                    #domain_ContractAdjustment{} = A ->
-                        {ok, {200, #{}, decode_contract_adjustment(A)}};
-                    false ->
-                        {ok, general_error(404, <<"Adjustment not found">>)}
-                end;
-            {error, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Party not found">>)};
-            {error, #payproc_PartyNotFound{}} ->
-                {ok, general_error(404, <<"Party not found">>)};
-            {error, #payproc_ContractNotFound{}} ->
-                {ok, general_error(404, <<"Contract not found">>)}
+        Contract = get_contract(PartyID, ContractID, Context),
+        AdjustmentID = maps:get('adjustmentID', Req),
+        Adjustments = Contract#domain_Contract.adjustments,
+        case lists:keyfind(AdjustmentID, #domain_ContractAdjustment.id, Adjustments) of
+            #domain_ContractAdjustment{} = A ->
+                {ok, {200, #{}, decode_contract_adjustment(A)}};
+            false ->
+                {ok, general_error(404, <<"Adjustment not found">>)}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare(_OperationID, _Req, _Context) ->
     {error, noimpl}.
+
+get_contract(PartyID, ContractID, Context) ->
+    case capi_party:get_contract(PartyID, ContractID, Context) of
+        {ok, Contract} ->
+            Contract;
+        {error, #payproc_InvalidUser{}} ->
+            capi_handler:respond(general_error(404, <<"Party not found">>));
+        {error, #payproc_PartyNotFound{}} ->
+            capi_handler:respond(general_error(404, <<"Party not found">>));
+        {error, #payproc_ContractNotFound{}} ->
+            capi_handler:respond(general_error(404, <<"Contract not found">>))
+    end.
 
 %%
 

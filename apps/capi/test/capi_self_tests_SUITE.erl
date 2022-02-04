@@ -146,7 +146,7 @@ query_param_validation(Config) ->
         Config
     ),
     Query0 = [
-        {payerEmail, <<"te%^st@test.ru">>}
+        {'payerEmail', <<"te%^st@test.ru">>}
     ],
     {error, {request_validation_failed, _}} =
         capi_client_searches:search_invoices(?config(context, Config), ?STRING, Query0).

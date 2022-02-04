@@ -190,24 +190,26 @@ mock_services(Services, SupOrConfig) ->
 replace_env(Env) ->
     maps:fold(
         fun(App, AppEnv, Acc) ->
-            AppReplaces =
-                maps:fold(
-                    fun(Key, Value, AppAcc) ->
-                        AccValue =
-                            case application:get_env(App, Key) of
-                                undefined -> undefined;
-                                {ok, Original} -> {value, Original}
-                            end,
-                        application:set_env(App, Key, Value),
-                        AppAcc#{Key => AccValue}
-                    end,
-                    #{},
-                    AppEnv
-                ),
+            AppReplaces = replace_env(App, AppEnv),
             Acc#{App => AppReplaces}
         end,
         #{},
         Env
+    ).
+
+replace_env(App, AppEnv) ->
+    maps:fold(
+        fun(Key, Value, Acc) ->
+            AccValue =
+                case application:get_env(App, Key) of
+                    undefined -> undefined;
+                    {ok, Original} -> {value, Original}
+                end,
+            application:set_env(App, Key, Value),
+            Acc#{Key => AccValue}
+        end,
+        #{},
+        AppEnv
     ).
 
 -spec restore_env(replaces()) -> ok.

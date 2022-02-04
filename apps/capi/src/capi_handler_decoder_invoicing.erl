@@ -8,7 +8,7 @@
 -export([decode_invoice_payment/3]).
 -export([decode_payment/3]).
 -export([decode_chargeback/2]).
--export([decode_refund/2]).
+-export([decode_refund/1]).
 -export([decode_invoice/1]).
 -export([decode_invoice_cart/1]).
 -export([decode_invoice_bank_account/1]).
@@ -16,7 +16,7 @@
 -export([decode_payment_methods/1]).
 -export([decode_payment_status/2]).
 -export([decode_payment_operation_failure/2]).
--export([decode_refund_status/2]).
+-export([decode_refund_status/1]).
 -export([decode_recurrent_parent/1]).
 -export([decode_make_recurrent/1]).
 
@@ -317,9 +317,9 @@ payment_error_client_maping({authorization_failed, {insufficient_funds, _}}) ->
 payment_error_client_maping(_) ->
     <<"PaymentRejected">>.
 
--spec decode_refund(capi_handler_encoder:encode_data(), processing_context()) ->
+-spec decode_refund(capi_handler_encoder:encode_data()) ->
     decode_data().
-decode_refund(Refund, Context) ->
+decode_refund(Refund) ->
     #domain_Cash{amount = Amount, currency = Currency} = Refund#domain_InvoicePaymentRefund.cash,
     capi_handler_utils:merge_and_compact(
         #{
@@ -331,15 +331,15 @@ decode_refund(Refund, Context) ->
             <<"externalID">> => Refund#domain_InvoicePaymentRefund.external_id,
             <<"allocation">> => capi_allocation:decode(Refund#domain_InvoicePaymentRefund.allocation)
         },
-        decode_refund_status(Refund#domain_InvoicePaymentRefund.status, Context)
+        decode_refund_status(Refund#domain_InvoicePaymentRefund.status)
     ).
 
--spec decode_refund_status({atom(), _}, processing_context()) -> decode_data().
-decode_refund_status({Status, StatusInfo}, Context) ->
+-spec decode_refund_status({atom(), _}) -> decode_data().
+decode_refund_status({Status, StatusInfo}) ->
     Error =
         case StatusInfo of
             #domain_InvoicePaymentRefundFailed{failure = OperationFailure} ->
-                capi_handler_decoder_utils:decode_operation_failure(OperationFailure, Context);
+                capi_handler_decoder_utils:decode_operation_failure(OperationFailure);
             _ ->
                 undefined
         end,
