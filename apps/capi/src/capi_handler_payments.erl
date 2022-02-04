@@ -541,10 +541,6 @@ create_payment_id(Invoice, PaymentParams0, Context, OperationID, PaymentToolThri
     Payer = maps:get(<<"payer">>, PaymentParams0),
     PaymentTool = capi_utils:maybe(PaymentToolThrift, fun capi_handler_decoder_party:decode_payment_tool/1),
 
-    % Temporary decision for analytics team
-    % TODO: delete this after analytics research will be down
-    _ = log_payer_client_url(Payer, InvoiceID),
-
     PaymentParams = PaymentParams0#{
         % Требуется для последующей кодировки параметров плательщика
         <<"invoiceID">> => InvoiceID,
@@ -562,20 +558,6 @@ create_payment_id(Invoice, PaymentParams0, Context, OperationID, PaymentToolThri
     %% We put `invoice_id` in a context here because `get_payment_by_external_id()` needs it to work
     CtxData = #{<<"invoice_id">> => InvoiceID},
     capi_bender:try_gen_sequence(IdempotentKey, Identity, SequenceID, SequenceParams, WoodyCtx, CtxData).
-
-log_payer_client_url(#{<<"payerType">> := <<"PaymentResourcePayer">>} = Payer, InvoiceID) ->
-    EncodedSession = maps:get(<<"paymentSession">>, Payer),
-    {ClientInfo, _} = capi_handler_utils:unwrap_payment_session(EncodedSession),
-    ClientUrl = maps:get(<<"url">>, ClientInfo, undefined),
-    ClientIP = maps:get(<<"ip">>, ClientInfo, undefined),
-    MetaInfo = genlib_map:compact(#{
-        invoice_id => InvoiceID,
-        ip => ClientIP,
-        client_url => ClientUrl
-    }),
-    logger:info("Request location info.", [], MetaInfo);
-log_payer_client_url(_, _) ->
-    skipped.
 
 find_payment_by_id(PaymentID, #payproc_Invoice{payments = Payments}) ->
     Fun = fun(#payproc_InvoicePayment{payment = #domain_InvoicePayment{id = ID}}) ->
