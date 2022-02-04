@@ -8,7 +8,7 @@
 
 -import(capi_handler_utils, [general_error/2, logic_error/2]).
 
--define(payment_institution_ref(PaymentInstitutionID), #domain_PaymentInstitutionRef{id = PaymentInstitutionID}).
+-define(PAYMENT_INSTITUTION_REF(PaymentInstitutionID), #domain_PaymentInstitutionRef{id = PaymentInstitutionID}).
 
 -spec prepare(
     OperationID :: capi_handler:operation_id(),
@@ -22,33 +22,22 @@ prepare(OperationID = 'GetPaymentInstitutions', Req, Context) ->
             Residence = capi_handler_encoder:encode_residence(genlib_map:get(residence, Req)),
             Realm = genlib_map:get(realm, Req),
             {ok, PaymentInstObjects} = capi_domain:get_payment_institutions(Context),
-            Resp =
-                lists:filtermap(
-                    fun(P) ->
-                        case check_payment_institution(Realm, Residence, P) of
-                            true ->
-                                {true, decode_payment_institution_obj(P)};
-                            false ->
-                                false
-                        end
-                    end,
-                    PaymentInstObjects
-                ),
+            Resp = filter_payment_institutions(Realm, Residence, PaymentInstObjects),
             {ok, {200, #{}, Resp}}
         catch
             throw:{encode_residence, invalid_residence} ->
-                {ok, logic_error(invalidRequest, <<"Invalid residence">>)}
+                {ok, logic_error('invalidRequest', <<"Invalid residence">>)}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'GetPaymentInstitutionByRef', Req, Context) ->
     Authorize = mk_authorize_operation(OperationID, Context),
     Process = fun() ->
-        PaymentInstitutionID = genlib:to_int(maps:get(paymentInstitutionID, Req)),
-        PaymentInstitutionRef = ?payment_institution_ref(PaymentInstitutionID),
+        PaymentInstitutionID = genlib:to_int(maps:get('paymentInstitutionID', Req)),
+        PaymentInstitutionRef = ?PAYMENT_INSTITUTION_REF(PaymentInstitutionID),
         case capi_domain:get({payment_institution, PaymentInstitutionRef}, Context) of
             {ok, PaymentInstitution} ->
-                {ok, {200, #{}, decode_payment_institution_obj(PaymentInstitution)}};
+                {ok, {200, #{}, decode_payment_institution(PaymentInstitution)}};
             {error, not_found} ->
                 {ok, general_error(404, <<"Payment institution not found">>)}
         end
@@ -57,7 +46,7 @@ prepare(OperationID = 'GetPaymentInstitutionByRef', Req, Context) ->
 prepare(OperationID = 'GetPaymentInstitutionPaymentTerms', Req, Context) ->
     Authorize = mk_authorize_operation(OperationID, Context),
     Process = fun() ->
-        PaymentInstitutionID = genlib:to_int(maps:get(paymentInstitutionID, Req)),
+        PaymentInstitutionID = genlib:to_int(maps:get('paymentInstitutionID', Req)),
         case compute_payment_institution_terms(PaymentInstitutionID, #payproc_Varset{}, Context) of
             {ok, #domain_TermSet{payments = PaymentTerms}} ->
                 {ok, {200, #{}, decode_payment_terms(PaymentTerms)}};
@@ -69,7 +58,7 @@ prepare(OperationID = 'GetPaymentInstitutionPaymentTerms', Req, Context) ->
 prepare(OperationID = 'GetPaymentInstitutionPayoutMethods', Req, Context) ->
     Authorize = mk_authorize_operation(OperationID, Context),
     Process = fun() ->
-        PaymentInstitutionID = genlib:to_int(maps:get(paymentInstitutionID, Req)),
+        PaymentInstitutionID = genlib:to_int(maps:get('paymentInstitutionID', Req)),
         case compute_payment_institution_terms(PaymentInstitutionID, prepare_request_varset(Req, Context), Context) of
             {ok, #domain_TermSet{payouts = #domain_PayoutsServiceTerms{payout_methods = PayoutMethods}}} ->
                 {ok, {200, #{}, decode_payout_methods_selector(PayoutMethods)}};
@@ -83,7 +72,7 @@ prepare(OperationID = 'GetPaymentInstitutionPayoutMethods', Req, Context) ->
 prepare(OperationID = 'GetPaymentInstitutionPayoutSchedules', Req, Context) ->
     Authorize = mk_authorize_operation(OperationID, Context),
     Process = fun() ->
-        PaymentInstitutionID = genlib:to_int(maps:get(paymentInstitutionID, Req)),
+        PaymentInstitutionID = genlib:to_int(maps:get('paymentInstitutionID', Req)),
         case compute_payment_institution_terms(PaymentInstitutionID, prepare_request_varset(Req, Context), Context) of
             {ok, #domain_TermSet{payouts = #domain_PayoutsServiceTerms{payout_schedules = Schedules}}} ->
                 {ok, {200, #{}, decode_business_schedules_selector(Schedules)}};
@@ -91,6 +80,19 @@ prepare(OperationID = 'GetPaymentInstitutionPayoutSchedules', Req, Context) ->
                 {ok, general_error(404, <<"Automatic payouts not allowed">>)};
             {error, #payproc_PaymentInstitutionNotFound{}} ->
                 {ok, general_error(404, <<"Payment institution not found">>)}
+        end
+    end,
+    {ok, #{authorize => Authorize, process => Process}};
+prepare(OperationID = 'GetServiceProviderByID', Req, Context) ->
+    Authorize = mk_authorize_operation(OperationID, Context),
+    Process = fun() ->
+        ServiceProviderID = maps:get('serviceProviderID', Req),
+        PaymentServiceRef = {payment_service, #domain_PaymentServiceRef{id = ServiceProviderID}},
+        case capi_domain:get(PaymentServiceRef, Context) of
+            {ok, #domain_PaymentServiceObject{data = PaymentService}} ->
+                {ok, {200, #{}, decode_payment_service(ServiceProviderID, PaymentService)}};
+            {error, not_found} ->
+                {ok, general_error(404, <<"Service provider not found">>)}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -106,6 +108,19 @@ mk_authorize_operation(OperationID, Context) ->
         ],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end.
+
+filter_payment_institutions(Realm, Residence, PaymentInstObjects) ->
+    lists:filtermap(
+        fun(P) ->
+            case check_payment_institution(Realm, Residence, P) of
+                true ->
+                    {true, decode_payment_institution(P)};
+                false ->
+                    false
+            end
+        end,
+        PaymentInstObjects
+    ).
 
 check_payment_institution(Realm, Residence, PaymentInstitution) ->
     check_payment_institution_realm(Realm, PaymentInstitution) andalso
@@ -126,13 +141,13 @@ check_payment_institution_residence(Residence, #domain_PaymentInstitutionObject{
     ordsets:is_element(Residence, Residences).
 
 compute_payment_institution_terms(PaymentInstitutionID, VS, Context) ->
-    Ref = ?payment_institution_ref(PaymentInstitutionID),
+    Ref = ?PAYMENT_INSTITUTION_REF(PaymentInstitutionID),
     capi_party:compute_payment_institution_terms(Ref, VS, Context).
 
 prepare_request_varset(Req, Context) ->
     #payproc_Varset{
-        currency = encode_optional_currency(genlib_map:get(currency, Req)),
-        payout_method = encode_optional_payout_method(genlib_map:get(payoutMethod, Req)),
+        currency = encode_optional_currency(genlib_map:get('currency', Req)),
+        payout_method = encode_optional_payout_method(genlib_map:get('payoutMethod', Req)),
         party_id = capi_handler_utils:get_party_id(Context)
     }.
 
@@ -154,7 +169,7 @@ encode_optional_currency(SymbolicCode) -> capi_handler_encoder:encode_currency(S
 
 %
 
-decode_payment_institution_obj(#domain_PaymentInstitutionObject{ref = Ref, data = Data}) ->
+decode_payment_institution(#domain_PaymentInstitutionObject{ref = Ref, data = Data}) ->
     genlib_map:compact(#{
         <<"id">> => Ref#domain_PaymentInstitutionRef.id,
         <<"name">> => Data#domain_PaymentInstitution.name,
@@ -197,3 +212,16 @@ decode_business_schedules_selector({value, Val}) when is_list(Val) ->
     lists:map(fun capi_handler_decoder_utils:decode_business_schedule_ref/1, Val);
 decode_business_schedules_selector(_) ->
     [].
+
+%%
+
+decode_payment_service(ID, PaymentService = #domain_PaymentService{}) ->
+    genlib_map:compact(#{
+        <<"id">> => ID,
+        <<"brandName">> => PaymentService#domain_PaymentService.brand_name,
+        <<"category">> => PaymentService#domain_PaymentService.category,
+        <<"metadata">> => capi_utils:maybe(
+            PaymentService#domain_PaymentService.metadata,
+            fun capi_handler_decoder_utils:decode_namespaced_metadata/1
+        )
+    }).

@@ -324,7 +324,7 @@ merge_deduplication_card_test() ->
     ],
     SamsungPayMethod = #{
         <<"method">> => <<"BankCard">>,
-        <<"PaymentSystems">> => Systems1,
+        <<"paymentSystems">> => Systems1,
         <<"tokenProviders">> => [<<"samsungpay">>]
     },
     Methods = [

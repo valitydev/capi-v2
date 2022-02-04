@@ -28,7 +28,7 @@
 -export([get_time/2]).
 -export([get_split_interval/2]).
 -export([get_time_diff/2]).
--export([collect_events/5]).
+-export([collect_events/4]).
 
 -export([unwrap_payment_session/1]).
 -export([wrap_payment_session/2]).
@@ -54,22 +54,22 @@ general_error(Code, Message) ->
     create_error_resp(Code, #{<<"message">> => genlib:to_binary(Message)}).
 
 -spec logic_error(term()) -> response().
-logic_error(invalidPaymentToolToken) ->
-    logic_error(invalidPaymentToolToken, <<"Specified payment tool token is invalid">>).
+logic_error('invalidPaymentToolToken') ->
+    logic_error('invalidPaymentToolToken', <<"Specified payment tool token is invalid">>).
 
 -spec logic_error
     (term(), io_lib:chars() | binary()) -> response();
     (term(), {binary(), binary() | undefined}) -> response().
-logic_error(externalIDConflict, {ID, undefined}) ->
-    logic_error(externalIDConflict, {ID, <<"undefined">>});
-logic_error(externalIDConflict, {ID, ExternalID}) ->
+logic_error('externalIDConflict', {ID, undefined}) ->
+    logic_error('externalIDConflict', {ID, <<"undefined">>});
+logic_error('externalIDConflict', {ID, ExternalID}) ->
     Data = #{
         <<"externalID">> => ExternalID,
         <<"id">> => ID,
         <<"message">> => <<"This 'externalID' has been used by another request">>
     },
     create_error_resp(409, Data);
-logic_error(externalIDConflict, ExternalID) ->
+logic_error('externalIDConflict', ExternalID) ->
     Data = #{
         <<"externalID">> => ExternalID,
         <<"message">> => <<"This 'externalID' has been used by another request">>
@@ -216,18 +216,17 @@ get_time_diff(From, To) ->
     integer(),
     integer(),
     fun((_) -> {exception, _} | {ok, _}),
-    fun((_, _) -> false | {true, #{binary() => binary() | [any()] | integer()}}),
-    undefined
+    fun((_) -> false | {true, #{binary() => binary() | [any()] | integer()}})
 ) -> {ok, _} | {exception, _}.
-collect_events(Limit, After, GetterFun, DecodeFun, Context) ->
-    collect_events([], Limit, After, GetterFun, DecodeFun, Context).
+collect_events(Limit, After, GetterFun, DecodeFun) ->
+    collect_events([], Limit, After, GetterFun, DecodeFun).
 
-collect_events(Collected, 0, _, _, _, _) ->
+collect_events(Collected, 0, _, _, _) ->
     {ok, Collected};
-collect_events(Collected0, Left, After, GetterFun, DecodeFun, Context) when Left > 0 ->
+collect_events(Collected0, Left, After, GetterFun, DecodeFun) when Left > 0 ->
     case get_events(Left, After, GetterFun) of
         {ok, Events} ->
-            Filtered = decode_and_filter_events(DecodeFun, Context, Events),
+            Filtered = decode_and_filter_events(DecodeFun, Events),
             Collected = Collected0 ++ Filtered,
             case length(Events) of
                 Left ->
@@ -236,8 +235,7 @@ collect_events(Collected0, Left, After, GetterFun, DecodeFun, Context) when Left
                         Left - length(Filtered),
                         get_last_event_id(Events),
                         GetterFun,
-                        DecodeFun,
-                        Context
+                        DecodeFun
                     );
                 N when N < Left ->
                     {ok, Collected}
@@ -246,10 +244,10 @@ collect_events(Collected0, Left, After, GetterFun, DecodeFun, Context) when Left
             Error
     end.
 
-decode_and_filter_events(DecodeFun, Context, Events) ->
+decode_and_filter_events(DecodeFun, Events) ->
     lists:foldr(
         fun(Event, Acc) ->
-            case DecodeFun(Event, Context) of
+            case DecodeFun(Event) of
                 {true, Ev} ->
                     [Ev | Acc];
                 false ->

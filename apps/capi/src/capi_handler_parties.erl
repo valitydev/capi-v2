@@ -72,7 +72,7 @@ prepare('SuspendMyParty' = OperationID, _Req, Context) ->
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare('GetPartyByID' = OperationID, Req, Context) ->
-    PartyID = maps:get(partyID, Req),
+    PartyID = maps:get('partyID', Req),
     Authorize = fun() ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID}}],
         {ok, mask_party_notfound(capi_auth:authorize_operation(Prototypes, Context))}
@@ -90,7 +90,7 @@ prepare('GetPartyByID' = OperationID, Req, Context) ->
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare('ActivatePartyByID' = OperationID, Req, Context) ->
-    PartyID = maps:get(partyID, Req),
+    PartyID = maps:get('partyID', Req),
     Authorize = fun() ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
@@ -109,7 +109,7 @@ prepare('ActivatePartyByID' = OperationID, Req, Context) ->
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare('SuspendPartyByID' = OperationID, Req, Context) ->
-    PartyID = maps:get(partyID, Req),
+    PartyID = maps:get('partyID', Req),
     Authorize = fun() ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}

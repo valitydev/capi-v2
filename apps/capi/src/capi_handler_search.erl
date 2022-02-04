@@ -129,9 +129,9 @@ process_search_request_result(QueryType, Result, Context, #{decode_fun := Decode
             {ok, {200, #{}, Resp}};
         {exception, #'InvalidRequest'{errors = Errors}} ->
             FormattedErrors = capi_handler_utils:format_request_errors(Errors),
-            {ok, logic_error(invalidRequest, FormattedErrors)};
+            {ok, logic_error('invalidRequest', FormattedErrors)};
         {exception, #merchstat_BadToken{}} ->
-            {ok, logic_error(invalidRequest, <<"Invalid token">>)}
+            {ok, logic_error('invalidRequest', <<"Invalid token">>)}
     end.
 
 %%
@@ -466,7 +466,7 @@ decode_stat_payout_status({Status, _}) ->
 decode_payout_tool_details(ToolInfo) ->
     capi_handler_decoder_party:decode_payout_tool_details(ToolInfo).
 
-decode_stat_refund(Refund, Context) ->
+decode_stat_refund(Refund, _Context) ->
     capi_handler_utils:merge_and_compact(
         #{
             <<"invoiceID">> => Refund#merchstat_StatRefund.invoice_id,
@@ -482,14 +482,14 @@ decode_stat_refund(Refund, Context) ->
             ),
             <<"allocation">> => capi_allocation:decode(Refund#merchstat_StatRefund.allocation)
         },
-        decode_stat_refund_status(Refund#merchstat_StatRefund.status, Context)
+        decode_stat_refund_status(Refund#merchstat_StatRefund.status)
     ).
 
-decode_stat_refund_status({Status, StatusInfo}, Context) ->
+decode_stat_refund_status({Status, StatusInfo}) ->
     Error =
         case StatusInfo of
             #merchstat_InvoicePaymentRefundFailed{failure = OperationFailure} ->
-                capi_handler_decoder_utils:decode_operation_failure(OperationFailure, Context);
+                capi_handler_decoder_utils:decode_operation_failure(OperationFailure);
             _ ->
                 undefined
         end,

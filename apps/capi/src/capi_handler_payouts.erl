@@ -1,6 +1,5 @@
 -module(capi_handler_payouts).
 
--include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
 -include_lib("payout_manager_proto/include/payouts_payout_manager_thrift.hrl").
 
@@ -16,7 +15,7 @@
     Context :: capi_handler:processing_context()
 ) -> {ok, capi_handler:request_state()} | {error, noimpl}.
 prepare(OperationID, Req, Context) when OperationID =:= 'GetPayout' ->
-    PayoutID = maps:get(payoutID, Req),
+    PayoutID = maps:get('payoutID', Req),
     PartyID = capi_handler_utils:get_party_id(Context),
     OperationContext = #{
         id => OperationID,
@@ -69,18 +68,15 @@ prepare(OperationID, Req, Context) when OperationID =:= 'CreatePayout' ->
             {ok, Payout} ->
                 {ok, PayoutTool} = get_payout_tool(Payout, Context),
                 {ok, {201, #{}, decode_payout(Payout, PayoutTool)}};
-            {exception, Exception} ->
-                case Exception of
-                    #payouts_InsufficientFunds{} ->
-                        {ok, logic_error(invalidCash, <<"Invalid amount or currency">>)};
-                    #payouts_InvalidRequest{errors = Errors} ->
-                        FormattedErrors = capi_handler_utils:format_request_errors(Errors),
-                        {ok, logic_error(invalidRequest, FormattedErrors)};
-                    #payouts_PayoutAlreadyExists{} ->
-                        {ok, logic_error(invalidRequest, <<"Payout already exists">>)};
-                    #payouts_NotFound{message = Message} ->
-                        {ok, logic_error(invalidRequest, Message)}
-                end
+            {exception, #payouts_InsufficientFunds{}} ->
+                {ok, logic_error('invalidCash', <<"Invalid amount or currency">>)};
+            {exception, #payouts_InvalidRequest{errors = Errors}} ->
+                FormattedErrors = capi_handler_utils:format_request_errors(Errors),
+                {ok, logic_error('invalidRequest', FormattedErrors)};
+            {exception, #payouts_PayoutAlreadyExists{}} ->
+                {ok, logic_error('invalidRequest', <<"Payout already exists">>)};
+            {exception, #payouts_NotFound{message = Message}} ->
+                {ok, logic_error('invalidRequest', Message)}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -173,7 +169,7 @@ prepare(OperationID, Req, Context) when OperationID =:= 'GetScheduleByRef' ->
         {ok, capi_auth:authorize_operation([{operation, OperationContext}], Context)}
     end,
     Process = fun() ->
-        case get_schedule_by_id(genlib:to_int(maps:get(scheduleID, Req)), Context) of
+        case get_schedule_by_id(genlib:to_int(maps:get('scheduleID', Req)), Context) of
             {ok, Schedule} ->
                 {ok, {200, #{}, decode_business_schedule(Schedule)}};
             {error, not_found} ->

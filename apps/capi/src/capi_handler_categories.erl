@@ -29,7 +29,7 @@ prepare(OperationID = 'GetCategoryByRef', Req, Context) ->
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
     Process = fun() ->
-        case get_category_by_id(genlib:to_int(maps:get(categoryID, Req)), Context) of
+        case get_category_by_id(genlib:to_int(maps:get('categoryID', Req)), Context) of
             {ok, Category} ->
                 {ok, {200, #{}, decode_category(Category)}};
             {error, not_found} ->

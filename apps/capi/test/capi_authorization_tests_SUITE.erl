@@ -31,7 +31,7 @@
     get_customer_forbidden_notfound/1
 ]).
 
--define(emptyresp(Code), {error, {Code, #{}}}).
+-define(EMPTYRESP(Code), {error, {Code, #{}}}).
 
 -type test_case_name() :: atom().
 -type config() :: [{atom(), any()}].
@@ -113,13 +113,13 @@ end_per_group(_Group, C) ->
 authorization_error_no_header_test(Config) ->
     Token = <<>>,
     _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
-    ?emptyresp(401) = capi_client_categories:get_categories(capi_ct_helper:get_context(Token)).
+    ?EMPTYRESP(401) = capi_client_categories:get_categories(capi_ct_helper:get_context(Token)).
 
 -spec authorization_error_no_permission_test(config()) -> _.
 authorization_error_no_permission_test(Config) ->
     Token = ?API_TOKEN,
     _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_forbidden(), Config),
-    ?emptyresp(401) = capi_client_parties:get_my_party(capi_ct_helper:get_context(Token)).
+    ?EMPTYRESP(401) = capi_client_parties:get_my_party(capi_ct_helper:get_context(Token)).
 
 %%%
 
