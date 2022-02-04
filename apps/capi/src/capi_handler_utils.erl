@@ -216,7 +216,7 @@ get_time_diff(From, To) ->
     integer(),
     integer(),
     fun((_) -> {exception, _} | {ok, _}),
-    fun((_, _) -> false | {true, #{binary() => binary() | [any()] | integer()}})
+    fun((_) -> false | {true, #{binary() => binary() | [any()] | integer()}})
 ) -> {ok, _} | {exception, _}.
 collect_events(Limit, After, GetterFun, DecodeFun) ->
     collect_events([], Limit, After, GetterFun, DecodeFun).
