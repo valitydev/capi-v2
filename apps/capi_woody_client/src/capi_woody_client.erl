@@ -85,8 +85,6 @@ get_service_modname(payouts) ->
     {payouts_payout_manager_thrift, 'PayoutManagement'};
 get_service_modname(accounter) ->
     {dmsl_accounter_thrift, 'Accounter'};
-get_service_modname(geo_ip_service) ->
-    {dmsl_geo_ip_thrift, 'GeoIpService'};
 get_service_modname(webhook_manager) ->
     {dmsl_webhooker_thrift, 'WebhookManager'};
 get_service_modname(customer_management) ->

@@ -109,7 +109,7 @@ mock_invoice_access_token(PartyID, InvoiceID, SupOrConfig) ->
             token => #{id => ?STRING},
             scope => [#{party => #{id => PartyID}, invoice => #{id => InvoiceID}}]
         },
-        {<<"com.rbkmoney.capi">>, create_bouncer_context(AuthParams), [
+        {<<"dev.vality.capi">>, create_bouncer_context(AuthParams), [
             api_key_metadata(), consumer_metadata(<<"client">>)
         ]}
     end),
@@ -124,7 +124,7 @@ mock_invoice_template_access_token(PartyID, InvoiceTemplateID, SupOrConfig) ->
             token => #{id => ?STRING},
             scope => [#{party => #{id => PartyID}, invoice_template => #{id => InvoiceTemplateID}}]
         },
-        {<<"com.rbkmoney.capi">>, create_bouncer_context(AuthParams), api_key_metadata()}
+        {<<"dev.vality.capi">>, create_bouncer_context(AuthParams), api_key_metadata()}
     end),
     mock_token(Handler, SupOrConfig).
 
@@ -137,7 +137,7 @@ mock_customer_access_token(PartyID, CustomerID, SupOrConfig) ->
             token => #{id => ?STRING},
             scope => [#{party => #{id => PartyID}, customer => #{id => CustomerID}}]
         },
-        {<<"com.rbkmoney.capi">>, create_bouncer_context(AuthParams), api_key_metadata()}
+        {<<"dev.vality.capi">>, create_bouncer_context(AuthParams), api_key_metadata()}
     end),
     mock_token(Handler, SupOrConfig).
 

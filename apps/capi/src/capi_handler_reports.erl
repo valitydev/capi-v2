@@ -27,14 +27,14 @@ prepare(OperationID = 'GetReports', Req, Context) ->
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'GetReportsForParty', Req, Context) ->
     Authorize = fun() ->
-        PartyID = maps:get(partyID, Req),
+        PartyID = maps:get('partyID', Req),
         Prototypes = build_prototypes(OperationID, PartyID, undefined, Req),
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
     Process = fun() -> process_request(OperationID, Context, Req) end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'GetReport', Req, Context) ->
-    ReportID = maps:get(reportID, Req),
+    ReportID = maps:get('reportID', Req),
     Report =
         case get_report_by_id(ReportID, Context) of
             {ok, R} ->
@@ -50,7 +50,7 @@ prepare(OperationID = 'GetReport', Req, Context) ->
     Process = fun() -> process_request(OperationID, Context, Req) end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'GetReportForParty', Req, Context) ->
-    ReportID = maps:get(reportID, Req),
+    ReportID = maps:get('reportID', Req),
     Report =
         case get_report_by_id(ReportID, Context) of
             {ok, R} ->
@@ -59,7 +59,7 @@ prepare(OperationID = 'GetReportForParty', Req, Context) ->
                 undefined
         end,
     Authorize = fun() ->
-        PartyID = maps:get(partyID, Req),
+        PartyID = maps:get('partyID', Req),
         Prototypes = build_prototypes(OperationID, PartyID, Report, Req),
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
@@ -75,14 +75,14 @@ prepare(OperationID = 'CreateReport', Req, Context) ->
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'CreateReportForParty', Req, Context) ->
     Authorize = fun() ->
-        PartyID = maps:get(partyID, Req),
+        PartyID = maps:get('partyID', Req),
         Prototypes = build_prototypes(OperationID, PartyID, undefined, Req),
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
     Process = fun() -> process_request(OperationID, Context, Req) end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'DownloadFile', Req, Context) ->
-    ReportID = maps:get(reportID, Req),
+    ReportID = maps:get('reportID', Req),
     Report =
         case get_report_by_id(ReportID, Context) of
             {ok, R} ->
@@ -98,7 +98,7 @@ prepare(OperationID = 'DownloadFile', Req, Context) ->
     Process = fun() -> process_request(OperationID, Context, Req) end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'DownloadFileForParty', Req, Context) ->
-    ReportID = maps:get(reportID, Req),
+    ReportID = maps:get('reportID', Req),
     Report =
         case get_report_by_id(ReportID, Context) of
             {ok, R} ->
@@ -107,7 +107,7 @@ prepare(OperationID = 'DownloadFileForParty', Req, Context) ->
                 undefined
         end,
     Authorize = fun() ->
-        PartyID = maps:get(partyID, Req),
+        PartyID = maps:get('partyID', Req),
         Prototypes = build_prototypes(OperationID, PartyID, Report, Req),
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
@@ -126,7 +126,7 @@ process_request('GetReports', Context, Req) ->
     get_reports(PartyID, Req, Context);
 process_request('GetReportsForParty', Context, Req) ->
     UserID = capi_handler_utils:get_user_id(Context),
-    PartyID = maps:get(partyID, Req),
+    PartyID = maps:get('partyID', Req),
     capi_handler_utils:run_if_party_accessible(UserID, PartyID, fun() ->
         get_reports(PartyID, Req, Context)
     end);
@@ -135,7 +135,7 @@ process_request('GetReport', Context, Req) ->
     get_report(PartyID, Req, Context);
 process_request('GetReportForParty', Context, Req) ->
     UserID = capi_handler_utils:get_user_id(Context),
-    PartyID = maps:get(partyID, Req),
+    PartyID = maps:get('partyID', Req),
     capi_handler_utils:run_if_party_accessible(UserID, PartyID, fun() ->
         get_report(PartyID, Req, Context)
     end);
@@ -144,7 +144,7 @@ process_request('CreateReport', Context, Req) ->
     create_report(PartyID, Req, Context);
 process_request('CreateReportForParty', Context, Req) ->
     UserID = capi_handler_utils:get_user_id(Context),
-    PartyID = maps:get(partyID, Req),
+    PartyID = maps:get('partyID', Req),
     capi_handler_utils:run_if_party_accessible(UserID, PartyID, fun() ->
         create_report(PartyID, Req, Context)
     end);
@@ -153,7 +153,7 @@ process_request('DownloadFile', Context, Req) ->
     download_file(PartyID, Req, Context);
 process_request('DownloadFileForParty', Context, Req) ->
     UserID = capi_handler_utils:get_user_id(Context),
-    PartyID = maps:get(partyID, Req),
+    PartyID = maps:get('partyID', Req),
     capi_handler_utils:run_if_party_accessible(UserID, PartyID, fun() ->
         download_file(PartyID, Req, Context)
     end).
@@ -161,7 +161,7 @@ process_request('DownloadFileForParty', Context, Req) ->
 %%
 
 create_report(PartyID, Req, Context) ->
-    ShopID = maps:get(shopID, Req),
+    ShopID = maps:get('shopID', Req),
     ReportParams = maps:get('ReportParams', Req),
     ReportRequest = #reports_ReportRequest{
         party_id = PartyID,
@@ -183,15 +183,15 @@ create_report(PartyID, Req, Context) ->
             case Exception of
                 #reporter_base_InvalidRequest{errors = Errors} ->
                     FormattedErrors = capi_handler_utils:format_request_errors(Errors),
-                    {ok, logic_error(invalidRequest, FormattedErrors)};
+                    {ok, logic_error('invalidRequest', FormattedErrors)};
                 #reports_ShopNotFound{} ->
-                    {ok, logic_error(invalidShopID, <<"Shop not found">>)}
+                    {ok, logic_error('invalidShopID', <<"Shop not found">>)}
             end
     end.
 
 get_report(PartyID, Req, Context) ->
-    ShopID = maps:get(shopID, Req),
-    ReportID = maps:get(reportID, Req),
+    ShopID = maps:get('shopID', Req),
+    ReportID = maps:get('reportID', Req),
     Call = {reporting, 'GetReport', {ReportID}},
     case capi_handler_utils:service_call(Call, Context) of
         {ok, Report = #'reports_Report'{party_id = PartyID, shop_id = ShopID}} ->
@@ -203,7 +203,7 @@ get_report(PartyID, Req, Context) ->
     end.
 
 get_reports(PartyID, Req, Context) ->
-    ShopID = maps:get(shopID, Req),
+    ShopID = maps:get('shopID', Req),
     FromTime = capi_handler_utils:get_time('fromTime', Req),
     ToTime = capi_handler_utils:get_time('toTime', Req),
     ReportRequest = #reports_ReportRequest{
@@ -225,18 +225,18 @@ get_reports(PartyID, Req, Context) ->
             case Exception of
                 #reporter_base_InvalidRequest{errors = Errors} ->
                     FormattedErrors = capi_handler_utils:format_request_errors(Errors),
-                    {ok, logic_error(invalidRequest, FormattedErrors)};
+                    {ok, logic_error('invalidRequest', FormattedErrors)};
                 #reports_DatasetTooBig{limit = Limit} ->
-                    {ok, logic_error(<<"limitExceeded">>, io_lib:format("Max limit: ~p", [Limit]))}
+                    {ok, logic_error('limitExceeded', io_lib:format("Max limit: ~p", [Limit]))}
             end
     end.
 
 download_file(PartyID, Req, Context) ->
-    ShopID = maps:get(shopID, Req),
-    ReportID = maps:get(reportID, Req),
+    ShopID = maps:get('shopID', Req),
+    ReportID = maps:get('reportID', Req),
     case get_report_by_id(ReportID, Context) of
         {ok, #reports_Report{status = created, files = Files, party_id = PartyID, shop_id = ShopID}} ->
-            FileID = maps:get(fileID, Req),
+            FileID = maps:get('fileID', Req),
             case lists:keymember(FileID, #reports_FileMeta.file_id, Files) of
                 true ->
                     generate_report_presigned_url(FileID, Context);
@@ -263,7 +263,7 @@ generate_report_presigned_url(FileID, Context) ->
             case Exception of
                 #reporter_base_InvalidRequest{errors = Errors} ->
                     FormattedErrors = capi_handler_utils:format_request_errors(Errors),
-                    {ok, logic_error(invalidRequest, FormattedErrors)};
+                    {ok, logic_error('invalidRequest', FormattedErrors)};
                 #reports_FileNotFound{} ->
                     {ok, general_error(404, <<"File not found">>)}
             end
@@ -310,9 +310,9 @@ decode_report_file_signature(#reports_Signature{md5 = MD5, sha256 = SHA256}) ->
     #{<<"md5">> => MD5, <<"sha256">> => SHA256}.
 
 build_prototypes(OperationID, PartyID, Report, Req) ->
-    ReportID = genlib_map:get(reportID, Req),
-    ShopID = genlib_map:get(shopID, Req),
-    FileID = genlib_map:get(fileID, Req),
+    ReportID = genlib_map:get('reportID', Req),
+    ShopID = genlib_map:get('shopID', Req),
+    FileID = genlib_map:get('fileID', Req),
     [
         {operation, #{
             id => OperationID,

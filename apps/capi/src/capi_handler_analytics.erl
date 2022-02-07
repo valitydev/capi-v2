@@ -44,7 +44,7 @@ process_request('GetPaymentGeoStats', Context, Req) ->
 process_request('GetPaymentRateStats', Context, Req) ->
     process_merchant_stat(customers_rate_stat, Req, Context);
 process_request('GetPaymentMethodStats', Context, Req) ->
-    bankCard = maps:get(paymentMethod, Req),
+    'bankCard' = maps:get('paymentMethod', Req),
     StatType = payments_pmt_cards_stat,
     process_merchant_stat(StatType, Req, Context).
 
@@ -90,9 +90,9 @@ process_merchant_stat_result(StatType, Result) ->
             {ok, {200, #{}, Resp}};
         {exception, #'InvalidRequest'{errors = Errors}} ->
             FormattedErrors = capi_handler_utils:format_request_errors(Errors),
-            {ok, logic_error(invalidRequest, FormattedErrors)};
+            {ok, logic_error('invalidRequest', FormattedErrors)};
         {exception, #merchstat_BadToken{}} ->
-            {ok, logic_error(invalidRequest, <<"Invalid token">>)}
+            {ok, logic_error('invalidRequest', <<"Invalid token">>)}
     end.
 
 decode_stat_info(payments_conversion_stat, Response) ->

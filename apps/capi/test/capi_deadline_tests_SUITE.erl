@@ -22,7 +22,7 @@
     deadline_relative_ok_test/1
 ]).
 
--define(badresp(Code), {error, {invalid_response_code, Code}}).
+-define(BADRESP(Code), {error, {invalid_response_code, Code}}).
 
 -type test_case_name() :: atom().
 -type config() :: [{atom(), any()}].
@@ -106,7 +106,7 @@ deadline_absolute_ok_test(Config) ->
         Config
     ),
     Deadline = woody_deadline:from_timeout(3000),
-    ?badresp(504) = capi_client_invoices:get_invoice_by_id(Context#{deadline => Deadline}, ?STRING),
+    ?BADRESP(504) = capi_client_invoices:get_invoice_by_id(Context#{deadline => Deadline}, ?STRING),
     Deadline2 = woody_deadline:from_timeout(3000),
     {ok, _} = capi_client_categories:get_categories(Context#{deadline => Deadline2}).
 
@@ -123,5 +123,5 @@ deadline_relative_ok_test(Config) ->
         ],
         Config
     ),
-    ?badresp(504) = capi_client_invoices:get_invoice_by_id(Context, ?STRING),
+    ?BADRESP(504) = capi_client_invoices:get_invoice_by_id(Context, ?STRING),
     {ok, _} = capi_client_categories:get_categories(Context).

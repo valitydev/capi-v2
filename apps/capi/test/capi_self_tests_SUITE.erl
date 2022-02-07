@@ -141,19 +141,12 @@ schema_param_validation(Config) ->
 query_param_validation(Config) ->
     _ = capi_ct_helper:mock_services(
         [
-            {merchant_stat, fun('GetInvoices', _) -> {ok, ?STAT_RESPONSE_INVOICES} end},
-            {geo_ip_service, fun('GetLocationName', _) -> {ok, #{123 => ?STRING}} end}
+            {merchant_stat, fun('GetInvoices', _) -> {ok, ?STAT_RESPONSE_INVOICES} end}
         ],
         Config
     ),
     Query0 = [
-        {payerEmail, <<"te%^st@test.ru">>}
+        {'payerEmail', <<"te%^st@test.ru">>}
     ],
     {error, {request_validation_failed, _}} =
-        capi_client_searches:search_invoices(?config(context, Config), ?STRING, Query0),
-    Query1 = #{
-        <<"geoIDs">> => <<"no,also no">>,
-        <<"language">> => <<"ru">>
-    },
-    {error, {request_validation_failed, _}} =
-        capi_client_geo:get_location_names(?config(context, Config), Query1).
+        capi_client_searches:search_invoices(?config(context, Config), ?STRING, Query0).

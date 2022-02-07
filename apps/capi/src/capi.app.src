@@ -1,8 +1,8 @@
-{application, capi , [
-    {description, "A service that does something"},
+{application, capi, [
+    {description, "Implementation of swag-payments openapi specification"},
     {vsn, "0.1.0"},
     {registered, []},
-    {mod, {capi , []}},
+    {mod, {capi, []}},
     {applications, [
         kernel,
         stdlib,
@@ -26,8 +26,6 @@
         woody_user_identity,
         payproc_errors,
         erl_health,
-        prometheus,
-        prometheus_cowboy,
         bouncer_client,
         token_keeper_client,
         party_client,

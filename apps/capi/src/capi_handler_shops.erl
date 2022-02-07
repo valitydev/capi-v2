@@ -15,7 +15,7 @@
 ) -> {ok, capi_handler:request_state()} | {error, noimpl}.
 prepare(OperationID = 'ActivateShop', Req, Context) ->
     PartyID = capi_handler_utils:get_party_id(Context),
-    ShopID = maps:get(shopID, Req),
+    ShopID = maps:get('shopID', Req),
     Authorize = fun() ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
@@ -24,19 +24,16 @@ prepare(OperationID = 'ActivateShop', Req, Context) ->
         case capi_party:activate_shop(PartyID, ShopID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
-            {error, Exception} ->
-                case Exception of
-                    #payproc_ShopNotFound{} ->
-                        {ok, general_error(404, <<"Shop not found">>)};
-                    #payproc_InvalidShopStatus{status = {suspension, {active, _}}} ->
-                        {ok, {204, #{}, undefined}}
-                end
+            {error, #payproc_ShopNotFound{}} ->
+                {ok, general_error(404, <<"Shop not found">>)};
+            {error, #payproc_InvalidShopStatus{status = {suspension, {active, _}}}} ->
+                {ok, {204, #{}, undefined}}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'SuspendShop', Req, Context) ->
     PartyID = capi_handler_utils:get_party_id(Context),
-    ShopID = maps:get(shopID, Req),
+    ShopID = maps:get('shopID', Req),
     Authorize = fun() ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
@@ -45,13 +42,10 @@ prepare(OperationID = 'SuspendShop', Req, Context) ->
         case capi_party:suspend_shop(PartyID, ShopID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
-            {error, Exception} ->
-                case Exception of
-                    #payproc_ShopNotFound{} ->
-                        {ok, general_error(404, <<"Shop not found">>)};
-                    #payproc_InvalidShopStatus{status = {suspension, {suspended, _}}} ->
-                        {ok, {204, #{}, undefined}}
-                end
+            {error, #payproc_ShopNotFound{}} ->
+                {ok, general_error(404, <<"Shop not found">>)};
+            {error, #payproc_InvalidShopStatus{status = {suspension, {suspended, _}}}} ->
+                {ok, {204, #{}, undefined}}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -68,7 +62,7 @@ prepare(OperationID = 'GetShops', _Req, Context) ->
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'GetShopByID', Req, Context) ->
     PartyID = capi_handler_utils:get_party_id(Context),
-    ShopID = maps:get(shopID, Req),
+    ShopID = maps:get('shopID', Req),
     Authorize = fun() ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
@@ -83,7 +77,7 @@ prepare(OperationID = 'GetShopByID', Req, Context) ->
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'GetShopsForParty', Req, Context) ->
-    PartyID = maps:get(partyID, Req),
+    PartyID = maps:get('partyID', Req),
     Authorize = fun() ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
@@ -100,8 +94,8 @@ prepare(OperationID = 'GetShopsForParty', Req, Context) ->
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'GetShopByIDForParty', Req, Context) ->
-    PartyID = maps:get(partyID, Req),
-    ShopID = maps:get(shopID, Req),
+    PartyID = maps:get('partyID', Req),
+    ShopID = maps:get('shopID', Req),
     Authorize = fun() ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
@@ -120,8 +114,8 @@ prepare(OperationID = 'GetShopByIDForParty', Req, Context) ->
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'ActivateShopForParty', Req, Context) ->
-    PartyID = maps:get(partyID, Req),
-    ShopID = maps:get(shopID, Req),
+    PartyID = maps:get('partyID', Req),
+    ShopID = maps:get('shopID', Req),
     Authorize = fun() ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
@@ -130,23 +124,20 @@ prepare(OperationID = 'ActivateShopForParty', Req, Context) ->
         case capi_party:activate_shop(PartyID, ShopID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
-            {error, Exception} ->
-                case Exception of
-                    #payproc_InvalidUser{} ->
-                        {ok, general_error(404, <<"Party not found">>)};
-                    #payproc_PartyNotFound{} ->
-                        {ok, general_error(404, <<"Party not found">>)};
-                    #payproc_ShopNotFound{} ->
-                        {ok, general_error(404, <<"Shop not found">>)};
-                    #payproc_InvalidShopStatus{status = {suspension, {active, _}}} ->
-                        {ok, {204, #{}, undefined}}
-                end
+            {error, #payproc_InvalidUser{}} ->
+                {ok, general_error(404, <<"Party not found">>)};
+            {error, #payproc_PartyNotFound{}} ->
+                {ok, general_error(404, <<"Party not found">>)};
+            {error, #payproc_ShopNotFound{}} ->
+                {ok, general_error(404, <<"Shop not found">>)};
+            {error, #payproc_InvalidShopStatus{status = {suspension, {active, _}}}} ->
+                {ok, {204, #{}, undefined}}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'SuspendShopForParty', Req, Context) ->
-    PartyID = maps:get(partyID, Req),
-    ShopID = maps:get(shopID, Req),
+    PartyID = maps:get('partyID', Req),
+    ShopID = maps:get('shopID', Req),
     Authorize = fun() ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
@@ -155,17 +146,14 @@ prepare(OperationID = 'SuspendShopForParty', Req, Context) ->
         case capi_party:suspend_shop(PartyID, ShopID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
-            {error, Exception} ->
-                case Exception of
-                    #payproc_InvalidUser{} ->
-                        {ok, general_error(404, <<"Party not found">>)};
-                    #payproc_PartyNotFound{} ->
-                        {ok, general_error(404, <<"Party not found">>)};
-                    #payproc_ShopNotFound{} ->
-                        {ok, general_error(404, <<"Shop not found">>)};
-                    #payproc_InvalidShopStatus{status = {suspension, {suspended, _}}} ->
-                        {ok, {204, #{}, undefined}}
-                end
+            {error, #payproc_InvalidUser{}} ->
+                {ok, general_error(404, <<"Party not found">>)};
+            {error, #payproc_PartyNotFound{}} ->
+                {ok, general_error(404, <<"Party not found">>)};
+            {error, #payproc_ShopNotFound{}} ->
+                {ok, general_error(404, <<"Shop not found">>)};
+            {error, #payproc_InvalidShopStatus{status = {suspension, {suspended, _}}}} ->
+                {ok, {204, #{}, undefined}}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};

@@ -8,6 +8,7 @@
 -export([get_payment_institution_payout_methods/3]).
 -export([get_payment_institution_payout_schedules/2]).
 -export([get_payment_institution_payout_schedules/4]).
+-export([get_service_provider_by_id/2]).
 
 -type context() :: capi_client_lib:context().
 
@@ -80,10 +81,21 @@ get_payment_institution_payout_schedules(Context, PaymentInstitutionID, Currency
             <<"paymentInstitutionID">> => genlib:to_list(PaymentInstitutionID)
         },
         qs_val => genlib_map:compact(#{
-            currency => Currency,
-            payoutMethod => Method
+            'currency' => Currency,
+            'payoutMethod' => Method
         })
     },
     {Url, PreparedParams, Opts} = capi_client_lib:make_request(Context, Params),
     Response = swag_client_payment_institutions_api:get_payment_institution_payout_schedules(Url, PreparedParams, Opts),
+    capi_client_lib:handle_response(Response).
+
+-spec get_service_provider_by_id(context(), binary()) -> {ok, term()} | {error, term()}.
+get_service_provider_by_id(Context, ServiceProviderID) ->
+    Params = #{
+        binding => #{
+            <<"serviceProviderID">> => ServiceProviderID
+        }
+    },
+    {Url, PreparedParams, Opts} = capi_client_lib:make_request(Context, Params),
+    Response = swag_client_payment_institutions_api:get_service_provider_by_id(Url, PreparedParams, Opts),
     capi_client_lib:handle_response(Response).
