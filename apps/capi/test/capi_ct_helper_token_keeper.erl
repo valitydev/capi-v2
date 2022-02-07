@@ -50,13 +50,7 @@ start_client(ServiceURLs) ->
             },
             authorities => #{
                 ephemeral => #{
-                    access_customer => #{
-                        url => maps:get(ephememeral_token_authority, ServiceURLs)
-                    },
-                    access_invoice => #{
-                        url => maps:get(ephememeral_token_authority, ServiceURLs)
-                    },
-                    access_invoice_template => #{
+                    generic_access_token => #{
                         url => maps:get(ephememeral_token_authority, ServiceURLs)
                     }
                 },

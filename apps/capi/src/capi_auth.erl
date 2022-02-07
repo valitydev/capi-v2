@@ -40,6 +40,8 @@
 -define(AUTHORIZED(Ctx), {authorized, Ctx}).
 -define(UNAUTHORIZED(Ctx), {unauthorized, Ctx}).
 
+-define(TOKEN_KEEPER_AUTHORITY, generic_access_token).
+
 %%
 %% API functions
 %%
@@ -113,10 +115,9 @@ authorize_operation(Prototypes, ProcessingContext) ->
 issue_access_token(TokenSpec, WoodyContext) ->
     ContextFragment = create_context_fragment(TokenSpec),
     Metadata = create_metadata(TokenSpec),
-    AuthorityID = get_authority_id(TokenSpec),
     %% @TODO for now access tokens are only ephemeral, fix this for compact stuff
     % %%TODO InvoiceTemplateAccessTokens are technically not ephemeral and should become so in the future
-    AuthClient = token_keeper_client:ephemeral_authority(AuthorityID, WoodyContext),
+    AuthClient = token_keeper_client:ephemeral_authority(?TOKEN_KEEPER_AUTHORITY, WoodyContext),
     {ok, #{token := Token}} = token_keeper_authority_ephemeral:create(ContextFragment, Metadata, AuthClient),
     Token.
 
@@ -196,13 +197,6 @@ create_metadata(TokenSpec) ->
     Metadata0 = maps:get(metadata, TokenSpec, #{}),
     Metadata1 = put_metadata(get_metadata_mapped_key(party_id), PartyID, Metadata0),
     put_metadata(get_metadata_mapped_key(token_consumer), <<"client">>, Metadata1).
-
-get_authority_id(#{scope := {invoice, _}}) ->
-    access_invoice;
-get_authority_id(#{scope := {invoice_template, _}}) ->
-    access_invoice_template;
-get_authority_id(#{scope := {customer, _}}) ->
-    access_customer.
 
 extract_auth_context(#{swagger_context := #{auth_context := AuthContext}}) ->
     AuthContext.
