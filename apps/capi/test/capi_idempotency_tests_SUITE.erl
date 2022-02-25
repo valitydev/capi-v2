@@ -247,7 +247,7 @@ different_payment_tools_test(Config) ->
     ExternalID = <<"merch_id">>,
     ContactInfo = #{},
     Jwe1 = encrypt_payment_tool({bank_card, ?BANK_CARD(visa, ?EXP_DATE(2, 2020), <<"Mr. Surname">>)}),
-    Jwe2 = encrypt_payment_tool({digital_wallet, ?DIGITAL_WALLET(<<"+79876543210">>, <<"token id">>)}),
+    Jwe2 = encrypt_payment_tool({digital_wallet, ?DIGITAL_WALLET(<<"qiwi">>, <<"+79876543210">>, <<"token">>)}),
     Req1 = payment_params(ExternalID, Jwe1, ContactInfo, undefined),
     Req2 = payment_params(ExternalID, Jwe2, ContactInfo, false),
     [
