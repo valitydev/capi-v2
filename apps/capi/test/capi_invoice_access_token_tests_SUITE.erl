@@ -413,11 +413,7 @@ create_payment_qiwi_access_token_ok_test(Config) ->
                             resource = #domain_DisposablePaymentResource{
                                 payment_tool = {
                                     digital_wallet,
-                                    #domain_DigitalWallet{
-                                        payment_service = #domain_PaymentServiceRef{id = Provider},
-                                        id = WalletID,
-                                        token = Token
-                                    }
+                                    ?DIGITAL_WALLET(Provider, WalletID, Token)
                                 }
                             }
                         }},
