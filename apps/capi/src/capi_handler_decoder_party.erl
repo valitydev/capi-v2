@@ -461,3 +461,18 @@ map_to_dictionary_id(ObjectName, LegacyID, NewRef) ->
 
 unwrap_ref({Type, ID}) when is_atom(Type) ->
     ID.
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+-spec test() -> _.
+
+-spec mask_phone_number_test_() -> [_TestCase].
+mask_phone_number_test_() ->
+    [
+        ?_assertEqual(<<"+7******7890">>, mask_phone_number(<<"+71234567890">>)),
+        ?_assertEqual(<<"+7*23">>, mask_phone_number(<<"+7123">>)),
+        ?_assertEqual(<<"+1NOTANUMBER">>, mask_phone_number(<<"+1NOTANUMBER">>))
+    ].
+
+-endif.
