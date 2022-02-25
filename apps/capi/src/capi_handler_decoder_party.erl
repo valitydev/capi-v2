@@ -329,6 +329,9 @@ decode_payment_tool_details({mobile_commerce, MobileCommerce}) ->
         <<"phoneNumber">> => mask_phone_number(PhoneNumber)
     }.
 
+mask_phone_number(PhoneNumber) ->
+    capi_utils:redact(PhoneNumber, <<"^\\+\\d(\\d{1,10}?)\\d{2,4}$">>).
+
 decode_bank_card_details(BankCard, V) ->
     LastDigits = capi_handler_decoder_utils:decode_last_digits(BankCard#domain_BankCard.last_digits),
     Bin = capi_handler_decoder_utils:decode_bank_card_bin(BankCard#domain_BankCard.bin),
@@ -368,14 +371,10 @@ decode_payment_terminal_details(
         <<"provider">> => Type
     }.
 
-decode_digital_wallet_details(#domain_DigitalWallet{provider_deprecated = qiwi, id = ID}, V) ->
+decode_digital_wallet_details(#domain_DigitalWallet{payment_service = Provider}, V) ->
     V#{
-        <<"digitalWalletDetailsType">> => <<"DigitalWalletDetailsQIWI">>,
-        <<"phoneNumberMask">> => mask_phone_number(ID)
+        <<"provider">> => Provider#domain_PaymentServiceRef.id
     }.
-
-mask_phone_number(PhoneNumber) ->
-    capi_utils:redact(PhoneNumber, <<"^\\+\\d(\\d{1,10}?)\\d{2,4}$">>).
 
 -spec decode_disposable_payment_resource(capi_handler_encoder:encode_data()) ->
     capi_handler_decoder_utils:decode_data().
@@ -462,3 +461,18 @@ map_to_dictionary_id(ObjectName, LegacyID, NewRef) ->
 
 unwrap_ref({Type, ID}) when is_atom(Type) ->
     ID.
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+-spec test() -> _.
+
+-spec mask_phone_number_test_() -> [_TestCase].
+mask_phone_number_test_() ->
+    [
+        ?_assertEqual(<<"+7******7890">>, mask_phone_number(<<"+71234567890">>)),
+        ?_assertEqual(<<"+7*23">>, mask_phone_number(<<"+7123">>)),
+        ?_assertEqual(<<"+1NOTANUMBER">>, mask_phone_number(<<"+1NOTANUMBER">>))
+    ].
+
+-endif.

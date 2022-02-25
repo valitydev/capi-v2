@@ -286,8 +286,7 @@ create_payment_ok_test(Config) ->
             end},
             {bender, fun('GenerateID', _) ->
                 {ok, capi_ct_helper_bender:get_result(BenderKey)}
-            end},
-            {party_management, fun('GetShop', _) -> {ok, ?SHOP} end}
+            end}
         ],
         Config
     ),
@@ -373,8 +372,7 @@ create_payment_with_empty_cvv_ok_test(Config) ->
                 ) ->
                     {ok, ?PAYPROC_PAYMENT}
             end},
-            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end},
-            {party_management, fun('GetShop', _) -> {ok, ?SHOP} end}
+            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
         ],
         Config
     ),
@@ -401,33 +399,29 @@ create_payment_with_empty_cvv_ok_test(Config) ->
 
 -spec create_payment_qiwi_access_token_ok_test(_) -> _.
 create_payment_qiwi_access_token_ok_test(Config) ->
+    Provider = <<"qiwi">>,
+    WalletID = <<"+79876543210">>,
+    Token = <<"blarg">>,
     _ = capi_ct_helper:mock_services(
         [
             {invoicing, fun
                 ('Get', _) ->
                     {ok, ?PAYPROC_INVOICE};
-                (
-                    'StartPayment',
-                    {
-                        _UserInfo,
-                        _InvoiceID,
-                        #payproc_InvoicePaymentParams{
-                            payer =
-                                {payment_resource, #payproc_PaymentResourcePayerParams{
-                                    resource = #domain_DisposablePaymentResource{
-                                        payment_tool = {
-                                            digital_wallet,
-                                            #domain_DigitalWallet{token = <<"benderkey0">>}
-                                        }
-                                    }
-                                }}
-                        }
-                    }
-                ) ->
+                ('StartPayment', {_UserInfo, _InvoiceID, Params}) ->
+                    ?assertMatch(
+                        {payment_resource, #payproc_PaymentResourcePayerParams{
+                            resource = #domain_DisposablePaymentResource{
+                                payment_tool = {
+                                    digital_wallet,
+                                    ?DIGITAL_WALLET(Provider, WalletID, Token)
+                                }
+                            }
+                        }},
+                        Params#payproc_InvoicePaymentParams.payer
+                    ),
                     {ok, ?PAYPROC_PAYMENT}
             end},
-            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end},
-            {party_management, fun('GetShop', _) -> {ok, ?SHOP} end}
+            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
         ],
         Config
     ),
@@ -438,7 +432,7 @@ create_payment_qiwi_access_token_ok_test(Config) ->
         ?STRING,
         Config
     ),
-    PaymentToolToken = get_encrypted_token({qiwi, <<"+79876543210">>, <<"benderkey0">>}),
+    PaymentToolToken = get_encrypted_token({Provider, WalletID, Token}),
     Req = #{
         <<"flow">> => #{<<"type">> => <<"PaymentFlowInstant">>},
         <<"payer">> => #{
@@ -481,8 +475,7 @@ create_payment_with_googlepay_encrypt_ok_test(Config) ->
                 ) ->
                     {ok, ?PAYPROC_PAYMENT}
             end},
-            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end},
-            {party_management, fun('GetShop', _) -> {ok, ?SHOP} end}
+            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
         ],
         Config
     ),
@@ -776,11 +769,11 @@ get_failed_payment_with_invalid_cvv(Config) ->
     % mock_services([{invoicing, fun('GetPayment', _) -> {ok, ?PAYPROC_PAYMENT} end}], Config),
     capi_client_payments:get_payment_by_id(?config(context, Config), ?STRING, ?STRING).
 
-get_encrypted_token({qiwi, Phone, TokenID}) ->
+get_encrypted_token({Provider, ID, TokenID}) ->
     PaymentTool =
         {digital_wallet, #domain_DigitalWallet{
-            provider_deprecated = qiwi,
-            id = Phone,
+            payment_service = #domain_PaymentServiceRef{id = Provider},
+            id = ID,
             token = TokenID
         }},
     encrypt_payment_tool(PaymentTool).

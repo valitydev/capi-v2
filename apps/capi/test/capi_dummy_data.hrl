@@ -207,10 +207,10 @@
     last_digits = <<"1111">>
 }).
 
--define(DIGITAL_WALLET(Phone, TokenID), #domain_DigitalWallet{
-    provider_deprecated = qiwi,
-    id = Phone,
-    token = TokenID
+-define(DIGITAL_WALLET(Provider, ID, Token), #domain_DigitalWallet{
+    payment_service = #domain_PaymentServiceRef{id = Provider},
+    id = ID,
+    token = Token
 }).
 
 -define(CONTACT_INFO, #domain_ContactInfo{
