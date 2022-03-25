@@ -15,7 +15,6 @@
 -export([revoke_claim/5]).
 -export([get_claim/3]).
 -export([get_claims/2]).
--export([get_account_state/3]).
 
 -type result() :: ok | {ok, woody:result()} | {error, woody_error:business_error()}.
 -type processing_context() :: capi_handler:processing_context().
@@ -31,7 +30,6 @@
 -type claim_revision() :: party_client_thrift:claim_revision().
 -type changeset() :: party_client_thrift:changeset().
 -type revoke_reason() :: party_client_thrift:revoke_reason().
--type account_id() :: party_client_thrift:account_id().
 
 -spec create_party(party_id(), party_params(), processing_context()) -> result().
 create_party(PartyID, PartyParams, Context) ->
@@ -129,11 +127,6 @@ get_claim(PartyID, ClaimID, Context) ->
 get_claims(PartyID, Context) ->
     {Client, ClientContext} = client_context(Context),
     party_client_thrift:get_claims(PartyID, Client, ClientContext).
-
--spec get_account_state(party_id(), account_id(), processing_context()) -> result().
-get_account_state(PartyID, AccountID, Context) ->
-    {Client, ClientContext} = client_context(Context),
-    party_client_thrift:get_account_state(PartyID, AccountID, Client, ClientContext).
 
 client_context(#{party_client := Client, party_client_context := ClientContext}) ->
     {Client, ClientContext}.
