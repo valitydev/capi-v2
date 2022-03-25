@@ -86,11 +86,7 @@ unwrap({ok, Value}) ->
 unwrap({error, Error}) ->
     erlang:error({unwrap_error, Error}).
 
--spec parse_deadline
-    (binary()) -> {ok, woody:deadline()} | {error, bad_deadline};
-    (undefined) -> {ok, undefined}.
-parse_deadline(undefined) ->
-    {ok, undefined};
+-spec parse_deadline(binary()) -> {ok, woody:deadline()} | {error, bad_deadline}.
 parse_deadline(DeadlineStr) ->
     Parsers = [
         fun try_parse_woody_default/1,
