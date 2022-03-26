@@ -176,15 +176,5 @@ decode_shop(Shop) ->
         <<"location">> => capi_handler_decoder_party:decode_shop_location(Shop#domain_Shop.location),
         <<"contractID">> => Shop#domain_Shop.contract_id,
         <<"payoutToolID">> => Shop#domain_Shop.payout_tool_id,
-        <<"scheduleID">> => capi_handler_decoder_utils:decode_business_schedule_ref(Shop#domain_Shop.payout_schedule),
-        <<"account">> => decode_shop_account(Shop#domain_Shop.account)
+        <<"scheduleID">> => capi_handler_decoder_utils:decode_business_schedule_ref(Shop#domain_Shop.payout_schedule)
     }).
-
-decode_shop_account(undefined) ->
-    undefined;
-decode_shop_account(#domain_ShopAccount{currency = Currency, settlement = SettlementID, guarantee = GuaranteeID}) ->
-    #{
-        <<"guaranteeID">> => GuaranteeID,
-        <<"settlementID">> => SettlementID,
-        <<"currency">> => capi_handler_decoder_utils:decode_currency(Currency)
-    }.
