@@ -166,11 +166,13 @@ decode_shops_map(Shops) ->
     capi_handler_decoder_utils:decode_map(Shops, fun decode_shop/1).
 
 decode_shop(Shop) ->
+    Account = Shop#domain_Shop.account,
     genlib_map:compact(#{
         <<"id">> => Shop#domain_Shop.id,
         <<"createdAt">> => Shop#domain_Shop.created_at,
         <<"isBlocked">> => capi_handler_decoder_party:is_blocked(Shop#domain_Shop.blocking),
         <<"isSuspended">> => capi_handler_decoder_party:is_suspended(Shop#domain_Shop.suspension),
+        <<"currency">> => capi_handler_decoder_utils:decode_currency(Account#domain_ShopAccount.currency),
         <<"categoryID">> => capi_handler_decoder_utils:decode_category_ref(Shop#domain_Shop.category),
         <<"details">> => capi_handler_decoder_party:decode_shop_details(Shop#domain_Shop.details),
         <<"location">> => capi_handler_decoder_party:decode_shop_location(Shop#domain_Shop.location),
