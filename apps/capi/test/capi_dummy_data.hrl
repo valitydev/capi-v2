@@ -434,6 +434,15 @@
     contract_id = ?STRING
 }).
 
+-define(SHOP(Currency), (?SHOP)#domain_Shop{
+    account = #domain_ShopAccount{
+        currency = #domain_CurrencyRef{symbolic_code = Currency},
+        settlement = ?INTEGER,
+        guarantee = ?INTEGER,
+        payout = ?INTEGER
+    }
+}).
+
 -define(SHOP_CONTRACT, #payproc_ShopContract{
     shop = ?SHOP,
     contract = ?CONTRACT
@@ -490,7 +499,10 @@
         ?STRING => ?CONTRACT,
         ?WALLET_CONTRACT_ID => ?WALLET_CONTRACT
     },
-    shops = #{?STRING => ?SHOP},
+    shops = #{
+        ?STRING => ?SHOP,
+        ?USD => ?SHOP(?USD)
+    },
     contractors = #{?STRING => ?PARTY_CONTRACTOR},
     wallets = #{?STRING => ?WALLET},
     revision = 0
