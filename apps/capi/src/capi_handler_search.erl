@@ -321,7 +321,9 @@ decode_bank_card(#merchstat_BankCard{
             <<"payment_system">> => capi_handler_decoder_utils:decode_payment_system_ref(PaymentSystem),
             <<"bin">> => Bin,
             <<"masked_pan">> => MaskedPan,
-            <<"token_provider">> => capi_handler_decoder_utils:decode_bank_card_token_service_ref(BankCardTokenServiceRef),
+            <<"token_provider">> => capi_handler_decoder_utils:decode_bank_card_token_service_ref(
+                BankCardTokenServiceRef
+            ),
             <<"issuer_country">> => undefined,
             <<"bank_name">> => undefined,
             <<"metadata">> => undefined

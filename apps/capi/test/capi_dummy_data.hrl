@@ -1196,10 +1196,16 @@
         {value,
             ordsets:from_list([
                 #domain_PaymentMethodRef{
-                    id = {bank_card, #domain_BankCardPaymentMethod{payment_system = #domain_PaymentSystemRef{id = <<"mastercard">>}}}
+                    id =
+                        {bank_card, #domain_BankCardPaymentMethod{
+                            payment_system = #domain_PaymentSystemRef{id = <<"mastercard">>}
+                        }}
                 },
                 #domain_PaymentMethodRef{
-                    id = {bank_card, #domain_BankCardPaymentMethod{payment_system = #domain_PaymentSystemRef{id = <<"visa">>}}}
+                    id =
+                        {bank_card, #domain_BankCardPaymentMethod{
+                            payment_system = #domain_PaymentSystemRef{id = <<"visa">>}
+                        }}
                 },
                 #domain_PaymentMethodRef{
                     id = {crypto_currency, #domain_CryptoCurrencyRef{id = <<"bitcoin">>}}
