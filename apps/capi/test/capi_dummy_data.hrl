@@ -189,9 +189,11 @@
     invoice_lifetime = ?LIFETIME_INTERVAL
 }).
 
--define(BANK_CARD, #domain_BankCard{
+-define(BANK_CARD, ?BANK_CARD(<<"visa">>)).
+
+-define(BANK_CARD(PS), #domain_BankCard{
     token = ?STRING,
-    payment_system_deprecated = visa,
+    payment_system = #domain_PaymentSystemRef{id = PS},
     bin = <<"411111">>,
     last_digits = <<"411111******1111">>
 }).
@@ -199,7 +201,7 @@
 -define(BANK_CARD(PS, ExpDate, CardHolder), ?BANK_CARD(PS, ExpDate, CardHolder, undefined)).
 -define(BANK_CARD(PS, ExpDate, CardHolder, Category), #domain_BankCard{
     token = ?TEST_PAYMENT_TOKEN(PS),
-    payment_system_deprecated = PS,
+    payment_system = #domain_PaymentSystemRef{id = PS},
     exp_date = ExpDate,
     cardholder_name = CardHolder,
     category = Category,
@@ -995,17 +997,17 @@
 
 -define(STAT_BANK_CARD, #merchstat_BankCard{
     token = ?STRING,
-    payment_system_deprecated = visa,
+    payment_system = #domain_PaymentSystemRef{id = <<"visa">>},
     bin = <<"411111">>,
     masked_pan = <<"411111******1111">>
 }).
 
 -define(STAT_BANK_CARD_WITH_TP, #merchstat_BankCard{
     token = ?STRING,
-    payment_system_deprecated = visa,
+    payment_system = #domain_PaymentSystemRef{id = <<"visa">>},
     bin = <<"411111">>,
     masked_pan = <<"411111******1111">>,
-    token_provider_deprecated = applepay
+    payment_token = #domain_BankCardTokenServiceRef{id = <<"APPLE PAY">>}
 }).
 
 -define(REPORT_TYPE, <<"paymentRegistry">>).
@@ -1147,26 +1149,6 @@
                             }}
                     }
                 }
-            }},
-
-        {payment_system_legacy, #domain_LegacyBankCardPaymentSystemRef{id = visa}} =>
-            {payment_system_legacy, #domain_LegacyBankCardPaymentSystemObject{
-                ref = #domain_LegacyBankCardPaymentSystemRef{id = visa},
-                data = #domain_PaymentSystemRef{id = <<"visa">>}
-            }},
-
-        {payment_system_legacy, #domain_LegacyBankCardPaymentSystemRef{id = mastercard}} =>
-            {payment_system_legacy, #domain_LegacyBankCardPaymentSystemObject{
-                ref = #domain_LegacyBankCardPaymentSystemRef{id = mastercard},
-                data = #domain_PaymentSystemRef{id = <<"mastercard">>}
-            }},
-
-        {payment_service_legacy, #domain_LegacyDigitalWalletProviderRef{id = qiwi}} =>
-            {payment_service_legacy, #domain_LegacyDigitalWalletProviderObject{
-                ref = #domain_LegacyDigitalWalletProviderRef{id = qiwi},
-                data = #domain_PaymentServiceRef{
-                    id = <<"qiwi">>
-                }
             }}
     }
 }).
@@ -1214,67 +1196,55 @@
         {value,
             ordsets:from_list([
                 #domain_PaymentMethodRef{
-                    id = {bank_card_deprecated, mastercard}
+                    id = {bank_card, #domain_BankCardPaymentMethod{payment_system = #domain_PaymentSystemRef{id = <<"mastercard">>}}}
                 },
                 #domain_PaymentMethodRef{
-                    id = {bank_card_deprecated, visa}
+                    id = {bank_card, #domain_BankCardPaymentMethod{payment_system = #domain_PaymentSystemRef{id = <<"visa">>}}}
                 },
                 #domain_PaymentMethodRef{
-                    id = {crypto_currency_deprecated, bitcoin}
+                    id = {crypto_currency, #domain_CryptoCurrencyRef{id = <<"bitcoin">>}}
                 },
                 #domain_PaymentMethodRef{
-                    id = {crypto_currency_deprecated, bitcoin_cash}
-                },
-                #domain_PaymentMethodRef{
-                    id =
-                        {tokenized_bank_card_deprecated, #domain_TokenizedBankCard{
-                            payment_system_deprecated = mastercard,
-                            token_provider_deprecated = applepay
-                        }}
+                    id = {crypto_currency, #domain_CryptoCurrencyRef{id = <<"bitcoin_cash">>}}
                 },
                 #domain_PaymentMethodRef{
                     id =
-                        {tokenized_bank_card_deprecated, #domain_TokenizedBankCard{
-                            payment_system_deprecated = visa,
-                            token_provider_deprecated = applepay
+                        {bank_card, #domain_BankCardPaymentMethod{
+                            payment_system = #domain_PaymentSystemRef{id = <<"mastercard">>},
+                            payment_token = #domain_BankCardTokenServiceRef{id = <<"applepay">>}
                         }}
                 },
                 #domain_PaymentMethodRef{
                     id =
                         {bank_card, #domain_BankCardPaymentMethod{
-                            payment_system_deprecated = mastercard,
-                            token_provider_deprecated = applepay,
+                            payment_system = #domain_PaymentSystemRef{id = <<"visa">>},
+                            payment_token = #domain_BankCardTokenServiceRef{id = <<"applepay">>}
+                        }}
+                },
+                #domain_PaymentMethodRef{
+                    id =
+                        {bank_card, #domain_BankCardPaymentMethod{
+                            payment_system = #domain_PaymentSystemRef{id = <<"mastercard">>},
+                            payment_token = #domain_BankCardTokenServiceRef{id = <<"applepay">>},
                             tokenization_method = dpan
                         }}
                 },
                 #domain_PaymentMethodRef{
                     id =
                         {bank_card, #domain_BankCardPaymentMethod{
-                            payment_system_deprecated = visa,
-                            token_provider_deprecated = applepay,
+                            payment_system = #domain_PaymentSystemRef{id = <<"visa">>},
+                            payment_token = #domain_BankCardTokenServiceRef{id = <<"applepay">>},
                             tokenization_method = dpan
                         }}
                 },
                 #domain_PaymentMethodRef{
-                    id =
-                        {bank_card, #domain_BankCardPaymentMethod{
-                            payment_system_deprecated = mastercard
-                        }}
+                    id = {digital_wallet, #domain_PaymentServiceRef{id = <<"qiwi">>}}
                 },
                 #domain_PaymentMethodRef{
-                    id =
-                        {bank_card, #domain_BankCardPaymentMethod{
-                            payment_system_deprecated = visa
-                        }}
+                    id = {mobile, #domain_MobileOperatorRef{id = <<"tele2">>}}
                 },
                 #domain_PaymentMethodRef{
-                    id = {digital_wallet_deprecated, qiwi}
-                },
-                #domain_PaymentMethodRef{
-                    id = {mobile_deprecated, tele2}
-                },
-                #domain_PaymentMethodRef{
-                    id = {payment_terminal_deprecated, euroset}
+                    id = {payment_terminal, #domain_PaymentServiceRef{id = <<"euroset">>}}
                 }
             ])}
 }).
@@ -1322,7 +1292,7 @@
     }
 }).
 
--define(TEST_PAYMENT_TOKEN, ?TEST_PAYMENT_TOKEN(visa)).
+-define(TEST_PAYMENT_TOKEN, ?TEST_PAYMENT_TOKEN(<<"visa">>)).
 -define(TEST_PAYMENT_TOKEN(PaymentSystem),
     ?TEST_PAYMENT_TOKEN(PaymentSystem, ?STRING)
 ).
@@ -1331,12 +1301,12 @@
     capi_utils:map_to_base64url(?TEST_PAYMENT_TOOL(PaymentSystem, Token))
 ).
 
--define(TEST_PAYMENT_TOOL, ?TEST_PAYMENT_TOOL(visa)).
+-define(TEST_PAYMENT_TOOL, ?TEST_PAYMENT_TOOL(<<"visa">>)).
 -define(TEST_PAYMENT_TOOL(PaymentSystem), ?TEST_PAYMENT_TOOL(PaymentSystem, ?STRING)).
 -define(TEST_PAYMENT_TOOL(PaymentSystem, Token), #{
     <<"type">> => <<"bank_card">>,
     <<"token">> => Token,
-    <<"payment_system">> => atom_to_binary(PaymentSystem, utf8),
+    <<"payment_system">> => PaymentSystem,
     <<"bin">> => <<"411111">>,
     <<"masked_pan">> => <<"1111">>,
     <<"exp_date">> => <<"12/2012">>

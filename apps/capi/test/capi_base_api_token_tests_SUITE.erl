@@ -135,8 +135,7 @@
     get_countries_test/1,
     get_trade_bloc_by_id_test/1,
     get_trade_bloc_by_id_not_found_test/1,
-    get_trade_blocs_test/1,
-    check_support_decrypt_v2_test/1
+    get_trade_blocs_test/1
 ]).
 
 -type test_case_name() :: atom().
@@ -153,8 +152,7 @@ init([]) ->
 all() ->
     [
         {group, operations_by_api_key_token},
-        {group, operations_by_user_session_token},
-        {group, payment_tool_token_support}
+        {group, operations_by_user_session_token}
     ].
 
 -spec groups() -> [{group_name(), list(), [test_case_name()]}].
@@ -290,9 +288,6 @@ groups() ->
             download_report_file_ok_test,
             download_report_file_for_party_ok_test,
             download_report_file_not_found_test
-        ]},
-        {payment_tool_token_support, [], [
-            check_support_decrypt_v2_test
         ]}
     ].
 
@@ -726,7 +721,7 @@ create_payment_ok_test(Config) ->
         ?STRING,
         Config
     ),
-    PaymentTool = {bank_card, ?BANK_CARD(visa, ?EXP_DATE(2, 2020), <<"Degus">>)},
+    PaymentTool = {bank_card, ?BANK_CARD(<<"visa">>, ?EXP_DATE(2, 2020), <<"Degus">>)},
     PaymentToolToken = capi_crypto:encode_token(#{payment_tool => PaymentTool, valid_until => undefined}),
     Req = ?PAYMENT_PARAMS(ExternalID, PaymentToolToken),
     {ok, _} = capi_client_payments:create_payment(?config(context, Config), Req, ?STRING).
@@ -2576,25 +2571,3 @@ get_trade_blocs_test(Config) ->
         ]},
         capi_client_trade_blocs:get_trade_blocs(?config(context, Config))
     ).
-
--spec check_support_decrypt_v2_test(config()) -> _.
-check_support_decrypt_v2_test(_Config) ->
-    PaymentToolToken = <<
-        "v2.eyJhbGciOiJFQ0RILUVTIiwiZW5jIjoiQTEyOEdDTSIsImVwayI6eyJhbGciOiJFQ0RILUVTIiwiY3J2IjoiUC0yNTYiLCJrdHkiOi"
-        "JFQyIsInVzZSI6ImVuYyIsIngiOiJRanFmNFVrOTJGNzd3WXlEUjNqY3NwR2dpYnJfdVRmSXpMUVplNzVQb1R3IiwieSI6InA5cjJGV3F"
-        "mU2xBTFJXYWhUSk8xY3VneVZJUXVvdzRwMGdHNzFKMFJkUVEifSwia2lkIjoia3hkRDBvclZQR29BeFdycUFNVGVRMFU1TVJvSzQ3dVp4"
-        "V2lTSmRnbzB0MCJ9..j3zEyCqyfQjpEtQM.JAc3kqJm6zbn0fMZGlK_t14Yt4PvgOuoVL2DtkEgIXIqrxxWFbykKBGxQvwYisJYIUJJwt"
-        "YbwvuGEODcK2uTC2quPD2Ejew66DLJF2xcAwE.MNVimzi8r-5uTATNalgoBQ"
-    >>,
-    {ok, #{payment_tool := PaymentTool, valid_until := ValidUntil}} = capi_crypto:decode_token(PaymentToolToken),
-    ?assertEqual(
-        {mobile_commerce, #domain_MobileCommerce{
-            phone = #domain_MobilePhone{
-                cc = <<"7">>,
-                ctn = <<"9210001122">>
-            },
-            operator_deprecated = megafone
-        }},
-        PaymentTool
-    ),
-    ?assertEqual(<<"2020-10-29T23:44:15.499Z">>, capi_utils:deadline_to_binary(ValidUntil)).

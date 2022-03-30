@@ -634,7 +634,7 @@ compare_customer_features_test() ->
 -spec read_customer_binding_features_test() -> _.
 read_customer_binding_features_test() ->
     Session = ?TEST_PAYMENT_SESSION(<<"Session">>),
-    Tool = ?TEST_PAYMENT_TOOL(visa, <<"TOKEN">>),
+    Tool = ?TEST_PAYMENT_TOOL(<<"visa">>, <<"TOKEN">>),
     Request = payment_resource(Session, Tool),
     Features = #{
         ?payment_resource => #{
@@ -657,11 +657,11 @@ read_customer_binding_features_test() ->
 -spec compare_customer_binding_features_test() -> _.
 compare_customer_binding_features_test() ->
     Session1 = ?TEST_PAYMENT_SESSION(<<"Session1">>),
-    Tool1 = ?TEST_PAYMENT_TOOL(visa),
+    Tool1 = ?TEST_PAYMENT_TOOL(<<"visa">>),
     Request1 = payment_resource(Session1, Tool1),
 
     Session2 = ?TEST_PAYMENT_SESSION(<<"Session2">>),
-    Tool2 = ?TEST_PAYMENT_TOOL(mastercard)#{<<"exp_date">> => <<"01/2020">>},
+    Tool2 = ?TEST_PAYMENT_TOOL(<<"mastercard">>)#{<<"exp_date">> => <<"01/2020">>},
     Request2 = payment_resource(Session2, Tool2),
 
     common_compare_tests(customer_binding(), Request1, Request2, [

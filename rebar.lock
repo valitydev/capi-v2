@@ -8,7 +8,7 @@
        {ref,"e08deadaab22019ff50a5d96ca6befff0034dab3"}},
   0},
  {<<"bouncer_client">>,
-  {git,"https://github.com/valitydev/bouncer_client_erlang.git",
+  {git,"https://github.com/valitydev/bouncer-client-erlang.git",
        {ref,"535449a459b70643836c440a863b42656f2a1409"}},
   0},
  {<<"bouncer_proto">>,

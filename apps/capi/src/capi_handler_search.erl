@@ -309,19 +309,19 @@ decode_stat_payment_tool_token({mobile_commerce, MobileCommerce}) ->
 
 decode_bank_card(#merchstat_BankCard{
     'token' = Token,
-    'payment_system_deprecated' = PaymentSystem,
+    'payment_system' = PaymentSystem,
     'bin' = Bin,
     'masked_pan' = MaskedPan,
-    'token_provider_deprecated' = TokenProvider
+    'payment_token' = BankCardTokenServiceRef
 }) ->
     capi_utils:map_to_base64url(
         genlib_map:compact(#{
             <<"type">> => <<"bank_card">>,
             <<"token">> => Token,
-            <<"payment_system">> => PaymentSystem,
+            <<"payment_system">> => capi_handler_decoder_utils:decode_payment_system_ref(PaymentSystem),
             <<"bin">> => Bin,
             <<"masked_pan">> => MaskedPan,
-            <<"token_provider">> => TokenProvider,
+            <<"token_provider">> => capi_handler_decoder_utils:decode_bank_card_token_service_ref(BankCardTokenServiceRef),
             <<"issuer_country">> => undefined,
             <<"bank_name">> => undefined,
             <<"metadata">> => undefined
@@ -391,18 +391,17 @@ decode_stat_payment_tool_details({mobile_commerce, MobileCommerce}) ->
 decode_bank_card_details(BankCard, V) ->
     LastDigits = capi_handler_decoder_utils:decode_last_digits(BankCard#merchstat_BankCard.masked_pan),
     Bin = capi_handler_decoder_utils:decode_bank_card_bin(BankCard#merchstat_BankCard.bin),
+    PaymentSystem = capi_handler_decoder_utils:decode_payment_system_ref(BankCard#merchstat_BankCard.payment_system),
+    BankCardTokenServiceRef = capi_handler_decoder_utils:decode_bank_card_token_service_ref(
+        BankCard#merchstat_BankCard.payment_token
+    ),
     capi_handler_utils:merge_and_compact(V, #{
         <<"last4">> => LastDigits,
         <<"first6">> => Bin,
         <<"cardNumberMask">> => capi_handler_decoder_utils:decode_masked_pan(Bin, LastDigits),
-        <<"paymentSystem">> => genlib:to_binary(BankCard#merchstat_BankCard.payment_system_deprecated),
-        <<"tokenProvider">> => decode_token_provider(BankCard#merchstat_BankCard.token_provider_deprecated)
+        <<"paymentSystem">> => PaymentSystem,
+        <<"tokenProvider">> => BankCardTokenServiceRef
     }).
-
-decode_token_provider(Provider) when Provider /= undefined ->
-    genlib:to_binary(Provider);
-decode_token_provider(undefined) ->
-    undefined.
 
 decode_payment_terminal_details(#merchstat_PaymentTerminal{terminal_type = Type}, V) ->
     V#{

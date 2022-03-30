@@ -202,8 +202,8 @@ create_payment_ok_test(Config) ->
     BenderKey = <<"bender_key">>,
     ExternalID = <<"merch_id">>,
     ContactInfo = #{},
-    Jwe1 = get_encrypted_token(visa, ?EXP_DATE(2, 2020)),
-    Jwe2 = get_encrypted_token(visa, ?EXP_DATE(2, 2020)),
+    Jwe1 = get_encrypted_token(<<"visa">>, ?EXP_DATE(2, 2020)),
+    Jwe2 = get_encrypted_token(<<"visa">>, ?EXP_DATE(2, 2020)),
     Req1 = payment_params(ExternalID, Jwe1, ContactInfo, undefined),
     Req2 = payment_params(ExternalID, Jwe2, ContactInfo, false),
     [
@@ -231,8 +231,8 @@ create_payment_ok_test(Config) ->
 create_payment_fail_test(Config) ->
     BenderKey = <<"bender_key">>,
     ExternalID = <<"merch_id">>,
-    Jwe1 = get_encrypted_token(visa, ?EXP_DATE(1, 2020)),
-    Jwe2 = get_encrypted_token(visa, ?EXP_DATE(2, 2020)),
+    Jwe1 = get_encrypted_token(<<"visa">>, ?EXP_DATE(1, 2020)),
+    Jwe2 = get_encrypted_token(<<"visa">>, ?EXP_DATE(2, 2020)),
     Req1 = payment_params(ExternalID, Jwe1, #{}, undefined),
     Req2 = payment_params(ExternalID, Jwe2, #{}, false),
     [
@@ -246,7 +246,7 @@ different_payment_tools_test(Config) ->
     BenderKey = <<"bender_key">>,
     ExternalID = <<"merch_id">>,
     ContactInfo = #{},
-    Jwe1 = encrypt_payment_tool({bank_card, ?BANK_CARD(visa, ?EXP_DATE(2, 2020), <<"Mr. Surname">>)}),
+    Jwe1 = encrypt_payment_tool({bank_card, ?BANK_CARD(<<"visa">>, ?EXP_DATE(2, 2020), <<"Mr. Surname">>)}),
     Jwe2 = encrypt_payment_tool({digital_wallet, ?DIGITAL_WALLET(<<"qiwi">>, <<"+79876543210">>, <<"token">>)}),
     Req1 = payment_params(ExternalID, Jwe1, ContactInfo, undefined),
     Req2 = payment_params(ExternalID, Jwe2, ContactInfo, false),
@@ -272,8 +272,8 @@ second_request_without_idempotent_feature_test(Config) ->
     BenderKey = <<"bender_key">>,
     ExternalID = <<"merch_id">>,
     ContactInfo = #{},
-    Jwe1 = encrypt_payment_tool({bank_card, ?BANK_CARD(visa, ?EXP_DATE(2, 2020), <<"Mr. Surname">>)}),
-    Jwe2 = encrypt_payment_tool({bank_card, ?BANK_CARD(visa, undefined, <<"Mr. Surname">>)}),
+    Jwe1 = encrypt_payment_tool({bank_card, ?BANK_CARD(<<"visa">>, ?EXP_DATE(2, 2020), <<"Mr. Surname">>)}),
+    Jwe2 = encrypt_payment_tool({bank_card, ?BANK_CARD(<<"visa">>, undefined, <<"Mr. Surname">>)}),
     Req1 = payment_params(ExternalID, Jwe1, ContactInfo, undefined),
     Req2 = payment_params(ExternalID, Jwe2, ContactInfo, undefined),
     [
@@ -286,8 +286,8 @@ second_request_without_idempotent_feature_test(Config) ->
 second_request_with_idempotent_feature_test(Config) ->
     BenderKey = <<"bender_key">>,
     ExternalID = <<"merch_id">>,
-    Jwe1 = encrypt_payment_tool({bank_card, ?BANK_CARD(visa, ?EXP_DATE(2, 2020), undefined)}),
-    Jwe2 = encrypt_payment_tool({bank_card, ?BANK_CARD(visa, ?EXP_DATE(2, 2020), <<"Mr. Surname">>)}),
+    Jwe1 = encrypt_payment_tool({bank_card, ?BANK_CARD(<<"visa">>, ?EXP_DATE(2, 2020), undefined)}),
+    Jwe2 = encrypt_payment_tool({bank_card, ?BANK_CARD(<<"visa">>, ?EXP_DATE(2, 2020), <<"Mr. Surname">>)}),
     Req1 = payment_params(ExternalID, Jwe1, #{}, undefined),
     Req2 = payment_params(ExternalID, Jwe2, #{}, undefined),
     [
@@ -687,11 +687,14 @@ create_customer_fail_test(Config) ->
 -spec create_customer_binding_ok_test(config()) -> _.
 create_customer_binding_ok_test(Config) ->
     BenderKey = <<"customer_binding_bender_key">>,
+    PaymentTool = {bank_card, ?BANK_CARD},
+    ValidUntil = capi_utils:deadline_from_timeout(10000),
+    PaymentToolToken = capi_crypto:encode_token(#{payment_tool => PaymentTool, valid_until => ValidUntil}),
     Req1 = #{
         <<"externalID">> => genlib:unique(),
         <<"paymentResource">> => #{
             <<"paymentSession">> => ?TEST_PAYMENT_SESSION,
-            <<"paymentToolToken">> => ?TEST_PAYMENT_TOKEN
+            <<"paymentToolToken">> => PaymentToolToken
         }
     },
     Req2 = Req1#{<<"externalID">> => genlib:unique()},
@@ -712,17 +715,23 @@ create_customer_binding_ok_test(Config) ->
 create_customer_binding_fail_test(Config) ->
     BenderKey = <<"customer_binding_bender_key">>,
     ExternalID = genlib:unique(),
+    PaymentTool1 = {bank_card, ?BANK_CARD},
+    ValidUntil1 = capi_utils:deadline_from_timeout(10000),
+    PaymentToolToken1 = capi_crypto:encode_token(#{payment_tool => PaymentTool1, valid_until => ValidUntil1}),
     Req1 = #{
         <<"externalID">> => ExternalID,
         <<"paymentResource">> => #{
             <<"paymentSession">> => ?TEST_PAYMENT_SESSION,
-            <<"paymentToolToken">> => ?TEST_PAYMENT_TOKEN(visa, <<"TOKEN1">>)
+            <<"paymentToolToken">> => PaymentToolToken1
         }
     },
+    PaymentTool2 = {bank_card, ?BANK_CARD(<<"mastercard">>)},
+    ValidUntil2 = capi_utils:deadline_from_timeout(10000),
+    PaymentToolToken2 = capi_crypto:encode_token(#{payment_tool => PaymentTool2, valid_until => ValidUntil2}),
     Req2 = Req1#{
         <<"paymentResource">> => #{
             <<"paymentSession">> => ?TEST_PAYMENT_SESSION,
-            <<"paymentToolToken">> => ?TEST_PAYMENT_TOKEN(mastercard, <<"TOKEN2">>)
+            <<"paymentToolToken">> => PaymentToolToken2
         }
     },
 
@@ -731,7 +740,7 @@ create_customer_binding_fail_test(Config) ->
     {ActualBindingResult2, _UnusedParams} = BindingResult2,
     ?assertEqual(
         response_error(409, ExternalID, BenderKey),
-        ActualBindingResult2
+        {ActualBindingResult2, BindingResult1, PaymentTool1, PaymentTool2}
     ).
 
 %% Internal functions
@@ -856,7 +865,7 @@ get_encrypted_token(PS, ExpDate, IsCvvEmpty) ->
     encrypt_payment_tool(
         {bank_card, #domain_BankCard{
             token = ?TEST_PAYMENT_TOKEN(PS),
-            payment_system_deprecated = PS,
+            payment_system = #domain_PaymentSystemRef{id = PS},
             bin = <<"411111">>,
             last_digits = <<"1111">>,
             exp_date = ExpDate,

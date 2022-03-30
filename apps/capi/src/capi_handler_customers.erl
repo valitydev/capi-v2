@@ -371,17 +371,9 @@ encode_payment_tool_token(Token) ->
                     PaymentTool
             end;
         unrecognized ->
-            encode_legacy_payment_tool_token(Token);
+            capi_handler:respond(logic_error('invalidPaymentToolToken'));
         {error, {decryption_failed, Error}} ->
             logger:warning("Payment tool token decryption failed: ~p", [Error]),
-            capi_handler:respond(logic_error('invalidPaymentToolToken'))
-    end.
-
-encode_legacy_payment_tool_token(Token) ->
-    try
-        capi_handler_encoder:encode_payment_tool(capi_utils:base64url_to_map(Token))
-    catch
-        error:badarg ->
             capi_handler:respond(logic_error('invalidPaymentToolToken'))
     end.
 

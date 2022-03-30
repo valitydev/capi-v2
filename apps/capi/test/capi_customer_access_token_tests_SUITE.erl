@@ -162,7 +162,9 @@ create_binding_ok_test(Config) ->
         ],
         Config
     ),
-    PaymentToolToken = ?TEST_PAYMENT_TOKEN,
+    PaymentTool = {bank_card, ?BANK_CARD},
+    ValidUntil = capi_utils:deadline_from_timeout(10000),
+    PaymentToolToken = capi_crypto:encode_token(#{payment_tool => PaymentTool, valid_until => ValidUntil}),
     Req2 = #{
         <<"paymentResource">> => #{
             <<"paymentSession">> => ?TEST_PAYMENT_SESSION,

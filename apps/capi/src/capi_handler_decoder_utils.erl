@@ -6,6 +6,11 @@
 
 -export([decode_map/2]).
 -export([decode_currency/1]).
+-export([decode_payment_system_ref/1]).
+-export([decode_payment_service_ref/1]).
+-export([decode_crypto_currency_ref/1]).
+-export([decode_bank_card_token_service_ref/1]).
+-export([decode_mobile_operator_ref/1]).
 -export([decode_business_schedule_ref/1]).
 -export([decode_bank_card_bin/1]).
 -export([decode_last_digits/1]).
@@ -23,6 +28,11 @@
 
 -type decode_data() :: #{binary() => term()}.
 -type encoded_currency() :: dmsl_domain_thrift:'Currency'() | dmsl_domain_thrift:'CurrencyRef'().
+-type encoded_payment_system_ref() :: dmsl_domain_thrift:'PaymentSystemRef'().
+-type encoded_payment_service_ref() :: dmsl_domain_thrift:'PaymentServiceRef'().
+-type encoded_crypto_currency_ref() :: dmsl_domain_thrift:'CryptoCurrencyRef'().
+-type encoded_bank_card_token_service_ref() :: dmsl_domain_thrift:'BankCardTokenServiceRef'().
+-type encoded_mobile_operator_ref() :: dmsl_domain_thrift:'MobileOperatorRef'().
 
 -spec decode_map(map(), fun((_) -> any())) -> [any()].
 decode_map(Items, Fun) ->
@@ -31,6 +41,22 @@ decode_map(Items, Fun) ->
 -spec decode_currency(encoded_currency()) -> binary().
 decode_currency(#domain_Currency{symbolic_code = SymbolicCode}) -> SymbolicCode;
 decode_currency(#domain_CurrencyRef{symbolic_code = SymbolicCode}) -> SymbolicCode.
+
+-spec decode_payment_system_ref(encoded_payment_system_ref()) -> binary().
+decode_payment_system_ref(#domain_PaymentSystemRef{id = ID}) -> ID.
+
+-spec decode_payment_service_ref(encoded_payment_service_ref()) -> binary().
+decode_payment_service_ref(#domain_PaymentServiceRef{id = ID}) -> ID.
+
+-spec decode_crypto_currency_ref(encoded_crypto_currency_ref()) -> binary().
+decode_crypto_currency_ref(#domain_CryptoCurrencyRef{id = ID}) -> ID.
+
+-spec decode_bank_card_token_service_ref(encoded_bank_card_token_service_ref() | undefined) -> binary().
+decode_bank_card_token_service_ref(undefined) -> undefined;
+decode_bank_card_token_service_ref(#domain_BankCardTokenServiceRef{id = ID}) -> ID.
+
+-spec decode_mobile_operator_ref(encoded_mobile_operator_ref()) -> binary().
+decode_mobile_operator_ref(#domain_MobileOperatorRef{id = ID}) -> ID.
 
 -spec decode_business_schedule_ref(capi_handler_encoder:encode_data()) -> binary() | undefined.
 decode_business_schedule_ref(#domain_BusinessScheduleRef{id = ID}) when ID /= undefined ->
