@@ -19,7 +19,6 @@
 -export([redact/2]).
 
 -export([unwrap/1]).
--export([define/2]).
 
 -export([deduplicate_payment_methods/1]).
 
@@ -52,24 +51,12 @@ deadline_is_reached(Deadline) ->
 
 -spec base64url_to_map(binary()) -> map() | no_return().
 base64url_to_map(Base64) when is_binary(Base64) ->
-    try
-        {ok, Json} = jose_base64url:decode(Base64),
-        jsx:decode(Json, [return_maps])
-    catch
-        Class:Reason ->
-            _ = logger:debug("decoding base64 ~p to map failed with ~p:~p", [Base64, Class, Reason]),
-            erlang:error(badarg)
-    end.
+    Json = jose_base64url:'decode!'(Base64),
+    jsx:decode(Json, [return_maps]).
 
 -spec map_to_base64url(map()) -> binary() | no_return().
 map_to_base64url(Map) when is_map(Map) ->
-    try
-        jose_base64url:encode(jsx:encode(Map))
-    catch
-        Class:Reason ->
-            _ = logger:debug("encoding map ~p to base64 failed with ~p:~p", [Map, Class, Reason]),
-            erlang:error(badarg)
-    end.
+    jose_base64url:encode(jsx:encode(Map)).
 
 -spec redact(Subject :: binary(), Pattern :: binary()) -> Redacted :: binary().
 redact(Subject, Pattern) ->
@@ -99,17 +86,7 @@ unwrap({ok, Value}) ->
 unwrap({error, Error}) ->
     erlang:error({unwrap_error, Error}).
 
--spec define(undefined | T, T) -> T.
-define(undefined, V) ->
-    V;
-define(V, _Default) ->
-    V.
-
--spec parse_deadline
-    (binary()) -> {ok, woody:deadline()} | {error, bad_deadline};
-    (undefined) -> {ok, undefined}.
-parse_deadline(undefined) ->
-    {ok, undefined};
+-spec parse_deadline(binary()) -> {ok, woody:deadline()} | {error, bad_deadline}.
 parse_deadline(DeadlineStr) ->
     Parsers = [
         fun try_parse_woody_default/1,

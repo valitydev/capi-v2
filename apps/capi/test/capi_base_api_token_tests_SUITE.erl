@@ -50,7 +50,6 @@
     get_refund_by_external_id/1,
     update_invoice_template_ok_test/1,
     delete_invoice_template_ok_test/1,
-    get_account_by_id_ok_test/1,
     get_my_party_ok_test/1,
     get_my_party_lazy_creation_ok_test/1,
     get_my_party_lazy_creation_fail_test/1,
@@ -196,7 +195,6 @@ groups() ->
             activate_shop_ok_test,
             suspend_shop_ok_test,
 
-            get_account_by_id_ok_test,
             get_categories_ok_test,
 
             get_claim_by_id_ok_test,
@@ -1050,15 +1048,6 @@ delete_invoice_template_ok_test(Config) ->
         Config
     ),
     ok = capi_client_invoice_templates:delete(?config(context, Config), ?STRING).
-
--spec get_account_by_id_ok_test(config()) -> _.
-get_account_by_id_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [{party_management, fun('GetAccountState', _) -> {ok, ?ACCOUNT_STATE} end}],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetAccountByID">>, ?STRING, Config),
-    {ok, _} = capi_client_accounts:get_account_by_id(?config(context, Config), ?INTEGER).
 
 -spec get_my_party_ok_test(config()) -> _.
 get_my_party_ok_test(Config) ->
