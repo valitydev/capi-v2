@@ -740,7 +740,7 @@ create_customer_binding_fail_test(Config) ->
     {ActualBindingResult2, _UnusedParams} = BindingResult2,
     ?assertEqual(
         response_error(409, ExternalID, BenderKey),
-        {ActualBindingResult2, BindingResult1, PaymentTool1, PaymentTool2}
+        ActualBindingResult2
     ).
 
 %% Internal functions

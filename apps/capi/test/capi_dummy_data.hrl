@@ -192,7 +192,7 @@
 -define(BANK_CARD, ?BANK_CARD(<<"visa">>)).
 
 -define(BANK_CARD(PS), #domain_BankCard{
-    token = ?STRING,
+    token = ?TEST_PAYMENT_TOKEN(PS),
     payment_system = #domain_PaymentSystemRef{id = PS},
     bin = <<"411111">>,
     last_digits = <<"411111******1111">>
