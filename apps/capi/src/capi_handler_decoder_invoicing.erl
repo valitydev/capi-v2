@@ -487,28 +487,40 @@ decode_payment_method(payment_terminal, Providers) ->
     [
         #{
             <<"method">> => <<"PaymentTerminal">>,
-            <<"providers">> => [Id || #domain_PaymentServiceRef{id = Id} <- Providers]
+            <<"providers">> => [
+                capi_handler_decoder_utils:decode_payment_service_ref(Provider)
+             || Provider <- Providers
+            ]
         }
     ];
 decode_payment_method(digital_wallet, Providers) ->
     [
         #{
             <<"method">> => <<"DigitalWallet">>,
-            <<"providers">> => [Id || #domain_PaymentServiceRef{id = Id} <- Providers]
+            <<"providers">> => [
+                capi_handler_decoder_utils:decode_payment_service_ref(Provider)
+             || Provider <- Providers
+            ]
         }
     ];
 decode_payment_method(crypto_currency, CryptoCurrencies) ->
     [
         #{
             <<"method">> => <<"CryptoWallet">>,
-            <<"cryptoCurrencies">> => [Id || #domain_CryptoCurrencyRef{id = Id} <- CryptoCurrencies]
+            <<"cryptoCurrencies">> => [
+                capi_handler_decoder_utils:decode_crypto_currency_ref(Currency)
+             || Currency <- CryptoCurrencies
+            ]
         }
     ];
 decode_payment_method(mobile, MobileOperators) ->
     [
         #{
             <<"method">> => <<"MobileCommerce">>,
-            <<"operators">> => [Id || #domain_MobileOperatorRef{id = Id} <- MobileOperators]
+            <<"operators">> => [
+                capi_handler_decoder_utils:decode_mobile_operator_ref(Operator)
+             || Operator <- MobileOperators
+            ]
         }
     ].
 
