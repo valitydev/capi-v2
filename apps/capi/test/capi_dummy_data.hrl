@@ -192,7 +192,7 @@
 -define(BANK_CARD, ?BANK_CARD(<<"visa">>)).
 
 -define(BANK_CARD(PS), #domain_BankCard{
-    token = ?TEST_PAYMENT_TOKEN(PS),
+    token = PS,
     payment_system = #domain_PaymentSystemRef{id = PS},
     bin = <<"411111">>,
     last_digits = <<"411111******1111">>
@@ -200,7 +200,7 @@
 
 -define(BANK_CARD(PS, ExpDate, CardHolder), ?BANK_CARD(PS, ExpDate, CardHolder, undefined)).
 -define(BANK_CARD(PS, ExpDate, CardHolder, Category), #domain_BankCard{
-    token = ?TEST_PAYMENT_TOKEN(PS),
+    token = PS,
     payment_system = #domain_PaymentSystemRef{id = PS},
     exp_date = ExpDate,
     cardholder_name = CardHolder,
@@ -1310,14 +1310,7 @@
     }
 }).
 
--define(TEST_PAYMENT_TOKEN, ?TEST_PAYMENT_TOKEN(<<"visa">>)).
--define(TEST_PAYMENT_TOKEN(PaymentSystem),
-    ?TEST_PAYMENT_TOKEN(PaymentSystem, ?STRING)
-).
-
--define(TEST_PAYMENT_TOKEN(PaymentSystem, Token),
-    capi_utils:map_to_base64url(?TEST_PAYMENT_TOOL(PaymentSystem, Token))
-).
+-define(TEST_PAYMENT_TOKEN, ?STRING).
 
 -define(TEST_PAYMENT_TOOL, ?TEST_PAYMENT_TOOL(<<"visa">>)).
 -define(TEST_PAYMENT_TOOL(PaymentSystem), ?TEST_PAYMENT_TOOL(PaymentSystem, ?STRING)).

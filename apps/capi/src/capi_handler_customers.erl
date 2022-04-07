@@ -365,7 +365,7 @@ encode_payment_tool_token(Token) ->
             #{payment_tool := PaymentTool, valid_until := ValidUntil} = TokenData,
             case capi_utils:deadline_is_reached(ValidUntil) of
                 true ->
-                    logger:warning("Payment tool token expired: ~p", [capi_utils:deadline_to_binary(ValidUntil)]),
+                    logger:info("Payment tool token expired: ~p", [capi_utils:deadline_to_binary(ValidUntil)]),
                     capi_handler:respond(logic_error('invalidPaymentToolToken'));
                 _ ->
                     PaymentTool
@@ -373,7 +373,7 @@ encode_payment_tool_token(Token) ->
         unrecognized ->
             capi_handler:respond(logic_error('invalidPaymentToolToken'));
         {error, {decryption_failed, Error}} ->
-            logger:warning("Payment tool token decryption failed: ~p", [Error]),
+            logger:info("Payment tool token decryption failed: ~p", [Error]),
             capi_handler:respond(logic_error('invalidPaymentToolToken'))
     end.
 

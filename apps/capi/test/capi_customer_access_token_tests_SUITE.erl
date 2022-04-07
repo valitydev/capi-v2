@@ -208,7 +208,7 @@ create_binding_fail_test(Config) ->
     Req = #{
         <<"paymentResource">> => #{
             <<"paymentSession">> => ?TEST_PAYMENT_SESSION,
-            <<"paymentToolToken">> => ?TEST_PAYMENT_TOKEN(<<"visa">>, <<"InvalidToken">>)
+            <<"paymentToolToken">> => ?TEST_PAYMENT_TOKEN
         }
     },
     Resp = capi_client_customers:create_binding(?config(context, Config), ?STRING, Req),

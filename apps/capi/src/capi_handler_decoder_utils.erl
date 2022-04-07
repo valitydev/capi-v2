@@ -49,8 +49,7 @@ decode_payment_service_ref(#domain_PaymentServiceRef{id = ID}) -> ID.
 -spec decode_crypto_currency_ref(encoded_crypto_currency_ref()) -> binary().
 decode_crypto_currency_ref(#domain_CryptoCurrencyRef{id = ID}) -> ID.
 
--spec decode_bank_card_token_service_ref(encoded_bank_card_token_service_ref() | undefined) -> binary().
-decode_bank_card_token_service_ref(undefined) -> undefined;
+-spec decode_bank_card_token_service_ref(encoded_bank_card_token_service_ref()) -> binary().
 decode_bank_card_token_service_ref(#domain_BankCardTokenServiceRef{id = ID}) -> ID.
 
 -spec decode_mobile_operator_ref(encoded_mobile_operator_ref()) -> binary().

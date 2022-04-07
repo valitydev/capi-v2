@@ -221,7 +221,10 @@ decode_bank_card(#domain_BankCard{
         <<"payment_system">> => capi_handler_decoder_utils:decode_payment_system_ref(PaymentSystem),
         <<"bin">> => Bin,
         <<"masked_pan">> => LastDigits,
-        <<"token_provider">> => capi_handler_decoder_utils:decode_bank_card_token_service_ref(BankCardTokenServiceRef),
+        <<"token_provider">> => capi_utils:maybe(
+            BankCardTokenServiceRef,
+            fun capi_handler_decoder_utils:decode_bank_card_token_service_ref/1
+        ),
         <<"issuer_country">> => IssuerCountry,
         <<"bank_name">> => BankName,
         <<"metadata">> => decode_bank_card_metadata(Metadata),
@@ -317,7 +320,10 @@ decode_bank_card_details(BankCard, V) ->
         <<"first6">> => Bin,
         <<"cardNumberMask">> => capi_handler_decoder_utils:decode_masked_pan(Bin, LastDigits),
         <<"paymentSystem">> => capi_handler_decoder_utils:decode_payment_system_ref(PaymentSystem),
-        <<"tokenProvider">> => capi_handler_decoder_utils:decode_bank_card_token_service_ref(TokenProvider)
+        <<"tokenProvider">> => capi_utils:maybe(
+            TokenProvider,
+            fun capi_handler_decoder_utils:decode_bank_card_token_service_ref/1
+        )
         % TODO: Uncomment or delete this when we negotiate deploying non-breaking changes
         % <<"tokenization_method">> => TokenizationMethod
     }).
