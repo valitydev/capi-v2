@@ -93,7 +93,7 @@
  {<<"parse_trans">>,{pkg,<<"parse_trans">>,<<"3.4.1">>},1},
  {<<"party_client">>,
   {git,"https://github.com/valitydev/party-client-erlang.git",
-       {ref,"31850a63f6c00da7e10897b23298ad38f9bf448d"}},
+       {ref,"602d4dc87b54d2bf899ae36462853f7d7eb014ae"}},
   0},
  {<<"payout_manager_proto">>,
   {git,"https://github.com/valitydev/payout-manager-proto.git",
