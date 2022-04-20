@@ -20,6 +20,7 @@
 -export([
     get_customer_ok_test/1,
     create_binding_ok_test/1,
+    create_binding_fail_test/1,
     create_binding_expired_test/1,
     get_bindings_ok_test/1,
     get_binding_ok_test/1,
@@ -48,6 +49,7 @@ customer_access_token_tests() ->
     [
         get_customer_ok_test,
         create_binding_ok_test,
+        create_binding_fail_test,
         create_binding_expired_test,
         get_bindings_ok_test,
         get_binding_ok_test,
@@ -162,7 +164,9 @@ create_binding_ok_test(Config) ->
         ],
         Config
     ),
-    PaymentToolToken = ?TEST_PAYMENT_TOKEN,
+    PaymentTool = {bank_card, ?BANK_CARD},
+    ValidUntil = capi_utils:deadline_from_timeout(10000),
+    PaymentToolToken = capi_crypto:encode_token(#{payment_tool => PaymentTool, valid_until => ValidUntil}),
     Req2 = #{
         <<"paymentResource">> => #{
             <<"paymentSession">> => ?TEST_PAYMENT_SESSION,
@@ -187,6 +191,24 @@ create_binding_expired_test(Config) ->
         <<"paymentResource">> => #{
             <<"paymentSession">> => ?TEST_PAYMENT_SESSION,
             <<"paymentToolToken">> => PaymentToolToken
+        }
+    },
+    Resp = capi_client_customers:create_binding(?config(context, Config), ?STRING, Req),
+    {error, {400, #{<<"code">> := <<"invalidPaymentToolToken">>}}} = Resp.
+
+-spec create_binding_fail_test(config()) -> _.
+create_binding_fail_test(Config) ->
+    _ = capi_ct_helper:mock_services(
+        [
+            {customer_management, fun('Get', _) -> {ok, ?CUSTOMER} end},
+            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
+        ],
+        Config
+    ),
+    Req = #{
+        <<"paymentResource">> => #{
+            <<"paymentSession">> => ?TEST_PAYMENT_SESSION,
+            <<"paymentToolToken">> => <<"wrongPaymentToolToken">>
         }
     },
     Resp = capi_client_customers:create_binding(?config(context, Config), ?STRING, Req),

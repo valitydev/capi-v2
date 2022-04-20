@@ -297,7 +297,7 @@ create_payment_ok_test(Config) ->
         ?STRING,
         Config
     ),
-    PaymentToolToken = get_encrypted_token(visa, ?EXP_DATE(2, 2020)),
+    PaymentToolToken = get_encrypted_token(<<"visa">>, ?EXP_DATE(2, 2020)),
     Req = ?PAYMENT_PARAMS(ExternalID, PaymentToolToken),
     {ok, #{
         <<"id">> := BenderKey,
@@ -383,7 +383,7 @@ create_payment_with_empty_cvv_ok_test(Config) ->
         ?STRING,
         Config
     ),
-    PaymentToolToken = get_encrypted_token(visa, ?EXP_DATE(1, 2020), true),
+    PaymentToolToken = get_encrypted_token(<<"visa">>, ?EXP_DATE(1, 2020), true),
     Req2 = #{
         <<"flow">> => #{<<"type">> => <<"PaymentFlowInstant">>},
         <<"payer">> => #{
@@ -464,8 +464,7 @@ create_payment_with_googlepay_encrypt_ok_test(Config) ->
                                             bank_card,
                                             #domain_BankCard{
                                                 is_cvv_empty = undefined,
-                                                token_provider_deprecated = undefined,
-                                                payment_system_deprecated = mastercard
+                                                payment_system = #domain_PaymentSystemRef{id = <<"mastercard">>}
                                             }
                                         }
                                     }
@@ -486,7 +485,7 @@ create_payment_with_googlepay_encrypt_ok_test(Config) ->
         ?STRING,
         Config
     ),
-    PaymentToolToken = get_encrypted_token(mastercard, ?EXP_DATE(1, 2020)),
+    PaymentToolToken = get_encrypted_token(<<"mastercard">>, ?EXP_DATE(1, 2020)),
     Req2 = #{
         <<"flow">> => #{<<"type">> => <<"PaymentFlowInstant">>},
         <<"payer">> => #{
@@ -666,7 +665,7 @@ create_first_recurrent_payment_ok_test(Config) ->
         ],
         Config
     ),
-    PaymentToolToken = get_encrypted_token(visa, ?EXP_DATE(1, 2020)),
+    PaymentToolToken = get_encrypted_token(<<"visa">>, ?EXP_DATE(1, 2020)),
     Req2 = #{
         <<"flow">> => #{<<"type">> => <<"PaymentFlowInstant">>},
         <<"makeRecurrent">> => true,
@@ -784,8 +783,8 @@ get_encrypted_token(PS, ExpDate) ->
 get_encrypted_token(PS, ExpDate, IsCvvEmpty) ->
     PaymentTool =
         {bank_card, #domain_BankCard{
-            token = ?TEST_PAYMENT_TOKEN(PS),
-            payment_system_deprecated = PS,
+            token = ?TEST_PAYMENT_TOKEN,
+            payment_system = #domain_PaymentSystemRef{id = PS},
             bin = <<"411111">>,
             last_digits = <<"1111">>,
             exp_date = ExpDate,

@@ -5,7 +5,6 @@
 
 -export([encode_contact_info/1]).
 -export([encode_client_info/1]).
--export([encode_payment_tool/1]).
 -export([encode_cash/1]).
 -export([encode_cash/2]).
 -export([encode_currency/1]).
@@ -39,59 +38,6 @@ encode_client_info(ClientInfo) ->
         ip_address = maps:get(<<"ip">>, ClientInfo)
     }.
 
--spec encode_payment_tool(request_data()) -> encode_data().
-encode_payment_tool(PaymentTool) ->
-    case PaymentTool of
-        #{<<"type">> := <<"bank_card">>} = Encoded ->
-            encode_bank_card(Encoded);
-        #{<<"type">> := <<"payment_terminal">>} = Encoded ->
-            encode_payment_terminal(Encoded);
-        #{<<"type">> := <<"digital_wallet">>} = Encoded ->
-            encode_digital_wallet(Encoded);
-        #{<<"type">> := <<"crypto_wallet">>} = Encoded ->
-            encode_crypto_wallet(Encoded);
-        #{<<"type">> := <<"mobile_commerce">>} = Encoded ->
-            encode_mobile_commerce(Encoded)
-    end.
-
-encode_bank_card(BankCard) ->
-    {PaymentSystemDeprecated, PaymentSystem} =
-        infer_legacy_and_dictionary_ids(
-            payment_system_legacy,
-            maps:get(<<"payment_system">>, BankCard)
-        ),
-
-    {PaymentTokenProvider, LegacyTokenProvider} =
-        infer_legacy_and_dictionary_ids(
-            payment_token_legacy,
-            genlib_map:get(<<"token_provider">>, BankCard)
-        ),
-
-    {bank_card, #domain_BankCard{
-        token = maps:get(<<"token">>, BankCard),
-        payment_system = PaymentSystem,
-        payment_system_deprecated = PaymentSystemDeprecated,
-        bin = maps:get(<<"bin">>, BankCard, <<>>),
-        last_digits = maps:get(<<"masked_pan">>, BankCard),
-        payment_token = PaymentTokenProvider,
-        token_provider_deprecated = LegacyTokenProvider,
-        issuer_country = encode_residence(genlib_map:get(<<"issuer_country">>, BankCard)),
-        bank_name = genlib_map:get(<<"bank_name">>, BankCard),
-        metadata = encode_bank_card_metadata(genlib_map:get(<<"metadata">>, BankCard)),
-        is_cvv_empty = encode_bank_card_cvv_flag(genlib_map:get(<<"is_cvv_empty">>, BankCard)),
-        tokenization_method = genlib_map:get(<<"tokenization_method">>, BankCard)
-    }}.
-
-encode_bank_card_cvv_flag(undefined) ->
-    undefined;
-encode_bank_card_cvv_flag(Flag) when is_binary(Flag) ->
-    erlang:binary_to_existing_atom(Flag, utf8).
-
-encode_bank_card_metadata(undefined) ->
-    undefined;
-encode_bank_card_metadata(Meta) ->
-    maps:map(fun(_, Data) -> capi_msgp_marshalling:marshal(Data) end, Meta).
-
 -spec encode_residence(binary() | undefined) -> atom().
 encode_residence(undefined) ->
     undefined;
@@ -100,52 +46,6 @@ encode_residence(Residence) when is_binary(Residence) ->
         {ok, EncodedResidence} -> EncodedResidence;
         {error, _} -> throw({encode_residence, invalid_residence})
     end.
-
-encode_payment_terminal(#{<<"terminal_type">> := Type}) ->
-    {LegacyTerminalProvider, PaymentService} =
-        infer_legacy_and_dictionary_ids(terminal_provider_legacy, Type),
-    {payment_terminal, #domain_PaymentTerminal{
-        payment_service = PaymentService,
-        terminal_type_deprecated = LegacyTerminalProvider
-    }}.
-
-encode_digital_wallet(#{<<"provider">> := Provider, <<"id">> := ID} = Wallet) ->
-    {LegacyDigitalWalletProvider, PaymentService} =
-        infer_legacy_and_dictionary_ids(payment_service_legacy, Provider),
-    {digital_wallet, #domain_DigitalWallet{
-        payment_service = PaymentService,
-        provider_deprecated = LegacyDigitalWalletProvider,
-        id = ID,
-        token = maps:get(<<"token">>, Wallet, undefined)
-    }}.
-
-encode_crypto_wallet(#{<<"crypto_currency">> := CryptoCurrency0}) ->
-    CryptoCurrency =
-        convert_crypto_currency_from_swag(CryptoCurrency0),
-
-    case infer_legacy_and_dictionary_ids(payment_service_legacy, CryptoCurrency) of
-        {LegacyCryptoCurrency, undefined} ->
-            {crypto_currency_deprecated, LegacyCryptoCurrency};
-        {_, CryptoCurrencyRef} ->
-            {crypto_currency, CryptoCurrencyRef}
-    end.
-
-convert_crypto_currency_from_swag(<<"bitcoinCash">>) ->
-    <<"bitcoin_cash">>;
-convert_crypto_currency_from_swag(CryptoCurrency) when is_binary(CryptoCurrency) ->
-    CryptoCurrency.
-
-encode_mobile_commerce(#{<<"phoneNumber">> := PhoneNumber, <<"operator">> := Operator}) ->
-    #{<<"cc">> := Cc, <<"ctn">> := Ctn} = PhoneNumber,
-    {LegacyOperator, OperatorRef} = infer_legacy_and_dictionary_ids(mobile_operator_legacy, Operator),
-    {mobile_commerce, #domain_MobileCommerce{
-        operator = OperatorRef,
-        operator_deprecated = LegacyOperator,
-        phone = #domain_MobilePhone{
-            cc = Cc,
-            ctn = Ctn
-        }
-    }}.
 
 -spec encode_cash(request_data()) -> encode_data().
 encode_cash(Params) ->
@@ -253,32 +153,3 @@ encode_stat_request(Dsl, ContinuationToken) when is_binary(Dsl) ->
         dsl = Dsl,
         continuation_token = ContinuationToken
     }.
-
-infer_legacy_and_dictionary_ids(ObjectVariant, ID) ->
-    {dmsl_domain_thrift, LegacyIDType} =
-        capi_domain:extract_type(
-            capi_domain:fetch_type_info(
-                'DomainObject',
-                [
-                    {variant, ObjectVariant},
-                    {field, ref},
-                    {field, id}
-                ]
-            )
-        ),
-
-    case capi_domain:encode_enum(LegacyIDType, ID) of
-        {ok, LegacyID} ->
-            DictionaryID = map_to_dictionary_id(ObjectVariant, LegacyID),
-            {LegacyID, DictionaryID};
-        {error, _} ->
-            DictionaryID = ID,
-            {undefined, DictionaryID}
-    end.
-
-map_to_dictionary_id(ObjectVariant, LegacyID) ->
-    try
-        capi_domain:map_to_dictionary_id(ObjectVariant, LegacyID)
-    catch
-        error:{no_mapping, _} -> undefined
-    end.
