@@ -25,6 +25,8 @@
     create_payment_ok_test/1,
     create_payment_expired_test/1,
     create_payment_qiwi_access_token_ok_test/1,
+    create_payment_crypto_ok_test/1,
+    create_payment_mobile_commerce_ok_test/1,
     create_payment_with_empty_cvv_ok_test/1,
     create_payment_with_googlepay_encrypt_ok_test/1,
     get_payments_ok_test/1,
@@ -76,6 +78,8 @@ invoice_access_token_tests() ->
         create_payment_with_googlepay_encrypt_ok_test,
         get_payments_ok_test,
         create_payment_qiwi_access_token_ok_test,
+        create_payment_crypto_ok_test,
+        create_payment_mobile_commerce_ok_test,
         create_first_recurrent_payment_ok_test,
         create_second_recurrent_payment_ok_test
     ].
@@ -402,6 +406,7 @@ create_payment_qiwi_access_token_ok_test(Config) ->
     Provider = <<"qiwi">>,
     WalletID = <<"+79876543210">>,
     Token = <<"blarg">>,
+    DigitalWallet = ?DIGITAL_WALLET(Provider, WalletID, Token),
     _ = capi_ct_helper:mock_services(
         [
             {invoicing, fun
@@ -411,10 +416,7 @@ create_payment_qiwi_access_token_ok_test(Config) ->
                     ?assertMatch(
                         {payment_resource, #payproc_PaymentResourcePayerParams{
                             resource = #domain_DisposablePaymentResource{
-                                payment_tool = {
-                                    digital_wallet,
-                                    ?DIGITAL_WALLET(Provider, WalletID, Token)
-                                }
+                                payment_tool = {digital_wallet, DigitalWallet}
                             }
                         }},
                         Params#payproc_InvoicePaymentParams.payer
@@ -432,7 +434,91 @@ create_payment_qiwi_access_token_ok_test(Config) ->
         ?STRING,
         Config
     ),
-    PaymentToolToken = get_encrypted_token({Provider, WalletID, Token}),
+    PaymentToolToken = encrypt_payment_tool({digital_wallet, DigitalWallet}),
+    Req = #{
+        <<"flow">> => #{<<"type">> => <<"PaymentFlowInstant">>},
+        <<"payer">> => #{
+            <<"payerType">> => <<"PaymentResourcePayer">>,
+            <<"paymentSession">> => ?TEST_PAYMENT_SESSION,
+            <<"paymentToolToken">> => PaymentToolToken,
+            <<"contactInfo">> => #{<<"email">> => <<"bla@bla.ru">>}
+        }
+    },
+    {ok, _} = capi_client_payments:create_payment(?config(context, Config), Req, ?STRING).
+
+-spec create_payment_crypto_ok_test(_) -> _.
+create_payment_crypto_ok_test(Config) ->
+    CryptoCurrency = ?CRYPTO_CURRENCY_BTC,
+    _ = capi_ct_helper:mock_services(
+        [
+            {invoicing, fun
+                ('Get', _) ->
+                    {ok, ?PAYPROC_INVOICE};
+                ('StartPayment', {_UserInfo, _InvoiceID, Params}) ->
+                    ?assertMatch(
+                        {payment_resource, #payproc_PaymentResourcePayerParams{
+                            resource = #domain_DisposablePaymentResource{
+                                payment_tool = {crypto_currency, CryptoCurrency}
+                            }
+                        }},
+                        Params#payproc_InvoicePaymentParams.payer
+                    ),
+                    {ok, ?PAYPROC_PAYMENT}
+            end},
+            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_invoice_op_ctx(
+        <<"CreatePayment">>,
+        ?STRING,
+        ?STRING,
+        ?STRING,
+        Config
+    ),
+    PaymentToolToken = encrypt_payment_tool({crypto_currency, ?CRYPTO_CURRENCY_BTC}),
+    Req = #{
+        <<"flow">> => #{<<"type">> => <<"PaymentFlowInstant">>},
+        <<"payer">> => #{
+            <<"payerType">> => <<"PaymentResourcePayer">>,
+            <<"paymentSession">> => ?TEST_PAYMENT_SESSION,
+            <<"paymentToolToken">> => PaymentToolToken,
+            <<"contactInfo">> => #{<<"email">> => <<"bla@bla.ru">>}
+        }
+    },
+    {ok, _} = capi_client_payments:create_payment(?config(context, Config), Req, ?STRING).
+
+-spec create_payment_mobile_commerce_ok_test(_) -> _.
+create_payment_mobile_commerce_ok_test(Config) ->
+    MobileCommerce = ?MOBILE_COMMERCE(<<"mts">>, <<"123">>, <<"4567890">>),
+    _ = capi_ct_helper:mock_services(
+        [
+            {invoicing, fun
+                ('Get', _) ->
+                    {ok, ?PAYPROC_INVOICE};
+                ('StartPayment', {_UserInfo, _InvoiceID, Params}) ->
+                    ?assertMatch(
+                        {payment_resource, #payproc_PaymentResourcePayerParams{
+                            resource = #domain_DisposablePaymentResource{
+                                payment_tool = {mobile_commerce, MobileCommerce}
+                            }
+                        }},
+                        Params#payproc_InvoicePaymentParams.payer
+                    ),
+                    {ok, ?PAYPROC_PAYMENT}
+            end},
+            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_invoice_op_ctx(
+        <<"CreatePayment">>,
+        ?STRING,
+        ?STRING,
+        ?STRING,
+        Config
+    ),
+    PaymentToolToken = encrypt_payment_tool({mobile_commerce, MobileCommerce}),
     Req = #{
         <<"flow">> => #{<<"type">> => <<"PaymentFlowInstant">>},
         <<"payer">> => #{
@@ -767,15 +853,6 @@ get_failed_payment_with_invalid_cvv(Config) ->
     ),
     % mock_services([{invoicing, fun('GetPayment', _) -> {ok, ?PAYPROC_PAYMENT} end}], Config),
     capi_client_payments:get_payment_by_id(?config(context, Config), ?STRING, ?STRING).
-
-get_encrypted_token({Provider, ID, TokenID}) ->
-    PaymentTool =
-        {digital_wallet, #domain_DigitalWallet{
-            payment_service = #domain_PaymentServiceRef{id = Provider},
-            id = ID,
-            token = TokenID
-        }},
-    encrypt_payment_tool(PaymentTool).
 
 get_encrypted_token(PS, ExpDate) ->
     get_encrypted_token(PS, ExpDate, undefined).

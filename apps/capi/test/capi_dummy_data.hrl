@@ -215,6 +215,16 @@
     token = Token
 }).
 
+-define(MOBILE_COMMERCE(Operator, CC, CTN), #domain_MobileCommerce{
+    operator = #domain_MobileOperatorRef{id = Operator},
+    phone = #domain_MobilePhone{
+        cc = CC,
+        ctn = CTN
+    }
+}).
+
+-define(CRYPTO_CURRENCY_BTC, #domain_CryptoCurrencyRef{id = <<"bitcoin">>}).
+
 -define(CONTACT_INFO, #domain_ContactInfo{
     phone_number = ?STRING,
     email = <<"test@test.ru">>
@@ -1220,7 +1230,7 @@
                         }}
                 },
                 #domain_PaymentMethodRef{
-                    id = {crypto_currency, #domain_CryptoCurrencyRef{id = <<"bitcoin">>}}
+                    id = {crypto_currency, ?CRYPTO_CURRENCY_BTC}
                 },
                 #domain_PaymentMethodRef{
                     id = {crypto_currency, #domain_CryptoCurrencyRef{id = <<"bitcoin_cash">>}}
