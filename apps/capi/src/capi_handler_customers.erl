@@ -291,7 +291,7 @@ generate_customer_id(OperationID, PartyID, CustomerParams, #{woody_context := Wo
     ExternalID = maps:get(<<"externalID">>, CustomerParams, undefined),
     IdempKey = {OperationID, PartyID, ExternalID},
     Identity = capi_bender:make_identity(capi_feature_schemas:customer(), CustomerParams),
-    capi_bender:try_gen_snowflake(IdempKey, Identity, WoodyContext).
+    capi_bender:gen_snowflake(IdempKey, Identity, WoodyContext).
 
 encode_customer_params(CustomerID, PartyID, Params) ->
     #payproc_CustomerParams{
@@ -329,12 +329,12 @@ generate_binding_ids(OperationID, CustomerBindingParams, Context = #{woody_conte
     ),
 
     OperationIDBin = erlang:atom_to_binary(OperationID),
-    CustomerBindingID = capi_bender:try_gen_snowflake(
+    CustomerBindingID = capi_bender:gen_snowflake(
         {<<OperationIDBin/binary, "+CustomerBindingID">>, UserID, ExternalID},
         Identity,
         WoodyContext
     ),
-    RecPaymentToolID = capi_bender:try_gen_snowflake(
+    RecPaymentToolID = capi_bender:gen_snowflake(
         {<<OperationIDBin/binary, "+RecPaymentToolID">>, UserID, ExternalID},
         Identity,
         WoodyContext

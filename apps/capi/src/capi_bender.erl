@@ -27,6 +27,8 @@
 -type external_id_conflict() :: {external_id_conflict, id(), difference(), identity_schema()}.
 -type generation_error() :: external_id_conflict().
 
+-type throws(_T) :: no_return().
+
 -export_type([id/0]).
 -export_type([external_id/0]).
 -export_type([issuer_id/0]).
@@ -43,16 +45,11 @@
 
 -export([gen_snowflake/3]).
 -export([gen_snowflake/4]).
--export([try_gen_snowflake/3]).
--export([try_gen_snowflake/4]).
 -export([gen_sequence/4]).
 -export([gen_sequence/5]).
 -export([gen_sequence/6]).
--export([try_gen_sequence/6]).
 -export([gen_constant/4]).
 -export([gen_constant/5]).
--export([try_gen_constant/4]).
--export([try_gen_constant/5]).
 -export([make_identity/2]).
 -export([get_internal_id/2]).
 
@@ -61,30 +58,19 @@
 -define(SCHEMA_VER3, 3).
 
 -spec gen_snowflake(idempotent_key_params() | undefined, identity(), woody_context()) ->
-    {ok, id()} | {ok, id(), context_data()} | {error, generation_error()}.
+    id() | throws(generation_error()).
 gen_snowflake(IdempotentKey, Identity, WoodyContext) ->
     Context = #{},
     gen_snowflake(IdempotentKey, Identity, WoodyContext, Context).
 
 -spec gen_snowflake(idempotent_key_params() | undefined, identity(), woody_context(), context_data()) ->
-    {ok, id()} | {ok, id(), context_data()} | {error, generation_error()}.
+    id() | throws(generation_error()).
 gen_snowflake(IdempotentKey, Identity, WoodyContext, Context) ->
-    IdSchema = {snowflake, #bender_SnowflakeSchema{}},
-    generate_id(IdSchema, IdempotentKey, Identity, WoodyContext, Context).
-
--spec try_gen_snowflake(idempotent_key_params() | undefined, identity(), woody_context()) -> id().
-try_gen_snowflake(IdempotentKey, Identity, WoodyContext) ->
-    Context = #{},
-    try_gen_snowflake(IdempotentKey, Identity, WoodyContext, Context).
-
--spec try_gen_snowflake(idempotent_key_params() | undefined, identity(), woody_context(), context_data()) ->
-    id().
-try_gen_snowflake(IdempotentKey, Identity, WoodyContext, Context) ->
     IdSchema = {snowflake, #bender_SnowflakeSchema{}},
     try_generate_id(IdSchema, IdempotentKey, Identity, WoodyContext, Context).
 
 -spec gen_sequence(idempotent_key_params() | undefined, identity(), sequence_id(), woody_context()) ->
-    {ok, id()} | {ok, id(), context_data()} | {error, generation_error()}.
+    id() | throws(generation_error()).
 gen_sequence(IdempotentKey, Identity, SequenceID, WoodyContext) ->
     SequenceParams = #{},
     gen_sequence(IdempotentKey, Identity, SequenceID, SequenceParams, WoodyContext).
@@ -95,7 +81,7 @@ gen_sequence(IdempotentKey, Identity, SequenceID, WoodyContext) ->
     sequence_id(),
     sequence_params(),
     woody_context()
-) -> {ok, id()} | {ok, id(), context_data()} | {error, generation_error()}.
+) -> id() | throws(generation_error()).
 gen_sequence(IdempotentKey, Identity, SequenceID, SequenceParams, WoodyContext) ->
     Context = #{},
     gen_sequence(IdempotentKey, Identity, SequenceID, SequenceParams, WoodyContext, Context).
@@ -107,43 +93,20 @@ gen_sequence(IdempotentKey, Identity, SequenceID, SequenceParams, WoodyContext) 
     sequence_params(),
     woody_context(),
     context_data()
-) -> {ok, id()} | {ok, id(), context_data()} | {error, generation_error()}.
+) -> id() | throws(generation_error()).
 gen_sequence(IdempotentKey, Identity, SequenceID, SequenceParams, WoodyContext, Context) ->
     IdSchema = build_sequence_schema(SequenceID, SequenceParams),
-    generate_id(IdSchema, IdempotentKey, Identity, WoodyContext, Context).
-
--spec try_gen_sequence(
-    idempotent_key_params() | undefined,
-    identity(),
-    sequence_id(),
-    sequence_params(),
-    woody_context(),
-    context_data()
-) -> id() | no_return().
-try_gen_sequence(IdempotentKey, Identity, SequenceID, SequenceParams, WoodyContext, ContextData) ->
-    IdSchema = build_sequence_schema(SequenceID, SequenceParams),
-    try_generate_id(IdSchema, IdempotentKey, Identity, WoodyContext, ContextData).
+    try_generate_id(IdSchema, IdempotentKey, Identity, WoodyContext, Context).
 
 -spec gen_constant(idempotent_key_params(), identity(), constant_id(), woody_context()) ->
-    {ok, id()} | {ok, id(), context_data()} | {error, generation_error()}.
+    id() | throws(generation_error()).
 gen_constant(IdempotentKey, Identity, ConstantID, WoodyContext) ->
     Context = #{},
     gen_constant(IdempotentKey, Identity, ConstantID, WoodyContext, Context).
 
 -spec gen_constant(idempotent_key_params(), identity(), constant_id(), woody_context(), context_data()) ->
-    {ok, id()} | {ok, id(), context_data()} | {error, generation_error()}.
+    id() | throws(generation_error()).
 gen_constant(IdempotentKey, Identity, ConstantID, WoodyContext, Context) ->
-    IdSchema = {constant, #bender_ConstantSchema{internal_id = ConstantID}},
-    generate_id(IdSchema, IdempotentKey, Identity, WoodyContext, Context).
-
--spec try_gen_constant(idempotent_key_params(), identity(), constant_id(), woody_context()) -> id().
-try_gen_constant(IdempotentKey, Identity, ConstantID, WoodyContext) ->
-    Context = #{},
-    try_gen_constant(IdempotentKey, Identity, ConstantID, WoodyContext, Context).
-
--spec try_gen_constant(idempotent_key_params(), identity(), constant_id(), woody_context(), context_data()) ->
-    id().
-try_gen_constant(IdempotentKey, Identity, ConstantID, WoodyContext, Context) ->
     IdSchema = {constant, #bender_ConstantSchema{internal_id = ConstantID}},
     try_generate_id(IdSchema, IdempotentKey, Identity, WoodyContext, Context).
 
