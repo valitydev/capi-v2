@@ -57,11 +57,7 @@ general_error(Code, Message) ->
 logic_error('invalidPaymentToolToken') ->
     logic_error('invalidPaymentToolToken', <<"Specified payment tool token is invalid">>).
 
--spec logic_error
-    (term(), io_lib:chars() | binary()) -> response();
-    (term(), {binary(), binary() | undefined}) -> response().
-logic_error('externalIDConflict', {ID, undefined}) ->
-    logic_error('externalIDConflict', {ID, <<"undefined">>});
+-spec logic_error(term(), binary() | {binary(), binary()}) -> response().
 logic_error('externalIDConflict', {ID, ExternalID}) ->
     Data = #{
         <<"externalID">> => ExternalID,
