@@ -216,9 +216,6 @@ create_payment_ok_test(Config) ->
             [<<"metadata">>, <<"bla">>, 0],
             [<<"payer">>, <<"contactInfo">>],
             [<<"payer">>, <<"paymentSession">>],
-            [<<"payer">>, <<"paymentTool">>, <<"bin">>],
-            [<<"payer">>, <<"paymentTool">>, <<"cardholder_name">>],
-            [<<"payer">>, <<"paymentTool">>, <<"masked_pan">>],
             [<<"payer">>, <<"paymentTool">>, <<"payment_system">>],
             [<<"payer">>, <<"paymentToolToken">>],
             [<<"processingDeadline">>]
@@ -703,8 +700,6 @@ create_customer_binding_ok_test(Config) ->
     ?assertMatch(
         {{ok, _}, [
             [<<"externalID">>],
-            [<<"paymentResource">>, <<"paymentTool">>, <<"bin">>],
-            [<<"paymentResource">>, <<"paymentTool">>, <<"masked_pan">>],
             [<<"paymentResource">>, <<"paymentTool">>, <<"payment_system">>]
         ]},
         BindingResult1

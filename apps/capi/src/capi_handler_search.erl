@@ -222,7 +222,6 @@ decode_stat_payer(
 ) ->
     #{
         <<"payerType">> => <<"CustomerPayer">>,
-        <<"paymentToolToken">> => decode_stat_payment_tool_token(PaymentTool),
         <<"paymentToolDetails">> => decode_stat_payment_tool_details(PaymentTool),
         <<"customerID">> => ID
     };
@@ -236,7 +235,6 @@ decode_stat_payer(
 ) ->
     #{
         <<"payerType">> => <<"RecurrentPayer">>,
-        <<"paymentToolToken">> => decode_stat_payment_tool_token(PaymentTool),
         <<"paymentToolDetails">> => decode_stat_payment_tool_details(PaymentTool),
         <<"contactInfo">> => genlib_map:compact(#{
             <<"phoneNumber">> => PhoneNumber,
@@ -256,7 +254,6 @@ decode_stat_payer(
 ) ->
     genlib_map:compact(#{
         <<"payerType">> => <<"PaymentResourcePayer">>,
-        <<"paymentToolToken">> => decode_stat_payment_tool_token(PaymentTool),
         <<"paymentToolDetails">> => decode_stat_payment_tool_details(PaymentTool),
         <<"paymentSession">> => PaymentSession,
         <<"clientInfo">> => genlib_map:compact(#{
@@ -295,80 +292,6 @@ decode_stat_payment_status({Status, StatusInfo}, Context) ->
         <<"status">> => genlib:to_binary(Status),
         <<"error">> => Error
     }.
-
-decode_stat_payment_tool_token({bank_card, BankCard}) ->
-    decode_bank_card(BankCard);
-decode_stat_payment_tool_token({payment_terminal, PaymentTerminal}) ->
-    decode_payment_terminal(PaymentTerminal);
-decode_stat_payment_tool_token({digital_wallet, DigitalWallet}) ->
-    decode_digital_wallet(DigitalWallet);
-decode_stat_payment_tool_token({crypto_currency, CryptoCurrency}) ->
-    decode_crypto_wallet(CryptoCurrency);
-decode_stat_payment_tool_token({mobile_commerce, MobileCommerce}) ->
-    decode_mobile_commerce(MobileCommerce).
-
-decode_bank_card(#merchstat_BankCard{
-    'token' = Token,
-    'payment_system' = PaymentSystem,
-    'bin' = Bin,
-    'masked_pan' = MaskedPan,
-    'payment_token' = BankCardTokenServiceRef
-}) ->
-    capi_utils:map_to_base64url(
-        genlib_map:compact(#{
-            <<"type">> => <<"bank_card">>,
-            <<"token">> => Token,
-            <<"payment_system">> => capi_handler_decoder_utils:decode_payment_system_ref(PaymentSystem),
-            <<"bin">> => Bin,
-            <<"masked_pan">> => MaskedPan,
-            <<"token_provider">> => capi_utils:maybe(
-                BankCardTokenServiceRef,
-                fun capi_handler_decoder_utils:decode_bank_card_token_service_ref/1
-            ),
-            <<"issuer_country">> => undefined,
-            <<"bank_name">> => undefined,
-            <<"metadata">> => undefined
-        })
-    ).
-
-decode_payment_terminal(#merchstat_PaymentTerminal{
-    terminal_type = Type
-}) ->
-    capi_utils:map_to_base64url(#{
-        <<"type">> => <<"payment_terminal">>,
-        <<"terminal_type">> => Type
-    }).
-
-decode_digital_wallet(#merchstat_DigitalWallet{
-    provider = Provider,
-    id = ID
-}) ->
-    capi_utils:map_to_base64url(#{
-        <<"type">> => <<"digital_wallet">>,
-        <<"provider">> => atom_to_binary(Provider, utf8),
-        <<"id">> => ID
-    }).
-
-decode_crypto_wallet(CryptoCurrency) ->
-    capi_utils:map_to_base64url(#{
-        <<"type">> => <<"crypto_wallet">>,
-        <<"crypto_currency">> => capi_handler_decoder_utils:convert_crypto_currency_to_swag(CryptoCurrency)
-    }).
-
-decode_mobile_commerce(MobileCommerce) ->
-    #merchstat_MobileCommerce{
-        operator = Operator,
-        phone = #merchstat_MobilePhone{
-            cc = Cc,
-            ctn = Ctn
-        }
-    } = MobileCommerce,
-    Phone = #{<<"cc">> => Cc, <<"ctn">> => Ctn},
-    capi_utils:map_to_base64url(#{
-        <<"type">> => <<"mobile_commerce">>,
-        <<"phone">> => Phone,
-        <<"operator">> => atom_to_binary(Operator, utf8)
-    }).
 
 decode_stat_payment_tool_details({bank_card, V}) ->
     decode_bank_card_details(V, #{<<"detailsType">> => <<"PaymentToolDetailsBankCard">>});
