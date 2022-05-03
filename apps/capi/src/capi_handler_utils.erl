@@ -3,6 +3,7 @@
 -include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 
+-export([conflict_error/1]).
 -export([general_error/2]).
 -export([logic_error/1]).
 -export([logic_error/2]).
@@ -49,6 +50,21 @@
     | dmsl_domain_thrift:'InvoiceTemplate'().
 -type token_source() :: capi_auth:token_spec() | entity().
 
+-spec conflict_error(binary() | {binary(), binary()}) -> response().
+conflict_error({ID, ExternalID}) ->
+    Data = #{
+        <<"externalID">> => ExternalID,
+        <<"id">> => ID,
+        <<"message">> => <<"This 'externalID' has been used by another request">>
+    },
+    create_error_resp(409, Data);
+conflict_error(ExternalID) ->
+    Data = #{
+        <<"externalID">> => ExternalID,
+        <<"message">> => <<"This 'externalID' has been used by another request">>
+    },
+    create_error_resp(409, Data).
+
 -spec general_error(cowboy:http_status(), binary()) -> response().
 general_error(Code, Message) ->
     create_error_resp(Code, #{<<"message">> => genlib:to_binary(Message)}).
@@ -57,20 +73,7 @@ general_error(Code, Message) ->
 logic_error('invalidPaymentToolToken') ->
     logic_error('invalidPaymentToolToken', <<"Specified payment tool token is invalid">>).
 
--spec logic_error(term(), binary() | {binary(), binary()}) -> response().
-logic_error('externalIDConflict', {ID, ExternalID}) ->
-    Data = #{
-        <<"externalID">> => ExternalID,
-        <<"id">> => ID,
-        <<"message">> => <<"This 'externalID' has been used by another request">>
-    },
-    create_error_resp(409, Data);
-logic_error('externalIDConflict', ExternalID) ->
-    Data = #{
-        <<"externalID">> => ExternalID,
-        <<"message">> => <<"This 'externalID' has been used by another request">>
-    },
-    create_error_resp(409, Data);
+-spec logic_error(term(), iodata()) -> response().
 logic_error(Code, Message) ->
     Data = #{<<"code">> => genlib:to_binary(Code), <<"message">> => genlib:to_binary(Message)},
     create_error_resp(400, Data).

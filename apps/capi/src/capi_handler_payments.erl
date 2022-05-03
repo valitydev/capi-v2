@@ -6,7 +6,7 @@
 
 -export([prepare/3]).
 
--import(capi_handler_utils, [general_error/2, logic_error/1, logic_error/2]).
+-import(capi_handler_utils, [general_error/2, logic_error/1, logic_error/2, conflict_error/1]).
 
 -define(DEFAULT_PROCESSING_DEADLINE, <<"30m">>).
 
@@ -60,7 +60,7 @@ prepare(OperationID = 'CreatePayment', Req, Context) ->
             throw:invalid_processing_deadline ->
                 {ok, logic_error('invalidProcessingDeadline', <<"Specified processing deadline is invalid">>)};
             throw:{external_id_conflict, PaymentID, ExternalID, _Schema} ->
-                {ok, logic_error('externalIDConflict', {PaymentID, ExternalID})}
+                {ok, conflict_error({PaymentID, ExternalID})}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -307,7 +307,7 @@ prepare(OperationID = 'CreateRefund', Req, Context) ->
             throw:invoice_cart_empty ->
                 {ok, logic_error('invalidInvoiceCart', <<"Wrong size. Path to item: cart">>)};
             throw:{external_id_conflict, RefundID, ExternalID, _Schema} ->
-                {ok, logic_error('externalIDConflict', {RefundID, ExternalID})};
+                {ok, conflict_error({RefundID, ExternalID})};
             throw:allocation_duplicate ->
                 {ok, logic_error('invalidAllocation', <<"Duplicate shop">>)};
             throw:allocation_wrong_cart ->

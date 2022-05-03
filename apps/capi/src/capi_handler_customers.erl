@@ -6,7 +6,13 @@
 
 -export([prepare/3]).
 
--import(capi_handler_utils, [general_error/2, logic_error/1, logic_error/2, map_service_result/1]).
+-import(capi_handler_utils, [
+    general_error/2,
+    logic_error/1,
+    logic_error/2,
+    conflict_error/1,
+    map_service_result/1
+]).
 
 -spec prepare(
     OperationID :: capi_handler:operation_id(),
@@ -45,7 +51,7 @@ prepare('CreateCustomer' = OperationID, Req, Context) ->
             end
         catch
             throw:{external_id_conflict, ID, UsedExternalID, _Schema} ->
-                {ok, logic_error('externalIDConflict', {ID, UsedExternalID})}
+                {ok, conflict_error({ID, UsedExternalID})}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -165,7 +171,7 @@ prepare('CreateBinding' = OperationID, Req, Context) ->
             {error, invalid_payment_session} ->
                 {ok, logic_error('invalidPaymentSession', <<"Specified payment session is invalid">>)};
             {error, {external_id_conflict, ID, UsedExternalID, _Schema}} ->
-                {ok, logic_error('externalIDConflict', {ID, UsedExternalID})}
+                {ok, conflict_error({ID, UsedExternalID})}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};

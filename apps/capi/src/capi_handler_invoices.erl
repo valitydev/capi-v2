@@ -6,7 +6,7 @@
 
 -export([prepare/3]).
 
--import(capi_handler_utils, [general_error/2, logic_error/2, map_service_result/1]).
+-import(capi_handler_utils, [general_error/2, logic_error/2, conflict_error/1, map_service_result/1]).
 
 -spec prepare(
     OperationID :: capi_handler:operation_id(),
@@ -61,7 +61,7 @@ prepare('CreateInvoice' = OperationID, Req, Context) ->
             throw:invalid_invoice_cost ->
                 {ok, logic_error('invalidInvoiceCost', <<"Invalid invoice amount">>)};
             throw:{external_id_conflict, InvoiceID, ExternalID, _Schema} ->
-                {ok, logic_error('externalIDConflict', {InvoiceID, ExternalID})};
+                {ok, conflict_error({InvoiceID, ExternalID})};
             throw:allocation_wrong_cart ->
                 {ok, logic_error('invalidAllocation', <<"Wrong cart">>)};
             throw:allocation_duplicate ->

@@ -7,7 +7,7 @@
 
 -export([prepare/3]).
 
--import(capi_handler_utils, [general_error/2, logic_error/2, map_service_result/1]).
+-import(capi_handler_utils, [general_error/2, logic_error/2, conflict_error/1, map_service_result/1]).
 
 -spec prepare(
     OperationID :: capi_handler:operation_id(),
@@ -53,7 +53,7 @@ prepare('CreateInvoiceTemplate' = OperationID, Req, Context) ->
             throw:zero_invoice_lifetime ->
                 {ok, logic_error('invalidRequest', <<"Lifetime cannot be zero">>)};
             throw:{external_id_conflict, ID, UsedExternalID, _Schema} ->
-                {ok, logic_error('externalIDConflict', {ID, UsedExternalID})}
+                {ok, conflict_error({ID, UsedExternalID})}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -185,7 +185,7 @@ prepare('CreateInvoiceWithTemplate' = OperationID, Req, Context) ->
             throw:{bad_invoice_params, amount_no_currency} ->
                 {ok, logic_error('invalidRequest', <<"Currency is required for the amount">>)};
             throw:{external_id_conflict, InvoiceID, ExternalID, _Schema} ->
-                {ok, logic_error('externalIDConflict', {InvoiceID, ExternalID})}
+                {ok, conflict_error({InvoiceID, ExternalID})}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
