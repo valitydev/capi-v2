@@ -351,55 +351,9 @@ create_payment_expired_test(Config) ->
 
 -spec create_payment_with_empty_cvv_ok_test(config()) -> _.
 create_payment_with_empty_cvv_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {invoicing, fun
-                ('Get', _) ->
-                    {ok, ?PAYPROC_INVOICE};
-                (
-                    'StartPayment',
-                    {
-                        _UserInfo,
-                        _InvoiceID,
-                        #payproc_InvoicePaymentParams{
-                            payer =
-                                {payment_resource, #payproc_PaymentResourcePayerParams{
-                                    resource = #domain_DisposablePaymentResource{
-                                        payment_tool = {
-                                            bank_card,
-                                            #domain_BankCard{is_cvv_empty = true}
-                                        }
-                                    }
-                                }}
-                        }
-                    }
-                ) ->
-                    {ok, ?PAYPROC_PAYMENT}
-            end},
-            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_invoice_op_ctx(
-        <<"CreatePayment">>,
-        ?STRING,
-        ?STRING,
-        ?STRING,
-        Config
-    ),
-    PaymentToolToken = get_encrypted_token(<<"visa">>, ?EXP_DATE(1, 2020), true),
-    Req2 = #{
-        <<"flow">> => #{<<"type">> => <<"PaymentFlowInstant">>},
-        <<"payer">> => #{
-            <<"payerType">> => <<"PaymentResourcePayer">>,
-            <<"paymentSession">> => ?TEST_PAYMENT_SESSION,
-            <<"paymentToolToken">> => PaymentToolToken,
-            <<"contactInfo">> => #{
-                <<"email">> => <<"bla@bla.ru">>
-            }
-        }
-    },
-    {ok, _} = capi_client_payments:create_payment(?config(context, Config), Req2, ?STRING).
+    BankCard = ?BANK_CARD(<<"visa">>, ?EXP_DATE(1, 2020), <<"CARD HODLER">>),
+    BankCardNoCVV = BankCard#domain_BankCard{is_cvv_empty = true},
+    {ok, _} = create_payment_w_payment_tool({bank_card, BankCardNoCVV}, Config).
 
 -spec create_payment_qiwi_access_token_ok_test(_) -> _.
 create_payment_qiwi_access_token_ok_test(Config) ->
@@ -407,90 +361,20 @@ create_payment_qiwi_access_token_ok_test(Config) ->
     WalletID = <<"+79876543210">>,
     Token = <<"blarg">>,
     DigitalWallet = ?DIGITAL_WALLET(Provider, WalletID, Token),
-    _ = capi_ct_helper:mock_services(
-        [
-            {invoicing, fun
-                ('Get', _) ->
-                    {ok, ?PAYPROC_INVOICE};
-                ('StartPayment', {_UserInfo, _InvoiceID, Params}) ->
-                    ?assertMatch(
-                        {payment_resource, #payproc_PaymentResourcePayerParams{
-                            resource = #domain_DisposablePaymentResource{
-                                payment_tool = {digital_wallet, DigitalWallet}
-                            }
-                        }},
-                        Params#payproc_InvoicePaymentParams.payer
-                    ),
-                    {ok, ?PAYPROC_PAYMENT}
-            end},
-            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_invoice_op_ctx(
-        <<"CreatePayment">>,
-        ?STRING,
-        ?STRING,
-        ?STRING,
-        Config
-    ),
-    PaymentToolToken = encrypt_payment_tool({digital_wallet, DigitalWallet}),
-    Req = #{
-        <<"flow">> => #{<<"type">> => <<"PaymentFlowInstant">>},
-        <<"payer">> => #{
-            <<"payerType">> => <<"PaymentResourcePayer">>,
-            <<"paymentSession">> => ?TEST_PAYMENT_SESSION,
-            <<"paymentToolToken">> => PaymentToolToken,
-            <<"contactInfo">> => #{<<"email">> => <<"bla@bla.ru">>}
-        }
-    },
-    {ok, _} = capi_client_payments:create_payment(?config(context, Config), Req, ?STRING).
+    {ok, _} = create_payment_w_payment_tool({digital_wallet, DigitalWallet}, Config).
 
 -spec create_payment_crypto_ok_test(_) -> _.
 create_payment_crypto_ok_test(Config) ->
-    CryptoCurrency = ?CRYPTO_CURRENCY_BTC,
-    _ = capi_ct_helper:mock_services(
-        [
-            {invoicing, fun
-                ('Get', _) ->
-                    {ok, ?PAYPROC_INVOICE};
-                ('StartPayment', {_UserInfo, _InvoiceID, Params}) ->
-                    ?assertMatch(
-                        {payment_resource, #payproc_PaymentResourcePayerParams{
-                            resource = #domain_DisposablePaymentResource{
-                                payment_tool = {crypto_currency, CryptoCurrency}
-                            }
-                        }},
-                        Params#payproc_InvoicePaymentParams.payer
-                    ),
-                    {ok, ?PAYPROC_PAYMENT}
-            end},
-            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_invoice_op_ctx(
-        <<"CreatePayment">>,
-        ?STRING,
-        ?STRING,
-        ?STRING,
-        Config
-    ),
-    PaymentToolToken = encrypt_payment_tool({crypto_currency, ?CRYPTO_CURRENCY_BTC}),
-    Req = #{
-        <<"flow">> => #{<<"type">> => <<"PaymentFlowInstant">>},
-        <<"payer">> => #{
-            <<"payerType">> => <<"PaymentResourcePayer">>,
-            <<"paymentSession">> => ?TEST_PAYMENT_SESSION,
-            <<"paymentToolToken">> => PaymentToolToken,
-            <<"contactInfo">> => #{<<"email">> => <<"bla@bla.ru">>}
-        }
-    },
-    {ok, _} = capi_client_payments:create_payment(?config(context, Config), Req, ?STRING).
+    {ok, _} = create_payment_w_payment_tool({crypto_currency, ?CRYPTO_CURRENCY_BTC}, Config).
 
 -spec create_payment_mobile_commerce_ok_test(_) -> _.
 create_payment_mobile_commerce_ok_test(Config) ->
     MobileCommerce = ?MOBILE_COMMERCE(<<"mts">>, <<"123">>, <<"4567890">>),
+    {ok, _} = create_payment_w_payment_tool({mobile_commerce, MobileCommerce}, Config).
+
+-spec create_payment_w_payment_tool(PaymentTool, config()) -> _ when
+    PaymentTool :: dmsl_domain_thrift:'PaymentTool'().
+create_payment_w_payment_tool(PaymentTool, Config) ->
     _ = capi_ct_helper:mock_services(
         [
             {invoicing, fun
@@ -500,35 +384,30 @@ create_payment_mobile_commerce_ok_test(Config) ->
                     ?assertMatch(
                         {payment_resource, #payproc_PaymentResourcePayerParams{
                             resource = #domain_DisposablePaymentResource{
-                                payment_tool = {mobile_commerce, MobileCommerce}
+                                payment_tool = PaymentTool
                             }
                         }},
                         Params#payproc_InvoicePaymentParams.payer
                     ),
                     {ok, ?PAYPROC_PAYMENT}
             end},
-            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
+            {generator, fun('GenerateID', _) ->
+                capi_ct_helper_bender:generate_id(?STRING)
+            end}
         ],
         Config
     ),
-    _ = capi_ct_helper_bouncer:mock_assert_invoice_op_ctx(
-        <<"CreatePayment">>,
-        ?STRING,
-        ?STRING,
-        ?STRING,
-        Config
-    ),
-    PaymentToolToken = encrypt_payment_tool({mobile_commerce, MobileCommerce}),
+    _ = capi_ct_helper_bouncer:mock_assert_invoice_op_ctx(<<"CreatePayment">>, ?STRING, ?STRING, ?STRING, Config),
     Req = #{
         <<"flow">> => #{<<"type">> => <<"PaymentFlowInstant">>},
         <<"payer">> => #{
             <<"payerType">> => <<"PaymentResourcePayer">>,
             <<"paymentSession">> => ?TEST_PAYMENT_SESSION,
-            <<"paymentToolToken">> => PaymentToolToken,
-            <<"contactInfo">> => #{<<"email">> => <<"bla@bla.ru">>}
+            <<"paymentToolToken">> => encrypt_payment_tool(PaymentTool),
+            <<"contactInfo">> => #{<<"email">> => ?EMAIL}
         }
     },
-    {ok, _} = capi_client_payments:create_payment(?config(context, Config), Req, ?STRING).
+    capi_client_payments:create_payment(?config(context, Config), Req, ?STRING).
 
 -spec create_payment_with_googlepay_encrypt_ok_test(_) -> _.
 create_payment_with_googlepay_encrypt_ok_test(Config) ->

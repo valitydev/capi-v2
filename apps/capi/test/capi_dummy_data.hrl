@@ -16,6 +16,7 @@
 -define(TEST_USER_REALM, <<"external">>).
 -define(TEST_RULESET_ID, <<"test/api">>).
 -define(API_TOKEN, <<"letmein">>).
+-define(EMAIL, <<"test@test.ru">>).
 
 -define(RATIONAL, #'Rational'{p = ?INTEGER, q = ?INTEGER}).
 
@@ -227,7 +228,7 @@
 
 -define(CONTACT_INFO, #domain_ContactInfo{
     phone_number = ?STRING,
-    email = <<"test@test.ru">>
+    email = ?EMAIL
 }).
 
 -define(EXP_DATE(Month, Year), #domain_BankCardExpDate{
