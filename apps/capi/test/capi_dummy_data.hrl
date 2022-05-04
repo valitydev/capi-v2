@@ -199,6 +199,7 @@
     last_digits = <<"411111******1111">>
 }).
 
+-define(BANK_CARD(PS, ExpDate), ?BANK_CARD(PS, ExpDate, <<"CARD HODLER">>)).
 -define(BANK_CARD(PS, ExpDate, CardHolder), ?BANK_CARD(PS, ExpDate, CardHolder, undefined)).
 -define(BANK_CARD(PS, ExpDate, CardHolder, Category), #domain_BankCard{
     token = PS,
