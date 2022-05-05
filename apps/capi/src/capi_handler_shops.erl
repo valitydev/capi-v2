@@ -71,6 +71,8 @@ prepare(OperationID = 'GetShopByID', Req, Context) ->
         case capi_party:get_shop(PartyID, ShopID, Context) of
             {ok, Shop} ->
                 {ok, {200, #{}, decode_shop(Shop)}};
+            {error, #payproc_PartyNotFound{}} ->
+                {ok, general_error(404, <<"Shop not found">>)};
             {error, #payproc_ShopNotFound{}} ->
                 {ok, general_error(404, <<"Shop not found">>)}
         end
@@ -86,8 +88,6 @@ prepare(OperationID = 'GetShopsForParty', Req, Context) ->
         case capi_party:get_party(PartyID, Context) of
             {ok, Party} ->
                 {ok, {200, #{}, decode_shops_map(Party#domain_Party.shops)}};
-            {error, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Party not found">>)};
             {error, #payproc_PartyNotFound{}} ->
                 {ok, general_error(404, <<"Party not found">>)}
         end
@@ -104,8 +104,6 @@ prepare(OperationID = 'GetShopByIDForParty', Req, Context) ->
         case capi_party:get_shop(PartyID, ShopID, Context) of
             {ok, Shop} ->
                 {ok, {200, #{}, decode_shop(Shop)}};
-            {error, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Party not found">>)};
             {error, #payproc_PartyNotFound{}} ->
                 {ok, general_error(404, <<"Party not found">>)};
             {error, #payproc_ShopNotFound{}} ->
@@ -124,8 +122,6 @@ prepare(OperationID = 'ActivateShopForParty', Req, Context) ->
         case capi_party:activate_shop(PartyID, ShopID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
-            {error, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Party not found">>)};
             {error, #payproc_PartyNotFound{}} ->
                 {ok, general_error(404, <<"Party not found">>)};
             {error, #payproc_ShopNotFound{}} ->
@@ -146,8 +142,6 @@ prepare(OperationID = 'SuspendShopForParty', Req, Context) ->
         case capi_party:suspend_shop(PartyID, ShopID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
-            {error, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Party not found">>)};
             {error, #payproc_PartyNotFound{}} ->
                 {ok, general_error(404, <<"Party not found">>)};
             {error, #payproc_ShopNotFound{}} ->

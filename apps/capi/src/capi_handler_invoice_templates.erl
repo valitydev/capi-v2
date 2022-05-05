@@ -28,8 +28,7 @@ prepare('CreateInvoiceTemplate' = OperationID, Req, Context) ->
         try
             InvoiceTemplateID = generate_invoice_template_id(OperationID, InvoiceTemplateParams, PartyID, Context),
             CallArgs = {encode_invoice_tpl_create_params(InvoiceTemplateID, PartyID, InvoiceTemplateParams)},
-            capi_handler_utils:service_call_with(
-                [user_info],
+            capi_handler_utils:service_call(
                 {invoice_templating, 'Create', CallArgs},
                 Context
             )
@@ -39,7 +38,7 @@ prepare('CreateInvoiceTemplate' = OperationID, Req, Context) ->
             {exception, #'InvalidRequest'{errors = Errors}} ->
                 FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                 {ok, logic_error('invalidRequest', FormattedErrors)};
-            {exception, #payproc_InvalidUser{}} ->
+            {exception, #payproc_PartyNotFound{}} ->
                 {ok, logic_error('invalidPartyID', <<"Party not found">>)};
             {exception, #payproc_ShopNotFound{}} ->
                 {ok, logic_error('invalidShopID', <<"Shop not found">>)};
@@ -87,12 +86,10 @@ prepare('UpdateInvoiceTemplate' = OperationID, Req, Context) ->
         try
             Params = encode_invoice_tpl_update_params(maps:get('InvoiceTemplateUpdateParams', Req)),
             Call = {invoice_templating, 'Update', {InvoiceTemplateID, Params}},
-            capi_handler_utils:service_call_with([user_info], Call, Context)
+            capi_handler_utils:service_call(Call, Context)
         of
             {ok, UpdatedInvoiceTpl} ->
                 {ok, {200, #{}, decode_invoice_tpl(UpdatedInvoiceTpl)}};
-            {exception, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Invoice Template not found">>)};
             {exception, #'InvalidRequest'{errors = Errors}} ->
                 FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                 {ok, logic_error('invalidRequest', FormattedErrors)};
@@ -105,8 +102,6 @@ prepare('UpdateInvoiceTemplate' = OperationID, Req, Context) ->
             {exception, #payproc_InvoiceTemplateRemoved{}} ->
                 {ok, general_error(404, <<"Invoice Template not found">>)}
         catch
-            throw:#payproc_InvalidUser{} ->
-                {ok, general_error(404, <<"Invoice Template not found">>)};
             throw:#payproc_InvoiceTemplateNotFound{} ->
                 {ok, general_error(404, <<"Invoice Template not found">>)};
             throw:#payproc_InvoiceTemplateRemoved{} ->
@@ -130,11 +125,9 @@ prepare('DeleteInvoiceTemplate' = OperationID, Req, Context) ->
     end,
     Process = fun() ->
         Call = {invoice_templating, 'Delete', {InvoiceTemplateID}},
-        case capi_handler_utils:service_call_with([user_info], Call, Context) of
+        case capi_handler_utils:service_call(Call, Context) of
             {ok, _R} ->
                 {ok, {204, #{}, undefined}};
-            {exception, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Invoice Template not found">>)};
             {exception, #payproc_InvalidPartyStatus{}} ->
                 {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
             {exception, #payproc_InvalidShopStatus{}} ->
@@ -164,8 +157,6 @@ prepare('CreateInvoiceWithTemplate' = OperationID, Req, Context) ->
         try create_invoice(PartyID, InvoiceTplID, InvoiceParams, Context, OperationID) of
             {ok, #'payproc_Invoice'{invoice = Invoice}} ->
                 {ok, {201, #{}, capi_handler_decoder_invoicing:make_invoice_and_token(Invoice, Context)}};
-            {exception, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Invoice Template not found">>)};
             {exception, #'InvalidRequest'{errors = Errors}} ->
                 FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                 {ok, logic_error('invalidRequest', FormattedErrors)};
@@ -216,7 +207,6 @@ prepare('GetInvoicePaymentMethodsByTemplateID' = OperationID, Req, Context) ->
                 ),
                 {ok, {200, #{}, PaymentMethods}};
             {exception, E} when
-                E == #payproc_InvalidUser{};
                 E == #payproc_InvoiceTemplateNotFound{};
                 E == #payproc_InvoiceTemplateRemoved{}
             ->
@@ -249,11 +239,11 @@ create_invoice(PartyID, InvoiceTplID, InvoiceParams, Context, BenderPrefix) ->
     InvoiceID = capi_bender:try_gen_snowflake(IdempotentKey, Identity, WoodyCtx),
     CallArgs = {encode_invoice_params_with_tpl(InvoiceID, InvoiceTplID, InvoiceParams)},
     Call = {invoicing, 'CreateWithTemplate', CallArgs},
-    capi_handler_utils:service_call_with([user_info], Call, Context).
+    capi_handler_utils:service_call(Call, Context).
 
 get_invoice_template(ID, Context) ->
     Call = {invoice_templating, 'Get', {ID}},
-    capi_handler_utils:service_call_with([user_info], Call, Context).
+    capi_handler_utils:service_call(Call, Context).
 
 generate_invoice_template_id(OperationID, TemplateParams, PartyID, #{woody_context := WoodyContext}) ->
     ExternalID = maps:get(<<"externalID">>, TemplateParams, undefined),

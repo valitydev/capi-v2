@@ -30,8 +30,6 @@ prepare('CreateCustomer' = OperationID, Req, Context) ->
             case capi_handler_utils:service_call(Call, Context) of
                 {ok, Customer} ->
                     {ok, {201, #{}, make_customer_and_token(Customer, Context)}};
-                {exception, #payproc_InvalidUser{}} ->
-                    {ok, logic_error('invalidPartyID', <<"Party not found">>)};
                 {exception, #payproc_InvalidPartyStatus{}} ->
                     {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
                 {exception, #payproc_InvalidShopStatus{}} ->
@@ -82,8 +80,6 @@ prepare('DeleteCustomer' = OperationID, Req, Context) ->
         case capi_handler_utils:service_call(Call, Context) of
             {ok, _} ->
                 {ok, {204, #{}, undefined}};
-            {exception, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Customer not found">>)};
             {exception, #payproc_CustomerNotFound{}} ->
                 {ok, general_error(404, <<"Customer not found">>)};
             {exception, #payproc_InvalidPartyStatus{}} ->
@@ -150,8 +146,6 @@ prepare('CreateBinding' = OperationID, Req, Context) ->
         case Result of
             {ok, CustomerBinding} ->
                 {ok, {201, #{}, decode_customer_binding(CustomerBinding)}};
-            {exception, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Customer not found">>)};
             {exception, #payproc_CustomerNotFound{}} ->
                 {ok, general_error(404, <<"Customer not found">>)};
             {exception, #payproc_InvalidPartyStatus{}} ->
@@ -231,8 +225,6 @@ prepare('GetCustomerEvents' = OperationID, Req, Context) ->
         case Result of
             {ok, Events} when is_list(Events) ->
                 {ok, {200, #{}, Events}};
-            {exception, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Customer not found">>)};
             {exception, #payproc_CustomerNotFound{}} ->
                 {ok, general_error(404, <<"Customer not found">>)};
             {exception, #payproc_EventNotFound{}} ->
@@ -262,8 +254,6 @@ prepare('GetCustomerPaymentMethods' = OperationID, Req, Context) ->
                 PaymentMethods1 = capi_utils:deduplicate_payment_methods(PaymentMethods0),
                 PaymentMethods = capi_handler_utils:emplace_token_provider_data(Customer, PaymentMethods1, Context),
                 {ok, {200, #{}, PaymentMethods}};
-            {exception, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Customer not found">>)};
             {exception, #payproc_CustomerNotFound{}} ->
                 {ok, general_error(404, <<"Customer not found">>)}
         end

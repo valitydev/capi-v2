@@ -29,8 +29,6 @@ prepare('CreateWebhook' = OperationID, Req, Context) ->
         case capi_party:get_shop(PartyID, ShopID, Context) of
             {ok, _} ->
                 ok;
-            {error, #payproc_InvalidUser{}} ->
-                capi_handler:respond(logic_error('invalidPartyID', <<"Party not found">>));
             {error, #payproc_ShopNotFound{}} ->
                 capi_handler:respond(logic_error('invalidShopID', <<"Shop not found">>))
         end,
