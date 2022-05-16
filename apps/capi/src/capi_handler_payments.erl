@@ -49,8 +49,6 @@ prepare(OperationID = 'CreatePayment', Req, Context) ->
                     {ok, logic_error('invalidContractStatus', <<"Invalid contract status">>)};
                 {exception, #payproc_InvalidRecurrentParentPayment{}} ->
                     {ok, logic_error('invalidRecurrentParent', <<"Specified recurrent parent is invalid">>)};
-                {exception, #payproc_InvalidUser{}} ->
-                    {ok, general_error(404, <<"Invoice not found">>)};
                 {exception, #payproc_InvoiceNotFound{}} ->
                     {ok, general_error(404, <<"Invoice not found">>)}
             end
@@ -160,7 +158,7 @@ prepare(OperationID = 'CapturePayment', Req, Context) ->
             },
             CallArgs = {InvoiceID, PaymentID, CaptureParams},
             Call = {invoicing, 'CapturePayment', CallArgs},
-            capi_handler_utils:service_call_with([user_info], Call, Context)
+            capi_handler_utils:service_call(Call, Context)
         of
             {ok, _} ->
                 {ok, {202, #{}, undefined}};
@@ -168,8 +166,6 @@ prepare(OperationID = 'CapturePayment', Req, Context) ->
                 {ok, general_error(404, <<"Payment not found">>)};
             {exception, #payproc_InvalidPaymentStatus{}} ->
                 {ok, logic_error('invalidPaymentStatus', <<"Invalid payment status">>)};
-            {exception, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Invoice not found">>)};
             {exception, #payproc_InvoiceNotFound{}} ->
                 {ok, general_error(404, <<"Invoice not found">>)};
             {exception, #'InvalidRequest'{errors = Errors}} ->
@@ -224,15 +220,13 @@ prepare(OperationID = 'CancelPayment', Req, Context) ->
         Reason = maps:get(<<"reason">>, maps:get('Reason', Req)),
         CallArgs = {InvoiceID, PaymentID, Reason},
         Call = {invoicing, 'CancelPayment', CallArgs},
-        case capi_handler_utils:service_call_with([user_info], Call, Context) of
+        case capi_handler_utils:service_call(Call, Context) of
             {ok, _} ->
                 {ok, {202, #{}, undefined}};
             {exception, #payproc_InvoicePaymentNotFound{}} ->
                 {ok, general_error(404, <<"Payment not found">>)};
             {exception, #payproc_InvalidPaymentStatus{}} ->
                 {ok, logic_error('invalidPaymentStatus', <<"Invalid payment status">>)};
-            {exception, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Invoice not found">>)};
             {exception, #payproc_InvoiceNotFound{}} ->
                 {ok, general_error(404, <<"Invoice not found">>)};
             {exception, #'InvalidRequest'{errors = Errors}} ->
@@ -265,8 +259,6 @@ prepare(OperationID = 'CreateRefund', Req, Context) ->
         of
             {ok, Refund} ->
                 {ok, {201, #{}, capi_handler_decoder_invoicing:decode_refund(Refund)}};
-            {exception, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Invoice not found">>)};
             {exception, #payproc_InvoicePaymentNotFound{}} ->
                 {ok, general_error(404, <<"Payment not found">>)};
             {exception, #payproc_InvoiceNotFound{}} ->
@@ -481,7 +473,7 @@ create_payment(Invoice, PaymentParams, Context, OperationID) ->
     ExternalID = maps:get(<<"externalID">>, PaymentParams, undefined),
     InvoicePaymentParams = encode_invoice_payment_params(PaymentID, ExternalID, PaymentParams, PaymentTool),
     Call = {invoicing, 'StartPayment', {InvoiceID, InvoicePaymentParams}},
-    capi_handler_utils:service_call_with([user_info], Call, Context).
+    capi_handler_utils:service_call(Call, Context).
 
 create_payment_id(Invoice, PaymentParams0, Context, OperationID, PaymentToolThrift) ->
     InvoiceID = Invoice#domain_Invoice.id,
@@ -542,8 +534,6 @@ get_invoice_by_id(InvoiceID, Context) ->
     case capi_handler_utils:get_invoice_by_id(InvoiceID, Context) of
         {ok, Invoice} ->
             Invoice;
-        {exception, #payproc_InvalidUser{}} ->
-            undefined;
         {exception, #payproc_InvoiceNotFound{}} ->
             undefined
     end.
@@ -732,7 +722,7 @@ refund_payment(RefundID, InvoiceID, PaymentID, RefundParams, Context) ->
         Params#payproc_InvoicePaymentRefundParams{id = RefundID}
     },
     Call = {invoicing, 'RefundPayment', CallArgs},
-    capi_handler_utils:service_call_with([user_info], Call, Context).
+    capi_handler_utils:service_call(Call, Context).
 
 %% ED-206
 %% When bouncer says "forbidden" we can't really tell the difference between "forbidden because

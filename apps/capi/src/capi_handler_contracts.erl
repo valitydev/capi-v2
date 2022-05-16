@@ -94,8 +94,6 @@ prepare(OperationID = 'GetContractsForParty', Req, Context) ->
         case capi_party:get_party(PartyID, Context) of
             {ok, Party} ->
                 {ok, {200, #{}, decode_contracts_map(Party#domain_Party.contracts, Party#domain_Party.contractors)}};
-            {error, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Party not found">>)};
             {error, #payproc_PartyNotFound{}} ->
                 {ok, general_error(404, <<"Party not found">>)}
         end
@@ -160,8 +158,6 @@ get_contract_or_fail(PartyID, ContractID, Context) ->
     case capi_party:get_contract(PartyID, ContractID, Context) of
         {ok, Contract} ->
             Contract;
-        {error, #payproc_InvalidUser{}} ->
-            capi_handler:respond(general_error(404, <<"Party not found">>));
         {error, #payproc_PartyNotFound{}} ->
             capi_handler:respond(general_error(404, <<"Party not found">>));
         {error, #payproc_ContractNotFound{}} ->

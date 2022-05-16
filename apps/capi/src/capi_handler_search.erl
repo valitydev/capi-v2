@@ -330,12 +330,12 @@ decode_bank_card_details(BankCard, V) ->
         <<"tokenProvider">> => BankCardTokenServiceRef
     }).
 
-decode_payment_terminal_details(#merchstat_PaymentTerminal{terminal_type = Type}, V) ->
+decode_payment_terminal_details(#merchstat_PaymentTerminal{terminal_type_deprecated = Type}, V) ->
     V#{
         <<"provider">> => genlib:to_binary(Type)
     }.
 
-decode_digital_wallet_details(#merchstat_DigitalWallet{provider = qiwi, id = ID}, V) ->
+decode_digital_wallet_details(#merchstat_DigitalWallet{provider_deprecated = qiwi, id = ID}, V) ->
     V#{
         <<"digitalWalletDetailsType">> => <<"DigitalWalletDetailsQIWI">>,
         <<"phoneNumberMask">> => mask_phone_number(ID)
@@ -344,7 +344,7 @@ decode_digital_wallet_details(#merchstat_DigitalWallet{provider = qiwi, id = ID}
 mask_phone_number(PhoneNumber) ->
     capi_utils:redact(PhoneNumber, <<"^\\+\\d(\\d{1,10}?)\\d{2,4}$">>).
 
-decode_geo_location_info(#geo_ip_LocationInfo{city_geo_id = CityID, country_geo_id = CountryID}) ->
+decode_geo_location_info(#columbus_LocationInfo{city_geo_id = CityID, country_geo_id = CountryID}) ->
     #{
         <<"cityGeoID">> => CityID,
         <<"countryGeoID">> => CountryID

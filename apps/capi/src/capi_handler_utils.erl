@@ -13,13 +13,11 @@
 -export([assert_party_accessible/2]).
 -export([run_if_party_accessible/3]).
 
--export([service_call_with/3]).
 -export([service_call/2]).
 -export([map_service_result/1]).
 
 -export([get_auth_context/1]).
 -export([get_woody_context/1]).
--export([get_user_info/1]).
 -export([get_subject_id/1]).
 -export([get_user_id/1]).
 -export([get_party_id/1]).
@@ -94,21 +92,6 @@ format_request_errors(Errors) -> genlib_string:join(<<"\n">>, Errors).
 
 %%%
 
-% Нужно быть аккуратным с флагами их порядок влияет на порядок аргументов при вызове функций!
-% обычно параметры идут в порядке [user_info, party_id],
-% но это зависит от damsel протокола
--spec service_call_with(list(atom()), {atom(), atom(), tuple()}, processing_context()) -> woody:result().
-service_call_with(Flags, Call, Context) ->
-    % реверс тут чтобы в флагах писать порядок аналогично вызову функций
-    service_call_with_(lists:reverse(Flags), Call, Context).
-
-service_call_with_([user_info | T], {ServiceName, Function, Args}, Context) ->
-    service_call_with_(T, {ServiceName, Function, append_to_tuple(get_user_info(Context), Args)}, Context);
-service_call_with_([party_id | T], {ServiceName, Function, Args}, Context) ->
-    service_call_with_(T, {ServiceName, Function, append_to_tuple(get_party_id(Context), Args)}, Context);
-service_call_with_([], Call, Context) ->
-    service_call(Call, Context).
-
 -spec service_call({atom(), atom(), tuple()}, processing_context()) -> woody:result().
 service_call({ServiceName, Function, Args}, #{woody_context := WoodyContext}) ->
     capi_woody_client:call_service(ServiceName, Function, Args, WoodyContext).
@@ -127,13 +110,6 @@ get_auth_context(#{swagger_context := #{auth_context := AuthContext}}) ->
 get_woody_context(#{woody_context := WoodyContext}) ->
     WoodyContext.
 
--spec get_user_info(processing_context()) -> dmsl_payment_processing_thrift:'UserInfo'().
-get_user_info(Context) ->
-    #payproc_UserInfo{
-        id = get_user_id(Context),
-        type = {external_user, #payproc_ExternalUser{}}
-    }.
-
 -spec get_subject_id(processing_context()) -> binary().
 get_subject_id(Context) ->
     capi_auth:get_subject_id(get_auth_context(Context)).
@@ -151,10 +127,6 @@ get_party_id(Context) ->
     get_subject_id(Context).
 
 %% Utils
-
--spec append_to_tuple(any(), tuple()) -> tuple().
-append_to_tuple(Item, Tuple) ->
-    list_to_tuple([Item | tuple_to_list(Tuple)]).
 
 -spec issue_access_token(token_source(), processing_context()) -> map().
 issue_access_token(#domain_Invoice{} = Invoice, ProcessingContext) ->
@@ -295,19 +267,19 @@ wrap_payment_session(ClientInfo, PaymentSession) ->
 get_invoice_by_id(InvoiceID, Context) ->
     EventRange = #payproc_EventRange{},
     Args = {InvoiceID, EventRange},
-    service_call_with([user_info], {invoicing, 'Get', Args}, Context).
+    service_call({invoicing, 'Get', Args}, Context).
 
 -spec get_payment_by_id(binary(), binary(), processing_context()) -> woody:result().
 get_payment_by_id(InvoiceID, PaymentID, Context) ->
-    service_call_with([user_info], {invoicing, 'GetPayment', {InvoiceID, PaymentID}}, Context).
+    service_call({invoicing, 'GetPayment', {InvoiceID, PaymentID}}, Context).
 
 -spec get_refund_by_id(binary(), binary(), binary(), processing_context()) -> woody:result().
 get_refund_by_id(InvoiceID, PaymentID, RefundID, Context) ->
-    service_call_with([user_info], {invoicing, 'GetPaymentRefund', {InvoiceID, PaymentID, RefundID}}, Context).
+    service_call({invoicing, 'GetPaymentRefund', {InvoiceID, PaymentID, RefundID}}, Context).
 
 -spec get_payment_methods(atom(), tuple(), processing_context()) -> woody:result().
 get_payment_methods(ServiceName, Args, Context) ->
-    case service_call_with([user_info], {ServiceName, 'ComputeTerms', Args}, Context) of
+    case service_call({ServiceName, 'ComputeTerms', Args}, Context) of
         {ok, #domain_TermSet{payments = undefined}} ->
             {ok, []};
         {ok, #domain_TermSet{

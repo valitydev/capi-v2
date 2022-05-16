@@ -192,7 +192,7 @@ get_invoice_events_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
             {invoicing, fun
-                ('GetEvents', {_, _, #payproc_EventRange{'after' = ID, limit = N}}) ->
+                ('GetEvents', {_, #payproc_EventRange{'after' = ID, limit = N}}) ->
                     {ok,
                         lists:sublist(
                             [
@@ -276,7 +276,7 @@ create_payment_ok_test(Config) ->
             {invoicing, fun
                 ('Get', _) ->
                     {ok, ?PAYPROC_INVOICE};
-                ('StartPayment', {_, _, PaymentParams}) ->
+                ('StartPayment', {_, PaymentParams}) ->
                     #payproc_InvoicePaymentParams{
                         id = ID,
                         external_id = EID,
@@ -314,7 +314,7 @@ create_payment_expired_test(Config) ->
             {invoicing, fun
                 ('Get', _) ->
                     {ok, ?PAYPROC_INVOICE};
-                ('StartPayment', {_, _, IPP}) ->
+                ('StartPayment', {_, IPP}) ->
                     #payproc_InvoicePaymentParams{id = ID, external_id = EID, context = ?CONTENT} = IPP,
                     {ok, ?PAYPROC_PAYMENT(ID, EID)}
             end}
@@ -378,7 +378,7 @@ create_payment_w_payment_tool(PaymentTool, Config) ->
             {invoicing, fun
                 ('Get', _) ->
                     {ok, ?PAYPROC_INVOICE};
-                ('StartPayment', {_UserInfo, _InvoiceID, Params}) ->
+                ('StartPayment', {_InvoiceID, Params}) ->
                     ?assertMatch(
                         {payment_resource, #payproc_PaymentResourcePayerParams{
                             resource = #domain_DisposablePaymentResource{
@@ -528,7 +528,6 @@ capture_partial_payment_ok_test(Config) ->
                 (
                     'CapturePayment',
                     {
-                        _,
                         _,
                         _,
                         #payproc_InvoicePaymentCaptureParams{

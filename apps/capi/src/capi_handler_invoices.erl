@@ -34,7 +34,7 @@ prepare('CreateInvoice' = OperationID, Req, Context) ->
             case create_invoice(PartyID, InvoiceParams, Context, OperationID) of
                 {ok, #'payproc_Invoice'{invoice = Invoice}} ->
                     {ok, {201, #{}, capi_handler_decoder_invoicing:make_invoice_and_token(Invoice, Context)}};
-                {exception, #'payproc_InvalidUser'{}} ->
+                {exception, #'payproc_PartyNotFound'{}} ->
                     {ok, logic_error('invalidPartyID', <<"Party not found">>)};
                 {exception, #'InvalidRequest'{errors = Errors}} ->
                     FormattedErrors = capi_handler_utils:format_request_errors(Errors),
@@ -142,7 +142,7 @@ prepare('FulfillInvoice' = OperationID, Req, Context) ->
     Process = fun() ->
         CallArgs = {InvoiceID, maps:get(<<"reason">>, maps:get('Reason', Req))},
         Call = {invoicing, 'Fulfill', CallArgs},
-        case capi_handler_utils:service_call_with([user_info], Call, Context) of
+        case capi_handler_utils:service_call(Call, Context) of
             {ok, _} ->
                 {ok, {204, #{}, undefined}};
             {exception, #payproc_InvalidInvoiceStatus{}} ->
@@ -151,8 +151,6 @@ prepare('FulfillInvoice' = OperationID, Req, Context) ->
                 {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
             {exception, #payproc_InvalidShopStatus{}} ->
                 {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)};
-            {exception, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Invoice not found">>)};
             {exception, #payproc_InvoiceNotFound{}} ->
                 {ok, general_error(404, <<"Invoice not found">>)}
         end
@@ -171,7 +169,7 @@ prepare('RescindInvoice' = OperationID, Req, Context) ->
     Process = fun() ->
         CallArgs = {InvoiceID, maps:get(<<"reason">>, maps:get('Reason', Req))},
         Call = {invoicing, 'Rescind', CallArgs},
-        case capi_handler_utils:service_call_with([user_info], Call, Context) of
+        case capi_handler_utils:service_call(Call, Context) of
             {ok, _} ->
                 {ok, {204, #{}, undefined}};
             {exception, #payproc_InvalidInvoiceStatus{}} ->
@@ -182,8 +180,6 @@ prepare('RescindInvoice' = OperationID, Req, Context) ->
                 {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
             {exception, #payproc_InvalidShopStatus{}} ->
                 {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)};
-            {exception, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Invoice not found">>)};
             {exception, #payproc_InvoiceNotFound{}} ->
                 {ok, general_error(404, <<"Invoice not found">>)}
         end
@@ -205,8 +201,7 @@ prepare('GetInvoiceEvents' = OperationID, Req, Context) ->
                 maps:get('limit', Req),
                 genlib_map:get('eventID', Req),
                 fun(Range) ->
-                    capi_handler_utils:service_call_with(
-                        [user_info],
+                    capi_handler_utils:service_call(
                         {invoicing, 'GetEvents', {maps:get('invoiceID', Req), Range}},
                         Context
                     )
@@ -216,8 +211,6 @@ prepare('GetInvoiceEvents' = OperationID, Req, Context) ->
         case Result of
             {ok, Events} when is_list(Events) ->
                 {ok, {200, #{}, Events}};
-            {exception, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Invoice not found">>)};
             {exception, #payproc_InvoiceNotFound{}} ->
                 {ok, general_error(404, <<"Invoice not found">>)};
             {exception, #payproc_EventNotFound{}} ->
@@ -252,8 +245,6 @@ prepare('GetInvoicePaymentMethods' = OperationID, Req, Context) ->
                 PaymentMethods1 = capi_utils:deduplicate_payment_methods(PaymentMethods0),
                 PaymentMethods = capi_handler_utils:emplace_token_provider_data(Invoice, PaymentMethods1, Context),
                 {ok, {200, #{}, PaymentMethods}};
-            {exception, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Invoice not found">>)};
             {exception, #payproc_InvoiceNotFound{}} ->
                 {ok, general_error(404, <<"Invoice not found">>)}
         end
@@ -277,7 +268,7 @@ create_invoice(PartyID, InvoiceParams, Context, BenderPrefix) ->
     Identity = capi_bender:make_identity(capi_feature_schemas:invoice(), InvoiceParams),
     InvoiceID = capi_bender:gen_snowflake(IdempotentKey, Identity, WoodyCtx),
     Call = {invoicing, 'Create', {encode_invoice_params(InvoiceID, PartyID, InvoiceParams)}},
-    capi_handler_utils:service_call_with([user_info], Call, Context).
+    capi_handler_utils:service_call(Call, Context).
 
 encode_invoice_params(ID, PartyID, InvoiceParams) ->
     Amount = genlib_map:get(<<"amount">>, InvoiceParams),

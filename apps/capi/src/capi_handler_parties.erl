@@ -26,8 +26,6 @@ prepare('GetMyParty' = OperationID, _Req, Context) ->
             {ok, Party} ->
                 DecodedParty = capi_handler_decoder_party:decode_party(Party),
                 {ok, {200, #{}, DecodedParty}};
-            {error, #payproc_InvalidUser{}} ->
-                {ok, logic_error(<<"invalidRequest">>, <<"Party not found">>)};
             {error, #payproc_PartyNotFound{}} ->
                 {ok, logic_error(<<"invalidRequest">>, <<"Party not found">>)}
         end
@@ -43,8 +41,6 @@ prepare('ActivateMyParty' = OperationID, _Req, Context) ->
         case capi_party:activate_party(PartyID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
-            {error, #payproc_InvalidUser{}} ->
-                {ok, logic_error(<<"invalidRequest">>, <<"Party not found">>)};
             {error, #payproc_PartyNotFound{}} ->
                 {ok, logic_error(<<"invalidRequest">>, <<"Party not found">>)};
             {error, #payproc_InvalidPartyStatus{status = {suspension, {active, _}}}} ->
@@ -62,8 +58,6 @@ prepare('SuspendMyParty' = OperationID, _Req, Context) ->
         case capi_party:suspend_party(PartyID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
-            {error, #payproc_InvalidUser{}} ->
-                {ok, logic_error(<<"invalidRequest">>, <<"Party not found">>)};
             {error, #payproc_PartyNotFound{}} ->
                 {ok, logic_error(<<"invalidRequest">>, <<"Party not found">>)};
             {error, #payproc_InvalidPartyStatus{status = {suspension, {suspended, _}}}} ->
@@ -82,8 +76,6 @@ prepare('GetPartyByID' = OperationID, Req, Context) ->
             {ok, Party} ->
                 DecodedParty = capi_handler_decoder_party:decode_party(Party),
                 {ok, {200, #{}, DecodedParty}};
-            {error, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Party not found">>)};
             {error, #payproc_PartyNotFound{}} ->
                 {ok, general_error(404, <<"Party not found">>)}
         end
@@ -99,8 +91,6 @@ prepare('ActivatePartyByID' = OperationID, Req, Context) ->
         case capi_party:activate_party(PartyID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
-            {error, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Party not found">>)};
             {error, #payproc_PartyNotFound{}} ->
                 {ok, general_error(404, <<"Party not found">>)};
             {error, #payproc_InvalidPartyStatus{status = {suspension, {active, _}}}} ->
@@ -118,8 +108,6 @@ prepare('SuspendPartyByID' = OperationID, Req, Context) ->
         case capi_party:suspend_party(PartyID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
-            {error, #payproc_InvalidUser{}} ->
-                {ok, general_error(404, <<"Party not found">>)};
             {error, #payproc_PartyNotFound{}} ->
                 {ok, general_error(404, <<"Party not found">>)};
             {error, #payproc_InvalidPartyStatus{status = {suspension, {suspended, _}}}} ->

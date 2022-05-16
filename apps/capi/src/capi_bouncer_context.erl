@@ -191,7 +191,7 @@ build_invoice_ctx(ID, WoodyCtx) when is_binary(ID) ->
     maybe_with_woody_result(
         invoicing,
         'Get',
-        {_UserInfo = undefined, ID, #payproc_EventRange{}},
+        {ID, #payproc_EventRange{}},
         WoodyCtx,
         fun build_invoice_ctx/1
     );
@@ -219,7 +219,7 @@ build_invoice_template_ctx(ID, WoodyCtx) when is_binary(ID) ->
     maybe_with_woody_result(
         invoice_templating,
         'Get',
-        {_UserInfo = undefined, ID},
+        {ID},
         WoodyCtx,
         fun build_invoice_template_ctx/1
     );

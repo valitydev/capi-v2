@@ -5,7 +5,7 @@
 -type id() :: binary().
 -type idempotent_key_prefix() :: binary() | atom().
 -type external_id() :: binary().
--type issuer_id() :: dmsl_domain_thrift:'PartyID'() | dmsl_payment_processing_thrift:'UserID'().
+-type issuer_id() :: dmsl_domain_thrift:'PartyID'().
 -type idempotent_key() :: binary().
 -type idempotent_key_params() :: {idempotent_key_prefix(), issuer_id(), external_id() | undefined}.
 
