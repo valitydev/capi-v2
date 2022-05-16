@@ -6,7 +6,7 @@
 
 -export([prepare/3]).
 
--import(capi_handler_utils, [general_error/2, logic_error/1, logic_error/2]).
+-import(capi_handler_utils, [general_error/2, logic_error/1, logic_error/2, conflict_error/1]).
 
 -define(DEFAULT_PROCESSING_DEADLINE, <<"30m">>).
 
@@ -60,7 +60,7 @@ prepare(OperationID = 'CreatePayment', Req, Context) ->
             throw:invalid_processing_deadline ->
                 {ok, logic_error('invalidProcessingDeadline', <<"Specified processing deadline is invalid">>)};
             throw:{external_id_conflict, PaymentID, ExternalID, _Schema} ->
-                {ok, logic_error('externalIDConflict', {PaymentID, ExternalID})}
+                {ok, conflict_error({PaymentID, ExternalID})}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -307,7 +307,7 @@ prepare(OperationID = 'CreateRefund', Req, Context) ->
             throw:invoice_cart_empty ->
                 {ok, logic_error('invalidInvoiceCart', <<"Wrong size. Path to item: cart">>)};
             throw:{external_id_conflict, RefundID, ExternalID, _Schema} ->
-                {ok, logic_error('externalIDConflict', {RefundID, ExternalID})};
+                {ok, conflict_error({RefundID, ExternalID})};
             throw:allocation_duplicate ->
                 {ok, logic_error('invalidAllocation', <<"Duplicate shop">>)};
             throw:allocation_wrong_cart ->
@@ -500,12 +500,12 @@ create_payment_id(Invoice, PaymentParams0, Context, OperationID, PaymentToolThri
     IdempotentKey = {BenderPrefix, PartyID, ExternalID},
 
     SequenceID = InvoiceID,
-    Identity = capi_bender:make_identity(payment, PaymentParams),
+    Identity = capi_bender:make_identity(capi_feature_schemas:payment(), PaymentParams),
     SequenceParams = #{},
     #{woody_context := WoodyCtx} = Context,
     %% We put `invoice_id` in a context here because `get_payment_by_external_id()` needs it to work
     CtxData = #{<<"invoice_id">> => InvoiceID},
-    capi_bender:try_gen_sequence(IdempotentKey, Identity, SequenceID, SequenceParams, WoodyCtx, CtxData).
+    capi_bender:gen_sequence(IdempotentKey, Identity, SequenceID, SequenceParams, WoodyCtx, CtxData).
 
 find_payment_by_id(PaymentID, #payproc_Invoice{payments = Payments}) ->
     Fun = fun(#payproc_InvoicePayment{payment = #domain_InvoicePayment{id = ID}}) ->
@@ -706,13 +706,13 @@ create_refund(InvoiceID, PaymentID, RefundParams0, Context, BenderPrefix) ->
 
     ExternalID = maps:get(<<"externalID">>, RefundParams, undefined),
     IdempotentKey = {BenderPrefix, PartyID, ExternalID},
-    Identity = capi_bender:make_identity(refund, RefundParams),
+    Identity = capi_bender:make_identity(capi_feature_schemas:refund(), RefundParams),
     SequenceID = create_sequence_id([InvoiceID, PaymentID], BenderPrefix),
     SequenceParams = #{minimum => 100},
     #{woody_context := WoodyCtx} = Context,
     %% We put `invoice_id` and `payment_id` in a context here because `get_refund_by_external_id/2` needs it to work
     CtxData = #{<<"invoice_id">> => InvoiceID, <<"payment_id">> => PaymentID},
-    RefundID = capi_bender:try_gen_sequence(IdempotentKey, Identity, SequenceID, SequenceParams, WoodyCtx, CtxData),
+    RefundID = capi_bender:gen_sequence(IdempotentKey, Identity, SequenceID, SequenceParams, WoodyCtx, CtxData),
     refund_payment(RefundID, InvoiceID, PaymentID, RefundParams, Context).
 
 refund_payment(RefundID, InvoiceID, PaymentID, RefundParams, Context) ->

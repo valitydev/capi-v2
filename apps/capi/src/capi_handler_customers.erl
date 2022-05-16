@@ -6,7 +6,13 @@
 
 -export([prepare/3]).
 
--import(capi_handler_utils, [general_error/2, logic_error/1, logic_error/2, map_service_result/1]).
+-import(capi_handler_utils, [
+    general_error/2,
+    logic_error/1,
+    logic_error/2,
+    conflict_error/1,
+    map_service_result/1
+]).
 
 -spec prepare(
     OperationID :: capi_handler:operation_id(),
@@ -45,7 +51,7 @@ prepare('CreateCustomer' = OperationID, Req, Context) ->
             end
         catch
             throw:{external_id_conflict, ID, UsedExternalID, _Schema} ->
-                {ok, logic_error('externalIDConflict', {ID, UsedExternalID})}
+                {ok, conflict_error({ID, UsedExternalID})}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -165,7 +171,7 @@ prepare('CreateBinding' = OperationID, Req, Context) ->
             {error, invalid_payment_session} ->
                 {ok, logic_error('invalidPaymentSession', <<"Specified payment session is invalid">>)};
             {error, {external_id_conflict, ID, UsedExternalID, _Schema}} ->
-                {ok, logic_error('externalIDConflict', {ID, UsedExternalID})}
+                {ok, conflict_error({ID, UsedExternalID})}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -290,8 +296,8 @@ mask_customer_notfound(Resolution) ->
 generate_customer_id(OperationID, PartyID, CustomerParams, #{woody_context := WoodyContext}) ->
     ExternalID = maps:get(<<"externalID">>, CustomerParams, undefined),
     IdempKey = {OperationID, PartyID, ExternalID},
-    Identity = capi_bender:make_identity(customer, CustomerParams),
-    capi_bender:try_gen_snowflake(IdempKey, Identity, WoodyContext).
+    Identity = capi_bender:make_identity(capi_feature_schemas:customer(), CustomerParams),
+    capi_bender:gen_snowflake(IdempKey, Identity, WoodyContext).
 
 encode_customer_params(CustomerID, PartyID, Params) ->
     #payproc_CustomerParams{
@@ -323,15 +329,18 @@ generate_binding_ids(OperationID, CustomerBindingParams, Context = #{woody_conte
             CustomerBindingParams
         ),
 
-    Identity = capi_bender:make_identity(customer_binding, CustomerBindingParamsEncrypted),
+    Identity = capi_bender:make_identity(
+        capi_feature_schemas:customer_binding(),
+        CustomerBindingParamsEncrypted
+    ),
 
     OperationIDBin = erlang:atom_to_binary(OperationID),
-    CustomerBindingID = capi_bender:try_gen_snowflake(
+    CustomerBindingID = capi_bender:gen_snowflake(
         {<<OperationIDBin/binary, "+CustomerBindingID">>, UserID, ExternalID},
         Identity,
         WoodyContext
     ),
-    RecPaymentToolID = capi_bender:try_gen_snowflake(
+    RecPaymentToolID = capi_bender:gen_snowflake(
         {<<OperationIDBin/binary, "+RecPaymentToolID">>, UserID, ExternalID},
         Identity,
         WoodyContext

@@ -16,6 +16,7 @@
 -define(TEST_USER_REALM, <<"external">>).
 -define(TEST_RULESET_ID, <<"test/api">>).
 -define(API_TOKEN, <<"letmein">>).
+-define(EMAIL, <<"test@test.ru">>).
 
 -define(RATIONAL, #'Rational'{p = ?INTEGER, q = ?INTEGER}).
 
@@ -198,6 +199,7 @@
     last_digits = <<"411111******1111">>
 }).
 
+-define(BANK_CARD(PS, ExpDate), ?BANK_CARD(PS, ExpDate, <<"CARD HODLER">>)).
 -define(BANK_CARD(PS, ExpDate, CardHolder), ?BANK_CARD(PS, ExpDate, CardHolder, undefined)).
 -define(BANK_CARD(PS, ExpDate, CardHolder, Category), #domain_BankCard{
     token = PS,
@@ -215,9 +217,19 @@
     token = Token
 }).
 
+-define(MOBILE_COMMERCE(Operator, CC, CTN), #domain_MobileCommerce{
+    operator = #domain_MobileOperatorRef{id = Operator},
+    phone = #domain_MobilePhone{
+        cc = CC,
+        ctn = CTN
+    }
+}).
+
+-define(CRYPTO_CURRENCY_BTC, #domain_CryptoCurrencyRef{id = <<"bitcoin">>}).
+
 -define(CONTACT_INFO, #domain_ContactInfo{
     phone_number = ?STRING,
-    email = <<"test@test.ru">>
+    email = ?EMAIL
 }).
 
 -define(EXP_DATE(Month, Year), #domain_BankCardExpDate{
@@ -1220,7 +1232,7 @@
                         }}
                 },
                 #domain_PaymentMethodRef{
-                    id = {crypto_currency, #domain_CryptoCurrencyRef{id = <<"bitcoin">>}}
+                    id = {crypto_currency, ?CRYPTO_CURRENCY_BTC}
                 },
                 #domain_PaymentMethodRef{
                     id = {crypto_currency, #domain_CryptoCurrencyRef{id = <<"bitcoin_cash">>}}
