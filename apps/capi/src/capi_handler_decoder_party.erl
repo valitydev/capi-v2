@@ -19,8 +19,6 @@
 -export([decode_payment_tool/1]).
 -export([decode_payment_tool_details/1]).
 
--export([wrap_payment_tool_token/1]).
-
 %%
 
 -spec decode_shop_location(capi_handler_encoder:encode_data()) -> capi_handler_decoder_utils:decode_data().
@@ -177,73 +175,17 @@ decode_payment_tool({mobile_commerce, MobileCommerce}) ->
 decode_payment_tool({crypto_currency, CryptoCurrency}) ->
     decode_crypto_wallet(CryptoCurrency).
 
--spec wrap_payment_tool_token(capi_handler_decoder_utils:decode_data()) -> binary().
-wrap_payment_tool_token(#{<<"type">> := <<"bank_card">>} = BankCard) ->
-    Fields = [
-        <<"token">>,
-        <<"payment_system">>,
-        <<"bin">>,
-        <<"masked_pan">>,
-        <<"token_provider">>,
-        <<"issuer_country">>,
-        <<"bank_name">>,
-        <<"metadata">>,
-        <<"is_cvv_empty">>
-    ],
-    BankCard1 = maps:with(Fields, BankCard),
-    capi_utils:map_to_base64url(BankCard1);
-wrap_payment_tool_token(#{<<"type">> := <<"payment_terminal">>} = PaymentTerminal) ->
-    capi_utils:map_to_base64url(PaymentTerminal);
-wrap_payment_tool_token(#{<<"type">> := <<"digital_wallet">>} = DigitalWallet) ->
-    capi_utils:map_to_base64url(DigitalWallet);
-wrap_payment_tool_token(#{<<"type">> := <<"crypto_currency">>} = CryptoCurrency) ->
-    capi_utils:map_to_base64url(CryptoCurrency);
-wrap_payment_tool_token(#{<<"type">> := <<"mobile_commerce">>} = MobileCommerce) ->
-    capi_utils:map_to_base64url(MobileCommerce).
-
 decode_bank_card(#domain_BankCard{
     'token' = Token,
     'payment_system' = PaymentSystem,
-    'bin' = Bin,
-    'last_digits' = LastDigits,
-    'payment_token' = BankCardTokenServiceRef,
-    'issuer_country' = IssuerCountry,
-    'bank_name' = BankName,
-    'metadata' = Metadata,
-    'is_cvv_empty' = IsCVVEmpty,
-    'exp_date' = ExpDate,
-    'cardholder_name' = CardHolder
-    % 'tokenization_method' = TokenizationMethod
+    'exp_date' = ExpDate
 }) ->
     genlib_map:compact(#{
         <<"type">> => <<"bank_card">>,
         <<"token">> => Token,
         <<"payment_system">> => capi_handler_decoder_utils:decode_payment_system_ref(PaymentSystem),
-        <<"bin">> => Bin,
-        <<"masked_pan">> => LastDigits,
-        <<"token_provider">> => capi_utils:maybe(
-            BankCardTokenServiceRef,
-            fun capi_handler_decoder_utils:decode_bank_card_token_service_ref/1
-        ),
-        <<"issuer_country">> => IssuerCountry,
-        <<"bank_name">> => BankName,
-        <<"metadata">> => decode_bank_card_metadata(Metadata),
-        <<"is_cvv_empty">> => decode_bank_card_cvv_flag(IsCVVEmpty),
-        <<"exp_date">> => ExpDate,
-        <<"cardholder_name">> => CardHolder
-        % TODO: Uncomment or delete this when we negotiate deploying non-breaking changes
-        % <<"tokenization_method">> => TokenizationMethod
+        <<"exp_date">> => ExpDate
     }).
-
-decode_bank_card_cvv_flag(undefined) ->
-    undefined;
-decode_bank_card_cvv_flag(CVVFlag) when is_atom(CVVFlag) ->
-    erlang:atom_to_binary(CVVFlag, utf8).
-
-decode_bank_card_metadata(undefined) ->
-    undefined;
-decode_bank_card_metadata(Meta) ->
-    maps:map(fun(_, Data) -> capi_msgp_marshalling:unmarshal(Data) end, Meta).
 
 decode_payment_terminal(#domain_PaymentTerminal{payment_service = PaymentService}) ->
     #{
@@ -345,15 +287,13 @@ decode_digital_wallet_details(#domain_DigitalWallet{payment_service = Provider},
 
 -spec decode_disposable_payment_resource(capi_handler_encoder:encode_data()) ->
     capi_handler_decoder_utils:decode_data().
-decode_disposable_payment_resource(Resource) ->
-    #domain_DisposablePaymentResource{payment_tool = PaymentTool, payment_session_id = SessionID} = Resource,
-    ClientInfo = decode_client_info(Resource#domain_DisposablePaymentResource.client_info),
-    PaymentToolSwag = decode_payment_tool(PaymentTool),
+decode_disposable_payment_resource(#domain_DisposablePaymentResource{
+    payment_tool = PaymentTool,
+    client_info = ClientInfo
+}) ->
     #{
-        <<"paymentToolToken">> => wrap_payment_tool_token(PaymentToolSwag),
-        <<"paymentSession">> => capi_handler_utils:wrap_payment_session(ClientInfo, SessionID),
         <<"paymentToolDetails">> => decode_payment_tool_details(PaymentTool),
-        <<"clientInfo">> => ClientInfo
+        <<"clientInfo">> => decode_client_info(ClientInfo)
     }.
 
 decode_client_info(undefined) ->

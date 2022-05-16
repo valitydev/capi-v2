@@ -2074,7 +2074,7 @@ get_payment_revenue_stats_ok_test(Config) ->
         {offset, 2},
         {from_time, {{2015, 08, 11}, {19, 42, 36}}},
         {to_time, {{2020, 08, 11}, {19, 42, 36}}},
-        {split_unit, minute},
+        {split_unit, hour},
         {split_size, 1}
     ],
     {ok, _} = capi_client_analytics:get_payment_revenue_stats(?config(context, Config), ?STRING, Query).
@@ -2093,7 +2093,7 @@ get_payment_geo_stats_ok_test(Config) ->
         {offset, 0},
         {from_time, {{2015, 08, 11}, {19, 42, 37}}},
         {to_time, {{2020, 08, 11}, {19, 42, 37}}},
-        {split_unit, minute},
+        {split_unit, day},
         {split_size, 1}
     ],
     {ok, _} = capi_client_analytics:get_payment_geo_stats(?config(context, Config), ?STRING, Query).
@@ -2112,7 +2112,7 @@ get_payment_rate_stats_ok_test(Config) ->
         {offset, 0},
         {from_time, {{2015, 08, 11}, {19, 42, 38}}},
         {to_time, {{2020, 08, 11}, {19, 42, 38}}},
-        {split_unit, minute},
+        {split_unit, week},
         {split_size, 1}
     ],
     {ok, _} = capi_client_analytics:get_payment_rate_stats(?config(context, Config), ?STRING, Query).
@@ -2131,7 +2131,7 @@ get_payment_method_stats_ok_test(Config) ->
         {offset, 0},
         {from_time, {{2015, 08, 11}, {19, 42, 35}}},
         {to_time, {{2020, 08, 11}, {19, 42, 35}}},
-        {split_unit, minute},
+        {split_unit, month},
         {split_size, 1},
         {'paymentMethod', <<"bankCard">>}
     ],

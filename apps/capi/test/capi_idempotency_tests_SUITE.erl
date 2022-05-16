@@ -23,8 +23,6 @@
 -export([second_request_with_idempotent_feature_test/1]).
 -export([second_request_without_idempotent_feature_test/1]).
 -export([create_invoice_ok_test/1]).
--export([create_invoice_legacy_fail_test/1]).
--export([create_invoice_legacy_ok_test/1]).
 -export([create_invoice_fail_test/1]).
 -export([create_invoice_idemp_cart_ok_test/1]).
 -export([create_invoice_idemp_cart_fail_test/1]).
@@ -43,8 +41,6 @@
 -type test_case_name() :: atom().
 -type config() :: [{atom(), any()}].
 -type group_name() :: atom().
-
--define(DIFFERENCE, -1).
 
 -behaviour(supervisor).
 
@@ -77,8 +73,6 @@ groups() ->
         ]},
         {invoice_creation, [], [
             create_invoice_ok_test,
-            create_invoice_legacy_fail_test,
-            create_invoice_legacy_ok_test,
             create_invoice_fail_test,
             create_invoice_idemp_cart_fail_test,
             create_invoice_idemp_cart_ok_test,
@@ -216,9 +210,6 @@ create_payment_ok_test(Config) ->
             [<<"metadata">>, <<"bla">>, 0],
             [<<"payer">>, <<"contactInfo">>],
             [<<"payer">>, <<"paymentSession">>],
-            [<<"payer">>, <<"paymentTool">>, <<"bin">>],
-            [<<"payer">>, <<"paymentTool">>, <<"cardholder_name">>],
-            [<<"payer">>, <<"paymentTool">>, <<"masked_pan">>],
             [<<"payer">>, <<"paymentTool">>, <<"payment_system">>],
             [<<"payer">>, <<"paymentToolToken">>],
             [<<"processingDeadline">>]
@@ -323,63 +314,6 @@ create_invoice_ok_test(Config) ->
     ?assertEqual(BenderKey, maps:get(<<"id">>, Invoice1)),
     ?assertEqual(ExternalID, maps:get(<<"externalID">>, Invoice1)),
     ?assertEqual(Invoice1, Invoice2).
-
--spec create_invoice_legacy_ok_test(config()) -> _.
-create_invoice_legacy_ok_test(Config) ->
-    BenderKey = <<"bender_key">>,
-    ExternalID = <<"ok_merch_id">>,
-    Req = invoice_params(ExternalID),
-    Unused = [
-        [<<"description">>],
-        [<<"externalID">>],
-        [<<"metadata">>, <<"invoice_dummy_metadata">>]
-    ],
-    Ctx = capi_msgp_marshalling:marshal(#{
-        <<"version">> => 2,
-        <<"features">> => capi_idemp_features_legacy:read(capi_feature_schemas_legacy:invoice(), Req)
-    }),
-    _ = capi_ct_helper:mock_services(
-        [
-            {invoicing, fun('Create', {#payproc_InvoiceParams{id = ID, external_id = EID}}) ->
-                {ok, ?PAYPROC_INVOICE_WITH_ID(ID, EID)}
-            end},
-            {bender, fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(BenderKey, Ctx)} end}
-        ],
-        Config
-    ),
-    {{ok, ActualInvoice}, ActualUnused} = create_invoice_(Req, Config),
-    ?assertEqual(Unused, ActualUnused),
-    {{ok, ActualInvoice}, ActualUnused} = create_invoice_(Req, Config).
-
--spec create_invoice_legacy_fail_test(config()) -> _.
-create_invoice_legacy_fail_test(Config) ->
-    BenderKey = <<"bender_key">>,
-    ExternalID = <<"merch_id">>,
-    Req = invoice_params(ExternalID),
-    Unused = [
-        [<<"description">>],
-        [<<"externalID">>],
-        [<<"metadata">>, <<"invoice_dummy_metadata">>]
-    ],
-    Req2 = Req#{<<"product">> => <<"test_product2">>},
-    Ctx = capi_msgp_marshalling:marshal(#{
-        <<"version">> => 2,
-        <<"features">> => capi_idemp_features_legacy:read(capi_feature_schemas_legacy:invoice(), Req)
-    }),
-    _ = capi_ct_helper:mock_services(
-        [
-            {invoicing, fun('Create', {#payproc_InvoiceParams{id = ID, external_id = EID}}) ->
-                {ok, ?PAYPROC_INVOICE_WITH_ID(ID, EID)}
-            end},
-            {bender, fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(BenderKey, Ctx)} end}
-        ],
-        Config
-    ),
-    {{ok, Invoice1}, _} = create_invoice_(Req, Config),
-    #{<<"invoice">> := #{<<"id">> := InvoiceID}} = Invoice1,
-    {Response, Unused2} = create_invoice_(Req2, Config),
-    ?assertEqual(Unused, Unused2),
-    ?assertEqual(response_error(409, ExternalID, InvoiceID), Response).
 
 -spec create_invoice_fail_test(config()) -> _.
 create_invoice_fail_test(Config) ->
@@ -703,8 +637,6 @@ create_customer_binding_ok_test(Config) ->
     ?assertMatch(
         {{ok, _}, [
             [<<"externalID">>],
-            [<<"paymentResource">>, <<"paymentTool">>, <<"bin">>],
-            [<<"paymentResource">>, <<"paymentTool">>, <<"masked_pan">>],
             [<<"paymentResource">>, <<"paymentTool">>, <<"payment_system">>]
         ]},
         BindingResult1
