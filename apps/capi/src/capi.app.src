@@ -29,7 +29,8 @@
         bouncer_client,
         token_keeper_client,
         party_client,
-        payout_manager_proto
+        payout_manager_proto,
+        magista_proto
     ]},
     {env, []}
 ]}.
