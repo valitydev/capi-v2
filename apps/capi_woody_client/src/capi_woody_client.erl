@@ -77,8 +77,8 @@ get_service_modname(invoicing) ->
     {dmsl_payment_processing_thrift, 'Invoicing'};
 get_service_modname(invoice_templating) ->
     {dmsl_payment_processing_thrift, 'InvoiceTemplating'};
-get_service_modname(merchant_stat) ->
-    {dmsl_merch_stat_thrift, 'MerchantStatistics'};
+get_service_modname(magista) ->
+    {magista_thrift, 'MerchantStatisticsService'};
 get_service_modname(reporting) ->
     {reporter_reports_thrift, 'Reporting'};
 get_service_modname(payouts) ->

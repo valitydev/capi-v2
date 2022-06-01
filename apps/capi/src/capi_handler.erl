@@ -97,7 +97,6 @@ map_error(validation_error, Error) ->
 
 get_handlers() ->
     [
-        capi_handler_analytics,
         capi_handler_categories,
         capi_handler_claims,
         capi_handler_contracts,

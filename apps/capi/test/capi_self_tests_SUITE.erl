@@ -139,14 +139,5 @@ schema_param_validation(Config) ->
 
 -spec query_param_validation(config()) -> _.
 query_param_validation(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {merchant_stat, fun('GetInvoices', _) -> {ok, ?STAT_RESPONSE_INVOICES} end}
-        ],
-        Config
-    ),
-    Query0 = [
-        {'payerEmail', <<"te%^st@test.ru">>}
-    ],
     {error, {request_validation_failed, _}} =
-        capi_client_searches:search_invoices(?config(context, Config), ?STRING, Query0).
+        capi_client_invoices:get_invoice_by_external_id(?config(context, Config), <<"">>).

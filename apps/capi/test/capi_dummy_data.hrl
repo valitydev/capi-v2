@@ -872,14 +872,15 @@
 -define(STAT_RESPONSE_INVOICES, ?STAT_RESPONSE({invoices, [?STAT_INVOICE]})).
 
 -define(STAT_RESPONSE_PAYMENTS,
-    ?STAT_RESPONSE(
-        {payments, [
-            ?STAT_PAYMENT(?STAT_CUSTOMER_PAYER({bank_card, ?STAT_BANK_CARD}), ?STAT_PAYMENT_STATUS_PENDING),
-            ?STAT_PAYMENT(?STAT_RECURRENT_PAYER({bank_card, ?STAT_BANK_CARD}), ?STAT_PAYMENT_STATUS_PENDING),
-            ?STAT_PAYMENT(?STAT_PAYER({bank_card, ?STAT_BANK_CARD}), ?STAT_PAYMENT_STATUS_CAPTURED),
-            ?STAT_PAYMENT(?STAT_PAYER({bank_card, ?STAT_BANK_CARD_WITH_TP}), ?STAT_PAYMENT_STATUS_PENDING)
-        ]}
-    )
+    #magista_StatPaymentResponse{
+        payments = [
+            ?STAT_PAYMENT(?CUSTOMER_PAYER, ?STAT_PAYMENT_STATUS_PENDING),
+            ?STAT_PAYMENT(?RECURRENT_PAYER, ?STAT_PAYMENT_STATUS_PENDING),
+            ?STAT_PAYMENT(?PAYMENT_RESOURCE_PAYER, ?STAT_PAYMENT_STATUS_CAPTURED),
+            ?STAT_PAYMENT(?PAYMENT_RESOURCE_PAYER, ?STAT_PAYMENT_STATUS_PENDING)
+        ],
+        continuation_token = ?STRING
+    }
 ).
 
 -define(STAT_RESPONSE_RECORDS, ?STAT_RESPONSE({records, [?STAT_RECORD]})).
@@ -913,10 +914,9 @@
     allocation = ?ALLOCATION
 }).
 
--define(STAT_PAYMENT(Payer, Status), #merchstat_StatPayment{
+-define(STAT_PAYMENT(Payer, Status), #magista_StatPayment{
     id = ?STRING,
     invoice_id = ?STRING,
-    owner_id = ?STRING,
     shop_id = ?STRING,
     created_at = ?TIMESTAMP,
     status = Status,
@@ -927,9 +927,7 @@
     context = ?CONTENT,
     flow = {instant, #merchstat_InvoicePaymentFlowInstant{}},
     domain_revision = ?INTEGER,
-    additional_transaction_info = ?ADDITIONAL_TX_INFO,
-    external_id = ?STRING,
-    allocation = ?ALLOCATION
+    additional_transaction_info = ?ADDITIONAL_TX_INFO
 }).
 
 -define(TX_INFO, #domain_TransactionInfo{
@@ -975,9 +973,9 @@
 
 -define(RECURRENT_PARENT, #merchstat_RecurrentParentPayment{invoice_id = ?STRING, payment_id = ?STRING}).
 
--define(STAT_PAYMENT_STATUS_PENDING, {pending, #merchstat_InvoicePaymentPending{}}).
+-define(STAT_PAYMENT_STATUS_PENDING, {pending, #domain_InvoicePaymentPending{}}).
 
--define(STAT_PAYMENT_STATUS_CAPTURED, {captured, #merchstat_InvoicePaymentCaptured{at = ?TIMESTAMP}}).
+-define(STAT_PAYMENT_STATUS_CAPTURED, {captured, #domain_InvoicePaymentCaptured{}}).
 
 -define(STAT_RECORD, #{
     <<"offset">> => ?INTEGER_BINARY,
