@@ -4,6 +4,7 @@
 -include_lib("stdlib/include/assert.hrl").
 
 -include_lib("magista_proto/include/magista_magista_thrift.hrl").
+-include_lib("magista_proto/include/magista_base_thrift.hrl").
 -include_lib("capi_dummy_data.hrl").
 -include_lib("capi_bouncer_data.hrl").
 
@@ -19,7 +20,8 @@
 -export([init/1]).
 
 -export([
-    search_payments_ok_test/1
+    search_payments_ok_test/1,
+    search_payments_invalid_request_test/1
 ]).
 
 -type test_case_name() :: atom().
@@ -49,7 +51,8 @@ groups() ->
             {group, operations_by_any_token}
         ]},
         {operations_by_any_token, [], [
-            search_payments_ok_test
+            search_payments_ok_test,
+            search_payments_invalid_request_test
         ]}
     ].
 
@@ -136,3 +139,40 @@ search_payments_ok_test(Config) ->
         {'continuationToken', <<"come_back_next_time">>}
     ],
     {ok, _, _} = capi_client_searches:search_payments(?config(context, Config), ?STRING, Query).
+
+-spec search_payments_invalid_request_test(config()) -> _.
+search_payments_invalid_request_test(Config) ->
+    _ = capi_ct_helper:mock_services(
+        [
+            capi_test_hack:get_invoice_mock(),
+            {magista, fun('SearchPayments', _) -> {throwing, #'InvalidRequest'{errors = []}} end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_search_payment_op_ctx(
+        <<"SearchPayments">>,
+        ?STRING,
+        ?STRING,
+        <<"testInvoiceID">>,
+        <<"testPaymentID">>,
+        Config
+    ),
+    Query = [
+        {limit, 2},
+        {from_time, {{2015, 08, 11}, {19, 42, 35}}},
+        {to_time, {{2020, 08, 11}, {19, 42, 35}}},
+        {'payerEmail', <<"test@test.ru">>},
+        {'payerIP', <<"192.168.0.1">>},
+        {'paymentFlow', <<"hold">>},
+        {'paymentMethod', <<"paymentTerminal">>},
+        {'invoiceID', <<"testInvoiceID">>},
+        {'paymentID', <<"testPaymentID">>},
+        {'payerFingerprint', <<"blablablalbalbal">>},
+        {'first6', <<"424242">>},
+        {'last4', <<"2222">>},
+        {'rrn', <<"090909090909">>},
+        {'approvalCode', <<"808080">>},
+        {'paymentAmount', 10000},
+        {'continuationToken', <<"come_back_next_time">>}
+    ],
+    {error, {400, _}} = capi_client_searches:search_payments(?config(context, Config), ?STRING, Query).
