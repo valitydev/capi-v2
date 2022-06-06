@@ -87,16 +87,16 @@ process_search_request_result(payments, Result, Context, #{decode_fun := DecodeF
 
 %%
 
-encode_payment_status('pending') -> pending;
-encode_payment_status('processed') -> processed;
-encode_payment_status('captured') -> captured;
-encode_payment_status('cancelled') -> cancelled;
-encode_payment_status('refunded') -> refunded;
-encode_payment_status('failed') -> failed;
+encode_payment_status(pending) -> pending;
+encode_payment_status(processed) -> processed;
+encode_payment_status(captured) -> captured;
+encode_payment_status(cancelled) -> cancelled;
+encode_payment_status(refunded) -> refunded;
+encode_payment_status(failed) -> failed;
 encode_payment_status(undefined) -> undefined.
 
-encode_payment_flow('instant') -> instant;
-encode_payment_flow('hold') -> hold;
+encode_payment_flow(instant) -> instant;
+encode_payment_flow(hold) -> hold;
 encode_payment_flow(undefined) -> undefined.
 
 encode_payment_method('bankCard') -> bank_card;
