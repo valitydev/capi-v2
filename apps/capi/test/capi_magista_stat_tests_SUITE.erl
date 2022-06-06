@@ -21,7 +21,9 @@
 
 -export([
     search_payments_ok_test/1,
-    search_payments_invalid_request_test/1
+    search_payments_invalid_request_test/1,
+    search_payments_invalid_token_test/1,
+    search_payments_limit_exceeded_test/1
 ]).
 
 -type test_case_name() :: atom().
@@ -52,7 +54,9 @@ groups() ->
         ]},
         {operations_by_any_token, [], [
             search_payments_ok_test,
-            search_payments_invalid_request_test
+            search_payments_invalid_request_test,
+            search_payments_invalid_token_test,
+            search_payments_limit_exceeded_test
         ]}
     ].
 
@@ -145,7 +149,7 @@ search_payments_invalid_request_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
             capi_test_hack:get_invoice_mock(),
-            {magista, fun('SearchPayments', _) -> {throwing, #'InvalidRequest'{errors = []}} end}
+            {magista, fun('SearchPayments', _) -> {throwing, #'InvalidRequest'{errors = [<<"error">>]}} end}
         ],
         Config
     ),
@@ -165,6 +169,70 @@ search_payments_invalid_request_test(Config) ->
         {'payerIP', <<"192.168.0.1">>},
         {'paymentFlow', <<"hold">>},
         {'paymentMethod', <<"paymentTerminal">>},
+        {'invoiceID', <<"testInvoiceID">>},
+        {'paymentID', <<"testPaymentID">>},
+        {'payerFingerprint', <<"blablablalbalbal">>},
+        {'first6', <<"424242">>},
+        {'last4', <<"2222">>},
+        {'rrn', <<"090909090909">>},
+        {'approvalCode', <<"808080">>},
+        {'paymentAmount', 10000},
+        {'continuationToken', <<"come_back_next_time">>}
+    ],
+    {error, {400, _}} = capi_client_searches:search_payments(?config(context, Config), ?STRING, Query).
+
+-spec search_payments_invalid_token_test(config()) -> _.
+search_payments_invalid_token_test(Config) ->
+    _ = capi_ct_helper:mock_services(
+        [
+            capi_test_hack:get_invoice_mock(),
+            {magista, fun('SearchPayments', _) -> {throwing, #magista_BadContinuationToken{reason = <<"">>}} end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_search_payment_op_ctx(
+        <<"SearchPayments">>,
+        ?STRING,
+        ?STRING,
+        <<"testInvoiceID">>,
+        <<"testPaymentID">>,
+        Config
+    ),
+    Query = [
+        {limit, 2},
+        {from_time, {{2015, 08, 11}, {19, 42, 35}}},
+        {to_time, {{2020, 08, 11}, {19, 42, 35}}},
+        {'payerEmail', <<"test@test.ru">>},
+        {'payerIP', <<"192.168.0.1">>},
+        {'paymentStatus', <<"pending">>},
+        {'continuationToken', <<"come_back_next_time">>}
+    ],
+    {error, {400, _}} = capi_client_searches:search_payments(?config(context, Config), ?STRING, Query).
+
+-spec search_payments_limit_exceeded_test(config()) -> _.
+search_payments_limit_exceeded_test(Config) ->
+    _ = capi_ct_helper:mock_services(
+        [
+            capi_test_hack:get_invoice_mock(),
+            {magista, fun('SearchPayments', _) -> {throwing, #magista_LimitExceeded{}} end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_search_payment_op_ctx(
+        <<"SearchPayments">>,
+        ?STRING,
+        ?STRING,
+        <<"testInvoiceID">>,
+        <<"testPaymentID">>,
+        Config
+    ),
+    Query = [
+        {limit, 2},
+        {from_time, {{2015, 08, 11}, {19, 42, 35}}},
+        {to_time, {{2020, 08, 11}, {19, 42, 35}}},
+        {'payerEmail', <<"test@test.ru">>},
+        {'payerIP', <<"192.168.0.1">>},
+        {'paymentStatus', <<"captured">>},
         {'invoiceID', <<"testInvoiceID">>},
         {'paymentID', <<"testPaymentID">>},
         {'payerFingerprint', <<"blablablalbalbal">>},
