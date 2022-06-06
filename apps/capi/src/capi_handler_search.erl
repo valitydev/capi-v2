@@ -1,6 +1,6 @@
 -module(capi_handler_search).
 
--include_lib("magista_proto/include/magista_thrift.hrl").
+-include_lib("magista_proto/include/magista_magista_thrift.hrl").
 
 -behaviour(capi_handler).
 

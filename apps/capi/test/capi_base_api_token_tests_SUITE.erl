@@ -9,7 +9,7 @@
 -include_lib("damsel/include/dmsl_merch_stat_thrift.hrl").
 -include_lib("reporter_proto/include/reporter_reports_thrift.hrl").
 -include_lib("payout_manager_proto/include/payouts_payout_manager_thrift.hrl").
--include_lib("magista_proto/include/magista_thrift.hrl").
+-include_lib("magista_proto/include/magista_magista_thrift.hrl").
 -include_lib("capi_dummy_data.hrl").
 -include_lib("capi_bouncer_data.hrl").
 

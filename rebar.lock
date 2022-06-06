@@ -82,7 +82,7 @@
   0},
  {<<"magista_proto">>,
   {git,"https://github.com/valitydev/magista-proto.git",
-       {ref,"cd2e18beb7a64ead356cfc8e76e2f6dd59c4de97"}},
+       {ref,"512e0f68ab9d9ba6630941660a05d39c6c607406"}},
   0},
  {<<"metrics">>,{pkg,<<"metrics">>,<<"1.0.1">>},2},
  {<<"mimerl">>,{pkg,<<"mimerl">>,<<"1.2.0">>},2},
