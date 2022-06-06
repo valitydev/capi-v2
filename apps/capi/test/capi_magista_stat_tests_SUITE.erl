@@ -205,6 +205,8 @@ search_payments_invalid_token_test(Config) ->
         {'payerEmail', <<"test@test.ru">>},
         {'payerIP', <<"192.168.0.1">>},
         {'paymentStatus', <<"pending">>},
+        {'invoiceID', <<"testInvoiceID">>},
+        {'paymentID', <<"testPaymentID">>},
         {'continuationToken', <<"come_back_next_time">>}
     ],
     {error, {400, _}} = capi_client_searches:search_payments(?config(context, Config), ?STRING, Query).
