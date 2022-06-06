@@ -54,7 +54,7 @@ make_query(payments, Context, Req) ->
         payment_approval_code = genlib_map:get('approvalCode', Req)
     },
     #magista_PaymentSearchQuery{
-        common_search_query_params  = CommonSearchQueryParams,
+        common_search_query_params = CommonSearchQueryParams,
         payment_params = PaymentParams,
         invoice_ids = [genlib_map:get('invoiceID', Req)]
     }.
@@ -203,7 +203,7 @@ decode_stat_payer(
 decode_stat_payment_flow({instant, _}) ->
     #{<<"type">> => <<"PaymentFlowInstant">>};
 decode_stat_payment_flow(
-    {hold, #domain_InvoicePaymentFlowHold{
+    {hold, #magista_InvoicePaymentFlowHold{
         on_hold_expiration = OnHoldExpiration,
         held_until = HeldUntil
     }}
@@ -264,7 +264,10 @@ decode_bank_card_details(BankCard, V) ->
         <<"tokenProvider">> => BankCardTokenServiceRef
     }).
 
-decode_payment_terminal_details(#domain_PaymentTerminal{payment_service = #domain_PaymentServiceRef{id = Provider}}, V) ->
+decode_payment_terminal_details(
+    #domain_PaymentTerminal{payment_service = #domain_PaymentServiceRef{id = Provider}},
+    V
+) ->
     V#{
         <<"provider">> => Provider
     }.

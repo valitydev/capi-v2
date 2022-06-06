@@ -9,7 +9,6 @@
 -include_lib("damsel/include/dmsl_merch_stat_thrift.hrl").
 -include_lib("reporter_proto/include/reporter_reports_thrift.hrl").
 -include_lib("payout_manager_proto/include/payouts_payout_manager_thrift.hrl").
--include_lib("magista_proto/include/magista_magista_thrift.hrl").
 -include_lib("capi_dummy_data.hrl").
 -include_lib("capi_bouncer_data.hrl").
 
@@ -98,7 +97,6 @@
     get_webhooks/1,
     get_webhook_by_id/1,
     delete_webhook_by_id/1,
-    search_payments_ok_test/1,
     get_reports_ok_test/1,
     get_reports_for_party_ok_test/1,
     get_report_ok_test/1,
@@ -259,7 +257,6 @@ groups() ->
             create_payout_autorization_error,
             get_payout,
             get_payout_fail,
-            search_payments_ok_test,
 
             get_reports_ok_test,
             get_reports_for_party_ok_test,
@@ -1871,51 +1868,6 @@ delete_webhook_by_id(Config) ->
         Config
     ),
     ok = capi_client_webhooks:delete_webhook_by_id(?config(context, Config), ?INTEGER_BINARY).
-
--spec search_payments_ok_test(config()) -> _.
-search_payments_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {invoicing, fun('Get', _) -> {ok, ?PAYPROC_INVOICE} end},
-            {magista, fun('SearchPayments', _) -> {ok, ?STAT_RESPONSE_PAYMENTS} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_search_payment_op_ctx(
-        <<"SearchPayments">>,
-        ?STRING,
-        ?STRING,
-        <<"testInvoiceID">>,
-        <<"testPaymentID">>,
-        Config
-    ),
-    ok = search_payments_ok_(<<"applepay">>, Config),
-    ok = search_payments_ok_(<<"yandexpay">>, Config).
-
-search_payments_ok_(BankCardTokenProvider, Config) ->
-    Query = [
-        {limit, 2},
-        {from_time, {{2015, 08, 11}, {19, 42, 35}}},
-        {to_time, {{2020, 08, 11}, {19, 42, 35}}},
-        {'payerEmail', <<"test@test.ru">>},
-        {'payerIP', <<"192.168.0.1">>},
-        {'paymentStatus', <<"processed">>},
-        {'paymentFlow', <<"instant">>},
-        {'paymentMethod', <<"bankCard">>},
-        {'invoiceID', <<"testInvoiceID">>},
-        {'paymentID', <<"testPaymentID">>},
-        {'payerFingerprint', <<"blablablalbalbal">>},
-        {'first6', <<"424242">>},
-        {'last4', <<"2222">>},
-        {'rrn', <<"090909090909">>},
-        {'approvalCode', <<"808080">>},
-        {'bankCardTokenProvider', BankCardTokenProvider},
-        {'bankCardPaymentSystem', <<"visa">>},
-        {'paymentAmount', 10000},
-        {'continuationToken', <<"come_back_next_time">>}
-    ],
-    {ok, _, _} = capi_client_searches:search_payments(?config(context, Config), ?STRING, Query),
-    ok.
 
 -spec get_reports_ok_test(config()) -> _.
 get_reports_ok_test(Config) ->

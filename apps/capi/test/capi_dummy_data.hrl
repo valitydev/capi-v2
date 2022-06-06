@@ -196,7 +196,7 @@
     token = PS,
     payment_system = #domain_PaymentSystemRef{id = PS},
     bin = <<"411111">>,
-    last_digits = <<"411111******1111">>
+    last_digits = <<"1111">>
 }).
 
 -define(BANK_CARD(PS, ExpDate), ?BANK_CARD(PS, ExpDate, <<"CARD HODLER">>)).
@@ -863,60 +863,20 @@
     enabled = true
 }).
 
--define(STAT_RESPONSE(Data), #merchstat_StatResponse{
-    data = Data,
-    total_count = ?INTEGER,
+-define(STAT_RESPONSE_PAYMENTS, #magista_StatPaymentResponse{
+    payments = [
+        ?STAT_PAYMENT(?STAT_CUSTOMER_PAYER({bank_card, ?BANK_CARD}), ?STAT_PAYMENT_STATUS_PENDING),
+        ?STAT_PAYMENT(?RECURRENT_PAYER, ?STAT_PAYMENT_STATUS_PENDING),
+        ?STAT_PAYMENT(?PAYER, ?STAT_PAYMENT_STATUS_CAPTURED),
+        ?STAT_PAYMENT(?PAYER, ?STAT_PAYMENT_STATUS_PENDING)
+    ],
     continuation_token = ?STRING
-}).
-
--define(STAT_RESPONSE_INVOICES, ?STAT_RESPONSE({invoices, [?STAT_INVOICE]})).
-
--define(STAT_RESPONSE_PAYMENTS,
-    #magista_StatPaymentResponse{
-        payments = [
-            ?STAT_PAYMENT(?CUSTOMER_PAYER, ?STAT_PAYMENT_STATUS_PENDING),
-            ?STAT_PAYMENT(?RECURRENT_PAYER, ?STAT_PAYMENT_STATUS_PENDING),
-            ?STAT_PAYMENT(?PAYMENT_RESOURCE_PAYER, ?STAT_PAYMENT_STATUS_CAPTURED),
-            ?STAT_PAYMENT(?PAYMENT_RESOURCE_PAYER, ?STAT_PAYMENT_STATUS_PENDING)
-        ],
-        continuation_token = ?STRING
-    }
-).
-
--define(STAT_RESPONSE_RECORDS, ?STAT_RESPONSE({records, [?STAT_RECORD]})).
-
--define(STAT_RESPONSE_REFUNDS, ?STAT_RESPONSE({refunds, [?STAT_REFUND]})).
-
--define(STAT_RESPONSE_PAYOUTS,
-    ?STAT_RESPONSE(
-        {payouts, [
-            ?STAT_PAYOUT(?WALLET_INFO),
-            ?STAT_PAYOUT(?RUSSIAN_BANK_ACCOUNT),
-            ?STAT_PAYOUT(?INTERNATIONAL_BANK_ACCOUNT),
-            ?STAT_PAYOUT(?PAYMENT_INSTITUTION_ACCOUNT)
-        ]}
-    )
-).
-
--define(STAT_INVOICE, #merchstat_StatInvoice{
-    id = ?STRING,
-    owner_id = ?STRING,
-    shop_id = ?STRING,
-    created_at = ?TIMESTAMP,
-    status = {unpaid, #merchstat_InvoiceUnpaid{}},
-    product = ?STRING,
-    description = ?STRING,
-    due = ?TIMESTAMP,
-    amount = ?INTEGER,
-    currency_symbolic_code = ?RUB,
-    context = ?CONTENT,
-    external_id = ?STRING,
-    allocation = ?ALLOCATION
 }).
 
 -define(STAT_PAYMENT(Payer, Status), #magista_StatPayment{
     id = ?STRING,
     invoice_id = ?STRING,
+    owner_id = ?STRING,
     shop_id = ?STRING,
     created_at = ?TIMESTAMP,
     status = Status,
@@ -925,7 +885,7 @@
     currency_symbolic_code = ?RUB,
     payer = Payer,
     context = ?CONTENT,
-    flow = {instant, #merchstat_InvoicePaymentFlowInstant{}},
+    flow = {instant, #magista_InvoicePaymentFlowInstant{}},
     domain_revision = ?INTEGER,
     additional_transaction_info = ?ADDITIONAL_TX_INFO
 }).
@@ -956,10 +916,10 @@
 ).
 
 -define(STAT_CUSTOMER_PAYER(PaymentTool),
-    {customer, #merchstat_CustomerPayer{
+    {customer, #magista_CustomerPayer{
         customer_id = ?STRING,
         payment_tool = PaymentTool,
-        email = <<"test@test.ru">>
+        contact_info = ?CONTACT_INFO
     }}
 ).
 
