@@ -123,26 +123,40 @@ search_payments_ok_test(Config) ->
         <<"testPaymentID">>,
         Config
     ),
+    {ok, _, _} = make_search_payments_query([{'paymentStatus', <<"pending">>}], Config),
+    {ok, _, _} = make_search_payments_query([{'paymentStatus', <<"processed">>}], Config),
+    {ok, _, _} = make_search_payments_query([{'paymentStatus', <<"captured">>}], Config),
+    {ok, _, _} = make_search_payments_query([{'paymentStatus', <<"cancelled">>}], Config),
+    {ok, _, _} = make_search_payments_query([{'paymentStatus', <<"refunded">>}], Config),
+    {ok, _, _} = make_search_payments_query([{'paymentStatus', <<"failed">>}], Config),
+    {ok, _, _} = make_search_payments_query([{'paymentFlow', <<"instant">>}], Config),
+    {ok, _, _} = make_search_payments_query([{'paymentFlow', <<"hold">>}], Config),
+    {ok, _, _} = make_search_payments_query([{'paymentMethod', <<"bankCard">>}], Config),
+    {ok, _, _} = make_search_payments_query([{'paymentMethod', <<"paymentTerminal">>}], Config),
+    {ok, _, _} = make_search_payments_query(
+        [
+            {'payerFingerprint', <<"blablablalbalbal">>},
+            {'first6', <<"424242">>},
+            {'last4', <<"2222">>},
+            {'rrn', <<"090909090909">>},
+            {'approvalCode', <<"808080">>},
+            {'paymentAmount', 10000}
+        ],
+        Config
+    ).
+
+make_search_payments_query(QueryAdds, Config) ->
     Query = [
         {limit, 2},
         {from_time, {{2015, 08, 11}, {19, 42, 35}}},
         {to_time, {{2020, 08, 11}, {19, 42, 35}}},
         {'payerEmail', <<"test@test.ru">>},
         {'payerIP', <<"192.168.0.1">>},
-        {'paymentStatus', <<"processed">>},
-        {'paymentFlow', <<"instant">>},
-        {'paymentMethod', <<"bankCard">>},
         {'invoiceID', <<"testInvoiceID">>},
         {'paymentID', <<"testPaymentID">>},
-        {'payerFingerprint', <<"blablablalbalbal">>},
-        {'first6', <<"424242">>},
-        {'last4', <<"2222">>},
-        {'rrn', <<"090909090909">>},
-        {'approvalCode', <<"808080">>},
-        {'paymentAmount', 10000},
         {'continuationToken', <<"come_back_next_time">>}
     ],
-    {ok, _, _} = capi_client_searches:search_payments(?config(context, Config), ?STRING, Query).
+    capi_client_searches:search_payments(?config(context, Config), ?STRING, Query ++ QueryAdds).
 
 -spec search_payments_invalid_request_test(config()) -> _.
 search_payments_invalid_request_test(Config) ->
@@ -165,18 +179,8 @@ search_payments_invalid_request_test(Config) ->
         {limit, 2},
         {from_time, {{2015, 08, 11}, {19, 42, 35}}},
         {to_time, {{2020, 08, 11}, {19, 42, 35}}},
-        {'payerEmail', <<"test@test.ru">>},
-        {'payerIP', <<"192.168.0.1">>},
-        {'paymentFlow', <<"hold">>},
-        {'paymentMethod', <<"paymentTerminal">>},
         {'invoiceID', <<"testInvoiceID">>},
         {'paymentID', <<"testPaymentID">>},
-        {'payerFingerprint', <<"blablablalbalbal">>},
-        {'first6', <<"424242">>},
-        {'last4', <<"2222">>},
-        {'rrn', <<"090909090909">>},
-        {'approvalCode', <<"808080">>},
-        {'paymentAmount', 10000},
         {'continuationToken', <<"come_back_next_time">>}
     ],
     {error, {400, _}} = capi_client_searches:search_payments(?config(context, Config), ?STRING, Query).
@@ -202,9 +206,6 @@ search_payments_invalid_token_test(Config) ->
         {limit, 2},
         {from_time, {{2015, 08, 11}, {19, 42, 35}}},
         {to_time, {{2020, 08, 11}, {19, 42, 35}}},
-        {'payerEmail', <<"test@test.ru">>},
-        {'payerIP', <<"192.168.0.1">>},
-        {'paymentStatus', <<"pending">>},
         {'invoiceID', <<"testInvoiceID">>},
         {'paymentID', <<"testPaymentID">>},
         {'continuationToken', <<"come_back_next_time">>}
@@ -232,17 +233,8 @@ search_payments_limit_exceeded_test(Config) ->
         {limit, 2},
         {from_time, {{2015, 08, 11}, {19, 42, 35}}},
         {to_time, {{2020, 08, 11}, {19, 42, 35}}},
-        {'payerEmail', <<"test@test.ru">>},
-        {'payerIP', <<"192.168.0.1">>},
-        {'paymentStatus', <<"captured">>},
         {'invoiceID', <<"testInvoiceID">>},
         {'paymentID', <<"testPaymentID">>},
-        {'payerFingerprint', <<"blablablalbalbal">>},
-        {'first6', <<"424242">>},
-        {'last4', <<"2222">>},
-        {'rrn', <<"090909090909">>},
-        {'approvalCode', <<"808080">>},
-        {'paymentAmount', 10000},
         {'continuationToken', <<"come_back_next_time">>}
     ],
     {error, {400, _}} = capi_client_searches:search_payments(?config(context, Config), ?STRING, Query).

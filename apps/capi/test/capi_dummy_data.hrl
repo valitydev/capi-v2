@@ -865,15 +865,23 @@
 
 -define(STAT_RESPONSE_PAYMENTS, #magista_StatPaymentResponse{
     payments = [
-        ?STAT_PAYMENT(?STAT_CUSTOMER_PAYER({bank_card, ?BANK_CARD}), ?STAT_PAYMENT_STATUS_PENDING),
+        ?STAT_PAYMENT(
+            ?STAT_CUSTOMER_PAYER({digital_wallet, ?DIGITAL_WALLET(?STRING, ?STRING, ?STRING)}),
+            ?STAT_PAYMENT_STATUS_PENDING
+        ),
+        ?STAT_PAYMENT(?STAT_CUSTOMER_PAYER({bank_card, ?BANK_CARD}), ?STAT_PAYMENT_STATUS_FAILED),
         ?STAT_PAYMENT(?RECURRENT_PAYER, ?STAT_PAYMENT_STATUS_PENDING),
         ?STAT_PAYMENT(?PAYER, ?STAT_PAYMENT_STATUS_CAPTURED),
-        ?STAT_PAYMENT(?PAYER, ?STAT_PAYMENT_STATUS_PENDING)
+        ?STAT_PAYMENT(
+            ?PAYER,
+            ?STAT_PAYMENT_STATUS_PENDING,
+            {hold, #magista_InvoicePaymentFlowHold{on_hold_expiration = cancel, held_until = ?TIMESTAMP}}
+        )
     ],
     continuation_token = ?STRING
 }).
 
--define(STAT_PAYMENT(Payer, Status), #magista_StatPayment{
+-define(STAT_PAYMENT(Payer, Status, Flow), #magista_StatPayment{
     id = ?STRING,
     invoice_id = ?STRING,
     owner_id = ?STRING,
@@ -885,10 +893,12 @@
     currency_symbolic_code = ?RUB,
     payer = Payer,
     context = ?CONTENT,
-    flow = {instant, #magista_InvoicePaymentFlowInstant{}},
+    flow = Flow,
     domain_revision = ?INTEGER,
     additional_transaction_info = ?ADDITIONAL_TX_INFO
 }).
+
+-define(STAT_PAYMENT(Payer, Status), ?STAT_PAYMENT(Payer, Status, {instant, #magista_InvoicePaymentFlowInstant{}})).
 
 -define(TX_INFO, #domain_TransactionInfo{
     id = ?STRING,
@@ -936,6 +946,10 @@
 -define(STAT_PAYMENT_STATUS_PENDING, {pending, #domain_InvoicePaymentPending{}}).
 
 -define(STAT_PAYMENT_STATUS_CAPTURED, {captured, #domain_InvoicePaymentCaptured{}}).
+
+-define(STAT_PAYMENT_STATUS_FAILED,
+    {failed, #domain_InvoicePaymentFailed{failure = {failure, #domain_Failure{code = <<"error_code">>}}}}
+).
 
 -define(STAT_RECORD, #{
     <<"offset">> => ?INTEGER_BINARY,
