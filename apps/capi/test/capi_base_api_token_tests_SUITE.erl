@@ -37,7 +37,14 @@
     create_customer_access_token_ok_test/1,
     rescind_invoice_ok_test/1,
     fulfill_invoice_ok_test/1,
-    get_merchant_payment_status_test/1,
+    get_payment_status_preauthorization_failed_test/1,
+    get_payment_status_payment_tool_rejected_test/1,
+    get_payment_status_account_limit_exceeded_test/1,
+    get_payment_status_account_blocked_test/1,
+    get_payment_status_rejected_by_issuer_test/1,
+    get_payment_status_account_not_found_test/1,
+    get_payment_status_insufficient_funds_test/1,
+
     create_payment_ok_test/1,
     create_refund/1,
     create_refund_blocked_error/1,
@@ -225,7 +232,13 @@ groups() ->
             get_refunds,
             get_refund_by_external_id,
             check_no_internal_id_for_external_id_test,
-            get_merchant_payment_status_test,
+            get_payment_status_preauthorization_failed_test,
+            get_payment_status_payment_tool_rejected_test,
+            get_payment_status_account_limit_exceeded_test,
+            get_payment_status_account_blocked_test,
+            get_payment_status_rejected_by_issuer_test,
+            get_payment_status_account_not_found_test,
+            get_payment_status_insufficient_funds_test,
 
             get_payment_institutions,
             get_payment_institution_by_ref,
@@ -632,8 +645,36 @@ fulfill_invoice_ok_test(Config) ->
     ),
     ok = capi_client_invoices:fulfill_invoice(?config(context, Config), ?STRING, ?STRING).
 
--spec get_merchant_payment_status_test(config()) -> _.
-get_merchant_payment_status_test(Config) ->
+-spec get_payment_status_preauthorization_failed_test(config()) -> _.
+get_payment_status_preauthorization_failed_test(Config) ->
+    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
+    MappedFailure = #{
+        <<"code">> => <<"preauthorization_failed">>,
+        <<"subError">> => #{
+            <<"code">> => <<"unknown">>
+        }
+    },
+    Failure =
+        payproc_errors:construct(
+            'PaymentFailure',
+            {preauthorization_failed, {unknown, #payprocerr_GeneralFailure{}}},
+            <<"Reason">>
+        ),
+    get_merchant_payment_status_test_impl(MappedFailure, Failure, Config).
+
+-spec get_payment_status_payment_tool_rejected_test(config()) -> _.
+get_payment_status_payment_tool_rejected_test(Config) ->
+    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
+    MappedFailure = #{
+        <<"code">> => <<"authorization_failed">>,
+        <<"subError">> => #{
+            <<"code">> => <<"payment_tool_rejected">>,
+            <<"subError">> => #{
+                <<"code">> => <<"bank_card_rejected">>,
+                <<"subError">> => #{<<"code">> => <<"cvv_invalid">>}
+            }
+        }
+    },
     Failure =
         payproc_errors:construct(
             'PaymentFailure',
@@ -641,26 +682,74 @@ get_merchant_payment_status_test(Config) ->
                 {payment_tool_rejected, {bank_card_rejected, {cvv_invalid, #payprocerr_GeneralFailure{}}}}},
             <<"Reason">>
         ),
+    get_merchant_payment_status_test_impl(MappedFailure, Failure, Config).
+
+-spec get_payment_status_account_limit_exceeded_test(config()) -> _.
+get_payment_status_account_limit_exceeded_test(Config) ->
+    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
+    MappedFailure = #{
+        <<"code">> => <<"authorization_failed">>,
+        <<"subError">> => #{
+            <<"code">> => <<"account_limit_exceeded">>,
+            <<"subError">> => #{
+                <<"code">> => <<"unknown">>
+            }
+        }
+    },
+    Failure =
+        payproc_errors:construct(
+            'PaymentFailure',
+            {authorization_failed, {account_limit_exceeded, {unknown, #payprocerr_GeneralFailure{}}}},
+            <<"Reason">>
+        ),
+    get_merchant_payment_status_test_impl(MappedFailure, Failure, Config).
+
+-spec get_payment_status_account_blocked_test(config()) -> _.
+get_payment_status_account_blocked_test(Config) ->
+    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
+    get_merchant_payment_status_test_(account_blocked, Config).
+
+-spec get_payment_status_rejected_by_issuer_test(config()) -> _.
+get_payment_status_rejected_by_issuer_test(Config) ->
+    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
+    get_merchant_payment_status_test_(rejected_by_issuer, Config).
+
+-spec get_payment_status_account_not_found_test(config()) -> _.
+get_payment_status_account_not_found_test(Config) ->
+    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
+    get_merchant_payment_status_test_(account_not_found, Config).
+
+-spec get_payment_status_insufficient_funds_test(config()) -> _.
+get_payment_status_insufficient_funds_test(Config) ->
+    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
+    get_merchant_payment_status_test_(insufficient_funds, Config).
+
+get_merchant_payment_status_test_(SubErrorCode, Config) ->
+    MappedFailure6 = #{
+        <<"code">> => <<"authorization_failed">>,
+        <<"subError">> => #{
+            <<"code">> => atom_to_binary(SubErrorCode)
+        }
+    },
+    Failure6 =
+        payproc_errors:construct(
+            'PaymentFailure',
+            {authorization_failed, {SubErrorCode, #payprocerr_GeneralFailure{}}},
+            <<"Reason">>
+        ),
+    get_merchant_payment_status_test_impl(MappedFailure6, Failure6, Config).
+
+get_merchant_payment_status_test_impl(MappedFailure, Failure, Config) ->
     _ = capi_ct_helper:mock_services(
         [
             {invoicing, fun('Get', _) -> {ok, ?PAYPROC_INVOICE([?PAYPROC_FAILED_PAYMENT({failure, Failure})])} end}
         ],
         Config
     ),
-    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
     ?assertMatch(
         {ok, #{
             <<"status">> := <<"failed">>,
-            <<"error">> := #{
-                <<"code">> := <<"authorization_failed">>,
-                <<"subError">> := #{
-                    <<"code">> := <<"payment_tool_rejected">>,
-                    <<"subError">> := #{
-                        <<"code">> := <<"bank_card_rejected">>,
-                        <<"subError">> := #{<<"code">> := <<"cvv_invalid">>}
-                    }
-                }
-            }
+            <<"error">> := MappedFailure
         }},
         capi_client_payments:get_payment_by_id(?config(context, Config), ?STRING, ?STRING)
     ).
