@@ -1,6 +1,7 @@
 -module(capi_handler_decoder_utils).
 
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
+-include_lib("damsel/include/dmsl_base_thrift.hrl").
 
 -export([decode_map/2]).
 -export([decode_currency/1]).
@@ -19,8 +20,6 @@
 -export([decode_optional/2]).
 -export([decode_metadata/1]).
 -export([decode_namespaced_metadata/1]).
-
--export([convert_crypto_currency_to_swag/1]).
 
 -export_type([decode_data/0]).
 
@@ -101,7 +100,7 @@ decode_category_ref(#domain_CategoryRef{id = CategoryRef}) ->
     CategoryRef.
 
 -spec decode_context(capi_handler_encoder:encode_data()) -> decode_data() | undefined.
-decode_context(#'Content'{type = <<"application/json">>, data = InvoiceContext}) ->
+decode_context(#base_Content{type = <<"application/json">>, data = InvoiceContext}) ->
     % @TODO deal with non json contexts
     jsx:decode(InvoiceContext, [return_maps]);
 decode_context(undefined) ->
@@ -123,9 +122,3 @@ when
     NS :: binary().
 decode_namespaced_metadata(NamespacedMD) ->
     maps:map(fun(_NS, MD) -> decode_metadata(MD) end, NamespacedMD).
-
--spec convert_crypto_currency_to_swag(atom()) -> binary().
-convert_crypto_currency_to_swag(bitcoin_cash) ->
-    <<"bitcoinCash">>;
-convert_crypto_currency_to_swag(CryptoCurrency) when is_atom(CryptoCurrency) ->
-    atom_to_binary(CryptoCurrency, utf8).

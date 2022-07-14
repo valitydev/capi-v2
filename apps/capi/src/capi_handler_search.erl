@@ -1,6 +1,8 @@
 -module(capi_handler_search).
 
 -include_lib("magista_proto/include/magista_magista_thrift.hrl").
+-include_lib("damsel/include/dmsl_base_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_thrift.hrl").
 
 -behaviour(capi_handler).
 
@@ -76,7 +78,7 @@ process_search_request_result(payments, Result, Context, #{decode_fun := DecodeF
                 <<"continuationToken">> => ContinuationToken
             }),
             {ok, {200, #{}, Resp}};
-        {exception, #'InvalidRequest'{errors = Errors}} ->
+        {exception, #base_InvalidRequest{errors = Errors}} ->
             FormattedErrors = capi_handler_utils:format_request_errors(Errors),
             {ok, logic_error('invalidRequest', FormattedErrors)};
         {exception, #magista_LimitExceeded{}} ->
@@ -236,7 +238,7 @@ decode_stat_payment_tool_details({digital_wallet, V}) ->
 decode_stat_payment_tool_details({crypto_currency, CryptoCurrency}) ->
     #{
         <<"detailsType">> => <<"PaymentToolDetailsCryptoWallet">>,
-        <<"cryptoCurrency">> => capi_handler_decoder_utils:convert_crypto_currency_to_swag(CryptoCurrency)
+        <<"cryptoCurrency">> => decode_crypto_wallet_details(CryptoCurrency)
     };
 decode_stat_payment_tool_details({mobile_commerce, MobileCommerce}) ->
     #domain_MobileCommerce{
@@ -276,6 +278,9 @@ decode_digital_wallet_details(#domain_DigitalWallet{payment_service = #domain_Pa
     V#{
         <<"provider">> => Provider
     }.
+
+decode_crypto_wallet_details(#domain_CryptoCurrencyRef{id = Provider}) ->
+    Provider.
 
 mask_phone_number(PhoneNumber) ->
     capi_utils:redact(PhoneNumber, <<"^\\+\\d(\\d{1,10}?)\\d{2,4}$">>).

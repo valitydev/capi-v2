@@ -1,6 +1,8 @@
 -module(capi_handler_claims).
 
--include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_thrift.hrl").
+-include_lib("damsel/include/dmsl_base_thrift.hrl").
 
 -behaviour(capi_handler).
 
@@ -66,7 +68,7 @@ prepare(OperationID = 'CreateClaim', Req, Context) ->
                     {ok, logic_error('changesetConflict', <<"Changeset conflict">>)};
                 {error, #payproc_InvalidChangeset{}} ->
                     {ok, logic_error('invalidChangeset', <<"Invalid changeset">>)};
-                {error, #'InvalidRequest'{errors = Errors}} ->
+                {error, #base_InvalidRequest{errors = Errors}} ->
                     FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                     {ok, logic_error('invalidRequest', FormattedErrors)}
             end

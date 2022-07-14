@@ -1,7 +1,7 @@
 -module(capi_domain).
 
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
--include_lib("damsel/include/dmsl_domain_config_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_conf_thrift.hrl").
 
 -export([get_payment_institution/2]).
 -export([get_payment_institutions/1]).
@@ -37,7 +37,7 @@ get_payment_institutions(Context) ->
     try
         Opts = make_opts(Context),
 
-        #'VersionedObject'{
+        #'domain_conf_VersionedObject'{
             version = Version,
             object = {globals, #domain_GlobalsObject{data = Globals}}
         } = dmt_client:checkout_versioned_object(latest, globals(), Opts),
@@ -61,7 +61,7 @@ get_payment_institutions(Context) ->
 
         {ok, PaymentInstitutions}
     catch
-        throw:#'ObjectNotFound'{} ->
+        throw:#'domain_conf_ObjectNotFound'{} ->
             {error, not_found}
     end.
 
@@ -72,7 +72,7 @@ get(Ref, Context) ->
         {_Type, Object} = dmt_client:checkout_object(latest, Ref, Opts),
         {ok, Object}
     catch
-        throw:#'ObjectNotFound'{} ->
+        throw:#'domain_conf_ObjectNotFound'{} ->
             {error, not_found}
     end.
 

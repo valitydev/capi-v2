@@ -18,7 +18,7 @@
 -define(API_TOKEN, <<"letmein">>).
 -define(EMAIL, <<"test@test.ru">>).
 
--define(RATIONAL, #'Rational'{p = ?INTEGER, q = ?INTEGER}).
+-define(RATIONAL, #base_Rational{p = ?INTEGER, q = ?INTEGER}).
 
 -define(DETAILS, #domain_InvoiceDetails{
     product = ?STRING,
@@ -33,7 +33,7 @@
     }
 }).
 
--define(CONTENT, #'Content'{
+-define(CONTENT, #base_Content{
     type = <<"application/json">>,
     data = ?JSON_SERIAL
 }).
@@ -1035,7 +1035,7 @@
     reports = [?REPORT]
 }).
 
--define(SNAPSHOT, #'Snapshot'{
+-define(SNAPSHOT, #'domain_conf_Snapshot'{
     version = ?INTEGER,
     domain = #{
         {category, #domain_CategoryRef{id = ?INTEGER}} =>
@@ -1052,18 +1052,18 @@
                 data = #domain_BusinessSchedule{
                     name = ?STRING,
                     description = ?STRING,
-                    schedule = #'Schedule'{
-                        year = {every, #'ScheduleEvery'{}},
-                        month = {every, #'ScheduleEvery'{}},
-                        day_of_month = {every, #'ScheduleEvery'{}},
-                        day_of_week = {every, #'ScheduleEvery'{}},
-                        hour = {every, #'ScheduleEvery'{}},
-                        minute = {every, #'ScheduleEvery'{}},
-                        second = {every, #'ScheduleEvery'{}}
+                    schedule = #'base_Schedule'{
+                        year = {every, #'base_ScheduleEvery'{}},
+                        month = {every, #'base_ScheduleEvery'{}},
+                        day_of_month = {every, #'base_ScheduleEvery'{}},
+                        day_of_week = {every, #'base_ScheduleEvery'{}},
+                        hour = {every, #'base_ScheduleEvery'{}},
+                        minute = {every, #'base_ScheduleEvery'{}},
+                        second = {every, #'base_ScheduleEvery'{}}
                     },
-                    delay = #'TimeSpan'{},
+                    delay = #'base_TimeSpan'{},
                     policy = #domain_PayoutCompilationPolicy{
-                        assets_freeze_for = #'TimeSpan'{}
+                        assets_freeze_for = #'base_TimeSpan'{}
                     }
                 }
             }},

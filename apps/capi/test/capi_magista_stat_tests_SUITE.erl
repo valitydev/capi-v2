@@ -3,8 +3,9 @@
 -include_lib("common_test/include/ct.hrl").
 -include_lib("stdlib/include/assert.hrl").
 
+-include_lib("damsel/include/dmsl_base_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("magista_proto/include/magista_magista_thrift.hrl").
--include_lib("magista_proto/include/magista_base_thrift.hrl").
 -include_lib("capi_dummy_data.hrl").
 -include_lib("capi_bouncer_data.hrl").
 
@@ -163,7 +164,7 @@ search_payments_invalid_request_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
             capi_test_hack:get_invoice_mock(),
-            {magista, fun('SearchPayments', _) -> {throwing, #'InvalidRequest'{errors = [<<"error">>]}} end}
+            {magista, fun('SearchPayments', _) -> {throwing, #base_InvalidRequest{errors = [<<"error">>]}} end}
         ],
         Config
     ),

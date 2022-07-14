@@ -3,10 +3,12 @@
 -include_lib("common_test/include/ct.hrl").
 -include_lib("stdlib/include/assert.hrl").
 
--include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
--include_lib("damsel/include/dmsl_payment_processing_errors_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_error_thrift.hrl").
 -include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
--include_lib("damsel/include/dmsl_merch_stat_thrift.hrl").
+-include_lib("damsel/include/dmsl_merchstat_thrift.hrl").
+-include_lib("damsel/include/dmsl_base_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("reporter_proto/include/reporter_reports_thrift.hrl").
 -include_lib("payout_manager_proto/include/payouts_payout_manager_thrift.hrl").
 -include_lib("capi_dummy_data.hrl").
@@ -657,7 +659,7 @@ get_payment_status_preauthorization_failed_test(Config) ->
     Failure =
         payproc_errors:construct(
             'PaymentFailure',
-            {preauthorization_failed, {unknown, #payprocerr_GeneralFailure{}}},
+            {preauthorization_failed, {unknown, #payproc_error_GeneralFailure{}}},
             <<"Reason">>
         ),
     get_merchant_payment_status_test_impl(MappedFailure, Failure, Config).
@@ -679,7 +681,7 @@ get_payment_status_payment_tool_rejected_test(Config) ->
         payproc_errors:construct(
             'PaymentFailure',
             {authorization_failed,
-                {payment_tool_rejected, {bank_card_rejected, {cvv_invalid, #payprocerr_GeneralFailure{}}}}},
+                {payment_tool_rejected, {bank_card_rejected, {cvv_invalid, #payproc_error_GeneralFailure{}}}}},
             <<"Reason">>
         ),
     get_merchant_payment_status_test_impl(MappedFailure, Failure, Config).
@@ -699,7 +701,7 @@ get_payment_status_account_limit_exceeded_test(Config) ->
     Failure =
         payproc_errors:construct(
             'PaymentFailure',
-            {authorization_failed, {account_limit_exceeded, {unknown, #payprocerr_GeneralFailure{}}}},
+            {authorization_failed, {account_limit_exceeded, {unknown, #payproc_error_GeneralFailure{}}}},
             <<"Reason">>
         ),
     get_merchant_payment_status_test_impl(MappedFailure, Failure, Config).
@@ -734,7 +736,7 @@ get_merchant_payment_status_test_(SubErrorCode, Config) ->
     Failure6 =
         payproc_errors:construct(
             'PaymentFailure',
-            {authorization_failed, {SubErrorCode, #payprocerr_GeneralFailure{}}},
+            {authorization_failed, {SubErrorCode, #payproc_error_GeneralFailure{}}},
             <<"Reason">>
         ),
     get_merchant_payment_status_test_impl(MappedFailure6, Failure6, Config).
@@ -1609,7 +1611,7 @@ get_contract_by_id_ok_test(Config) ->
 
     _ = capi_ct_helper_bouncer:mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_CONTRACT_OP(<<"GetContractByID">>, ?STRING, _))
             }
         ),
@@ -1842,9 +1844,9 @@ get_payout_fail(Config) ->
     _ = capi_ct_helper:mock_services([{payouts, fun('GetPayout', _) -> {ok, Payout} end}], Config),
     _ = capi_ct_helper_bouncer:mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_PAYOUT_OP(<<"GetPayout">>, ?STRING, ?STRING)),
-                payouts = #bctx_v1_ContextPayouts{
+                payouts = #ctx_v1_ContextPayouts{
                     payout = undefined
                 }
             }

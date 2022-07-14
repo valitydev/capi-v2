@@ -1,8 +1,10 @@
 -module(capi_bouncer_context).
 
--include_lib("bouncer_proto/include/bouncer_context_v1_thrift.hrl").
+-include_lib("bouncer_proto/include/bouncer_ctx_v1_thrift.hrl").
+-include_lib("bouncer_proto/include/bouncer_base_thrift.hrl").
 
--include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
 -include_lib("reporter_proto/include/reporter_reports_thrift.hrl").
 -include_lib("payout_manager_proto/include/payouts_payout_manager_thrift.hrl").
@@ -67,8 +69,8 @@
 -type invoice_template_id() :: dmsl_domain_thrift:'InvoiceTemplateID'().
 -type invoice_template() :: dmsl_domain_thrift:'InvoiceTemplate'().
 
--type customer_id() :: dmsl_payment_processing_thrift:'CustomerID'().
--type customer() :: dmsl_payment_processing_thrift:'Customer'().
+-type customer_id() :: dmsl_payproc_thrift:'CustomerID'().
+-type customer() :: dmsl_payproc_thrift:'Customer'().
 
 -type webhook_id() :: dmsl_webhooker_thrift:'WebhookID'().
 -type webhook() :: dmsl_webhooker_thrift:'Webhook'().
@@ -109,9 +111,9 @@ build(Prototypes, {Acc0, External}, WoodyCtx) ->
     {Acc1, External}.
 
 build(operation, Params = #{id := OperationID}, Acc, _WoodyCtx) ->
-    Acc#bctx_v1_ContextFragment{
-        capi = #bctx_v1_ContextCommonAPI{
-            op = #bctx_v1_CommonAPIOperation{
+    Acc#ctx_v1_ContextFragment{
+        capi = #ctx_v1_ContextCommonAPI{
+            op = #ctx_v1_CommonAPIOperation{
                 id = operation_id_to_binary(OperationID),
                 party = maybe_entity(party, Params),
                 shop = maybe_entity(shop, Params),
@@ -131,8 +133,8 @@ build(operation, Params = #{id := OperationID}, Acc, _WoodyCtx) ->
         }
     };
 build(payproc, Params = #{}, Acc, WoodyCtx) ->
-    Acc#bctx_v1_ContextFragment{
-        payment_processing = #bctx_v1_ContextPaymentProcessing{
+    Acc#ctx_v1_ContextFragment{
+        payment_processing = #ctx_v1_ContextPaymentProcessing{
             invoice = maybe_with(
                 invoice,
                 Params,
@@ -151,8 +153,8 @@ build(payproc, Params = #{}, Acc, WoodyCtx) ->
         }
     };
 build(webhooks, Params = #{}, Acc, WoodyCtx) ->
-    Acc#bctx_v1_ContextFragment{
-        webhooks = #bctx_v1_ContextWebhooks{
+    Acc#ctx_v1_ContextFragment{
+        webhooks = #ctx_v1_ContextWebhooks{
             webhook = maybe_with(
                 webhook,
                 Params,
@@ -161,8 +163,8 @@ build(webhooks, Params = #{}, Acc, WoodyCtx) ->
         }
     };
 build(reports, Params = #{}, Acc, WoodyCtx) ->
-    Acc#bctx_v1_ContextFragment{
-        reports = #bctx_v1_ContextReports{
+    Acc#ctx_v1_ContextFragment{
+        reports = #ctx_v1_ContextReports{
             report = maybe_with(
                 report,
                 Params,
@@ -175,12 +177,12 @@ build(payouts, Params = #{}, Acc, WoodyCtx) ->
         build_payout_ctx(V, WoodyCtx)
     end),
     Payout = maybe(Payout0, fun(_Payout0) ->
-        Payout0#bctx_v1_Payout{
+        Payout0#ctx_v1_Payout{
             contract = maybe_entity(contract, Params)
         }
     end),
-    Acc#bctx_v1_ContextFragment{
-        payouts = #bctx_v1_ContextPayouts{
+    Acc#ctx_v1_ContextFragment{
+        payouts = #ctx_v1_ContextPayouts{
             payout = Payout
         }
     }.
@@ -199,7 +201,7 @@ build_invoice_ctx(Invoice, _WoodyCtx) ->
     build_invoice_ctx(Invoice).
 
 build_invoice_ctx(#payproc_Invoice{invoice = Invoice, payments = Payments}) ->
-    #bctx_v1_Invoice{
+    #ctx_v1_Invoice{
         id = Invoice#domain_Invoice.id,
         party = build_entity(Invoice#domain_Invoice.owner_id),
         shop = build_entity(Invoice#domain_Invoice.shop_id),
@@ -207,7 +209,7 @@ build_invoice_ctx(#payproc_Invoice{invoice = Invoice, payments = Payments}) ->
     }.
 
 build_payment_ctx(#payproc_InvoicePayment{payment = Payment, refunds = Refunds}) ->
-    #bctx_v1_Payment{
+    #ctx_v1_Payment{
         id = Payment#domain_InvoicePayment.id,
         refunds = build_set(lists:map(fun build_refund_ctx/1, Refunds))
     }.
@@ -227,7 +229,7 @@ build_invoice_template_ctx(InvoiceTemplate, _WoodyCtx) ->
     build_invoice_template_ctx(InvoiceTemplate).
 
 build_invoice_template_ctx(#domain_InvoiceTemplate{id = ID, owner_id = OwnerID, shop_id = ShopID}) ->
-    #bctx_v1_InvoiceTemplate{
+    #ctx_v1_InvoiceTemplate{
         id = ID,
         party = build_entity(OwnerID),
         shop = build_entity(ShopID)
@@ -245,7 +247,7 @@ build_customer_ctx(Customer, _WoodyCtx) ->
     build_customer_ctx(Customer).
 
 build_customer_ctx(#payproc_Customer{id = ID, owner_id = OwnerID, shop_id = ShopID, bindings = Bindings}) ->
-    #bctx_v1_Customer{
+    #ctx_v1_Customer{
         id = ID,
         party = build_entity(OwnerID),
         shop = build_entity(ShopID),
@@ -267,7 +269,7 @@ build_payout_ctx(#payouts_Payout{
     party_id = PartyID,
     shop_id = ShopID
 }) ->
-    #bctx_v1_Payout{
+    #ctx_v1_Payout{
         id = ID,
         party = build_entity(PartyID),
         shop = build_entity(ShopID)
@@ -281,7 +283,7 @@ build_webhook_ctx(Webhook, _WoodyCtx) ->
     build_webhook_ctx(Webhook).
 
 build_webhook_ctx(#webhooker_Webhook{id = ID, party_id = PartyID, event_filter = Filter}) ->
-    #bctx_v1_Webhook{
+    #ctx_v1_Webhook{
         id = integer_to_binary(ID),
         party = build_entity(PartyID),
         filter = build_webhook_filter(Filter)
@@ -290,15 +292,15 @@ build_webhook_ctx(#webhooker_Webhook{id = ID, party_id = PartyID, event_filter =
 build_webhook_filter({Type, Filter}) ->
     build_webhook_filter_details(
         Filter,
-        #bctx_v1_WebhookFilter{topic = erlang:atom_to_binary(Type, utf8)}
+        #ctx_v1_WebhookFilter{topic = erlang:atom_to_binary(Type, utf8)}
     ).
 
 build_webhook_filter_details(#webhooker_PartyEventFilter{}, Ctx) ->
     Ctx;
 build_webhook_filter_details(#webhooker_InvoiceEventFilter{shop_id = ShopID}, Ctx) ->
-    Ctx#bctx_v1_WebhookFilter{shop = maybe(ShopID, fun build_entity/1)};
+    Ctx#ctx_v1_WebhookFilter{shop = maybe(ShopID, fun build_entity/1)};
 build_webhook_filter_details(#webhooker_CustomerEventFilter{shop_id = ShopID}, Ctx) ->
-    Ctx#bctx_v1_WebhookFilter{shop = maybe(ShopID, fun build_entity/1)};
+    Ctx#ctx_v1_WebhookFilter{shop = maybe(ShopID, fun build_entity/1)};
 build_webhook_filter_details(#webhooker_WalletEventFilter{}, Ctx) ->
     Ctx.
 
@@ -310,7 +312,7 @@ build_report_ctx(Report, _WoodyCtx) ->
     build_report_ctx(Report).
 
 build_report_ctx(#reports_Report{report_id = ID, party_id = PartyID, shop_id = ShopID, files = Files}) ->
-    #bctx_v1_Report{
+    #ctx_v1_Report{
         id = integer_to_binary(ID),
         party = build_entity(PartyID),
         shop = maybe(ShopID, fun build_entity/1),
@@ -348,9 +350,9 @@ maybe_entity(Name, Params) ->
     maybe_with(Name, Params, fun build_entity/1).
 
 build_entity(ID) when is_binary(ID) ->
-    #bouncer_base_Entity{id = ID};
+    #base_Entity{id = ID};
 build_entity(ID) when is_integer(ID) ->
-    #bouncer_base_Entity{id = integer_to_binary(ID)}.
+    #base_Entity{id = integer_to_binary(ID)}.
 
 build_set(L) when is_list(L) ->
     ordsets:from_list(L).

@@ -3,7 +3,9 @@
 -include_lib("common_test/include/ct.hrl").
 -include_lib("capi_dummy_data.hrl").
 -include_lib("capi_token_keeper_data.hrl").
--include_lib("damsel/include/dmsl_domain_config_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_conf_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_thrift.hrl").
+-include_lib("damsel/include/dmsl_base_thrift.hrl").
 
 -export([init_suite/2]).
 -export([init_suite/3]).
@@ -53,7 +55,7 @@ init_suite(Module, Config, CapiEnv) ->
         [
             {
                 'Repository',
-                {dmsl_domain_config_thrift, 'Repository'},
+                {dmsl_domain_conf_thrift, 'Repository'},
                 fun
                     ('Checkout', _) -> {ok, ?SNAPSHOT};
                     ('PullRange', _) -> {ok, #{}}
@@ -273,11 +275,11 @@ get_service_name({ServiceName, _WoodyService, _Fun}) ->
     ServiceName.
 
 mock_service_handler({generator, Fun}) ->
-    mock_service_handler('Generator', {bender_thrift, 'Generator'}, Fun);
+    mock_service_handler('Generator', {bender_bender_thrift, 'Generator'}, Fun);
 mock_service_handler({bender, Fun}) ->
-    mock_service_handler('Bender', {bender_thrift, 'Bender'}, Fun);
+    mock_service_handler('Bender', {bender_bender_thrift, 'Bender'}, Fun);
 mock_service_handler({party_management, Fun}) ->
-    mock_service_handler(party_management, {dmsl_payment_processing_thrift, 'PartyManagement'}, Fun);
+    mock_service_handler(party_management, {dmsl_payproc_thrift, 'PartyManagement'}, Fun);
 mock_service_handler({ServiceName, Fun}) ->
     mock_service_handler(ServiceName, capi_woody_client:get_service_modname(ServiceName), Fun);
 mock_service_handler({ServiceName, WoodyService, Fun}) ->
