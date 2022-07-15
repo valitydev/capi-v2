@@ -50,10 +50,13 @@ make_query(payments, Context, Req) ->
         payment_ip = genlib_map:get('payerIP', Req),
         payment_fingerprint = genlib_map:get('payerFingerprint', Req),
         payment_first6 = genlib_map:get('first6', Req),
+        payment_system = encode_payment_system_ref(genlib_map:get('bankCardPaymentSystem', Req)),
         payment_last4 = genlib_map:get('last4', Req),
         payment_customer_id = genlib_map:get('customerID', Req),
+        payment_amount = genlib_map:get('paymentAmount', Req),
         payment_rrn = genlib_map:get('rrn', Req),
-        payment_approval_code = genlib_map:get('approvalCode', Req)
+        payment_approval_code = genlib_map:get('approvalCode', Req),
+        payment_token_provider = encode_payment_token_provider(genlib_map:get('BankCardTokenProvider', Req))
     },
     #magista_PaymentSearchQuery{
         common_search_query_params = CommonSearchQueryParams,
@@ -104,6 +107,12 @@ encode_payment_flow(undefined) -> undefined.
 encode_payment_method('bankCard') -> bank_card;
 encode_payment_method('paymentTerminal') -> payment_terminal;
 encode_payment_method(undefined) -> undefined.
+
+encode_payment_system_ref(ID) when is_binary(ID) -> #domain_PaymentSystemRef{id = ID};
+encode_payment_system_ref(undefined) -> undefined.
+
+encode_payment_token_provider(ID) when is_binary(ID) -> #domain_BankCardTokenServiceRef{id = ID};
+encode_payment_token_provider(undefined) -> undefined.
 
 %%
 
