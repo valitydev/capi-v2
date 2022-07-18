@@ -3,7 +3,6 @@
 -include_lib("common_test/include/ct.hrl").
 
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
--include_lib("damsel/include/dmsl_merchstat_thrift.hrl").
 -include_lib("damsel/include/dmsl_base_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 

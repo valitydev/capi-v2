@@ -1,9 +1,6 @@
 -module(capi_handler_decoder_party).
 
--include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
--include_lib("damsel/include/dmsl_base_thrift.hrl").
--include_lib("damsel/include/dmsl_merchstat_thrift.hrl").
 
 -export([decode_shop_location/1]).
 -export([decode_shop_details/1]).
