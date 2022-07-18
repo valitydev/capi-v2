@@ -18,7 +18,7 @@
 -define(API_TOKEN, <<"letmein">>).
 -define(EMAIL, <<"test@test.ru">>).
 
--define(RATIONAL, #'Rational'{p = ?INTEGER, q = ?INTEGER}).
+-define(RATIONAL, #base_Rational{p = ?INTEGER, q = ?INTEGER}).
 
 -define(DETAILS, #domain_InvoiceDetails{
     product = ?STRING,
@@ -33,7 +33,7 @@
     }
 }).
 
--define(CONTENT, #'Content'{
+-define(CONTENT, #base_Content{
     type = <<"application/json">>,
     data = ?JSON_SERIAL
 }).
@@ -196,7 +196,7 @@
     token = PS,
     payment_system = #domain_PaymentSystemRef{id = PS},
     bin = <<"411111">>,
-    last_digits = <<"411111******1111">>
+    last_digits = <<"1111">>
 }).
 
 -define(BANK_CARD(PS, ExpDate), ?BANK_CARD(PS, ExpDate, <<"CARD HODLER">>)).
@@ -863,57 +863,25 @@
     enabled = true
 }).
 
--define(STAT_RESPONSE(Data), #merchstat_StatResponse{
-    data = Data,
-    total_count = ?INTEGER,
+-define(STAT_RESPONSE_PAYMENTS, #magista_StatPaymentResponse{
+    payments = [
+        ?STAT_PAYMENT(
+            ?STAT_CUSTOMER_PAYER({digital_wallet, ?DIGITAL_WALLET(?STRING, ?STRING, ?STRING)}),
+            ?STAT_PAYMENT_STATUS_PENDING
+        ),
+        ?STAT_PAYMENT(?STAT_CUSTOMER_PAYER({bank_card, ?BANK_CARD}), ?STAT_PAYMENT_STATUS_FAILED),
+        ?STAT_PAYMENT(?RECURRENT_PAYER, ?STAT_PAYMENT_STATUS_PENDING),
+        ?STAT_PAYMENT(?PAYER, ?STAT_PAYMENT_STATUS_CAPTURED),
+        ?STAT_PAYMENT(
+            ?PAYER,
+            ?STAT_PAYMENT_STATUS_PENDING,
+            {hold, #magista_InvoicePaymentFlowHold{on_hold_expiration = cancel, held_until = ?TIMESTAMP}}
+        )
+    ],
     continuation_token = ?STRING
 }).
 
--define(STAT_RESPONSE_INVOICES, ?STAT_RESPONSE({invoices, [?STAT_INVOICE]})).
-
--define(STAT_RESPONSE_PAYMENTS,
-    ?STAT_RESPONSE(
-        {payments, [
-            ?STAT_PAYMENT(?STAT_CUSTOMER_PAYER({bank_card, ?STAT_BANK_CARD}), ?STAT_PAYMENT_STATUS_PENDING),
-            ?STAT_PAYMENT(?STAT_RECURRENT_PAYER({bank_card, ?STAT_BANK_CARD}), ?STAT_PAYMENT_STATUS_PENDING),
-            ?STAT_PAYMENT(?STAT_PAYER({bank_card, ?STAT_BANK_CARD}), ?STAT_PAYMENT_STATUS_CAPTURED),
-            ?STAT_PAYMENT(?STAT_PAYER({bank_card, ?STAT_BANK_CARD_WITH_TP}), ?STAT_PAYMENT_STATUS_PENDING)
-        ]}
-    )
-).
-
--define(STAT_RESPONSE_RECORDS, ?STAT_RESPONSE({records, [?STAT_RECORD]})).
-
--define(STAT_RESPONSE_REFUNDS, ?STAT_RESPONSE({refunds, [?STAT_REFUND]})).
-
--define(STAT_RESPONSE_PAYOUTS,
-    ?STAT_RESPONSE(
-        {payouts, [
-            ?STAT_PAYOUT(?WALLET_INFO),
-            ?STAT_PAYOUT(?RUSSIAN_BANK_ACCOUNT),
-            ?STAT_PAYOUT(?INTERNATIONAL_BANK_ACCOUNT),
-            ?STAT_PAYOUT(?PAYMENT_INSTITUTION_ACCOUNT)
-        ]}
-    )
-).
-
--define(STAT_INVOICE, #merchstat_StatInvoice{
-    id = ?STRING,
-    owner_id = ?STRING,
-    shop_id = ?STRING,
-    created_at = ?TIMESTAMP,
-    status = {unpaid, #merchstat_InvoiceUnpaid{}},
-    product = ?STRING,
-    description = ?STRING,
-    due = ?TIMESTAMP,
-    amount = ?INTEGER,
-    currency_symbolic_code = ?RUB,
-    context = ?CONTENT,
-    external_id = ?STRING,
-    allocation = ?ALLOCATION
-}).
-
--define(STAT_PAYMENT(Payer, Status), #merchstat_StatPayment{
+-define(STAT_PAYMENT(Payer, Status, Flow), #magista_StatPayment{
     id = ?STRING,
     invoice_id = ?STRING,
     owner_id = ?STRING,
@@ -925,12 +893,12 @@
     currency_symbolic_code = ?RUB,
     payer = Payer,
     context = ?CONTENT,
-    flow = {instant, #merchstat_InvoicePaymentFlowInstant{}},
+    flow = Flow,
     domain_revision = ?INTEGER,
-    additional_transaction_info = ?ADDITIONAL_TX_INFO,
-    external_id = ?STRING,
-    allocation = ?ALLOCATION
+    additional_transaction_info = ?ADDITIONAL_TX_INFO
 }).
+
+-define(STAT_PAYMENT(Payer, Status), ?STAT_PAYMENT(Payer, Status, {instant, #magista_InvoicePaymentFlowInstant{}})).
 
 -define(TX_INFO, #domain_TransactionInfo{
     id = ?STRING,
@@ -958,10 +926,10 @@
 ).
 
 -define(STAT_CUSTOMER_PAYER(PaymentTool),
-    {customer, #merchstat_CustomerPayer{
+    {customer, #magista_CustomerPayer{
         customer_id = ?STRING,
         payment_tool = PaymentTool,
-        email = <<"test@test.ru">>
+        contact_info = ?CONTACT_INFO
     }}
 ).
 
@@ -975,9 +943,13 @@
 
 -define(RECURRENT_PARENT, #merchstat_RecurrentParentPayment{invoice_id = ?STRING, payment_id = ?STRING}).
 
--define(STAT_PAYMENT_STATUS_PENDING, {pending, #merchstat_InvoicePaymentPending{}}).
+-define(STAT_PAYMENT_STATUS_PENDING, {pending, #domain_InvoicePaymentPending{}}).
 
--define(STAT_PAYMENT_STATUS_CAPTURED, {captured, #merchstat_InvoicePaymentCaptured{at = ?TIMESTAMP}}).
+-define(STAT_PAYMENT_STATUS_CAPTURED, {captured, #domain_InvoicePaymentCaptured{}}).
+
+-define(STAT_PAYMENT_STATUS_FAILED,
+    {failed, #domain_InvoicePaymentFailed{failure = {failure, #domain_Failure{code = <<"error_code">>}}}}
+).
 
 -define(STAT_RECORD, #{
     <<"offset">> => ?INTEGER_BINARY,
@@ -1063,7 +1035,7 @@
     reports = [?REPORT]
 }).
 
--define(SNAPSHOT, #'Snapshot'{
+-define(SNAPSHOT, #'domain_conf_Snapshot'{
     version = ?INTEGER,
     domain = #{
         {category, #domain_CategoryRef{id = ?INTEGER}} =>
@@ -1080,18 +1052,18 @@
                 data = #domain_BusinessSchedule{
                     name = ?STRING,
                     description = ?STRING,
-                    schedule = #'Schedule'{
-                        year = {every, #'ScheduleEvery'{}},
-                        month = {every, #'ScheduleEvery'{}},
-                        day_of_month = {every, #'ScheduleEvery'{}},
-                        day_of_week = {every, #'ScheduleEvery'{}},
-                        hour = {every, #'ScheduleEvery'{}},
-                        minute = {every, #'ScheduleEvery'{}},
-                        second = {every, #'ScheduleEvery'{}}
+                    schedule = #'base_Schedule'{
+                        year = {every, #'base_ScheduleEvery'{}},
+                        month = {every, #'base_ScheduleEvery'{}},
+                        day_of_month = {every, #'base_ScheduleEvery'{}},
+                        day_of_week = {every, #'base_ScheduleEvery'{}},
+                        hour = {every, #'base_ScheduleEvery'{}},
+                        minute = {every, #'base_ScheduleEvery'{}},
+                        second = {every, #'base_ScheduleEvery'{}}
                     },
-                    delay = #'TimeSpan'{},
+                    delay = #'base_TimeSpan'{},
                     policy = #domain_PayoutCompilationPolicy{
-                        assets_freeze_for = #'TimeSpan'{}
+                        assets_freeze_for = #'base_TimeSpan'{}
                     }
                 }
             }},

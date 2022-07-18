@@ -1,6 +1,8 @@
 -module(capi_handler_invoices).
 
--include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_thrift.hrl").
+-include_lib("damsel/include/dmsl_base_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_thrift.hrl").
 
 -behaviour(capi_handler).
 
@@ -36,7 +38,7 @@ prepare('CreateInvoice' = OperationID, Req, Context) ->
                     {ok, {201, #{}, capi_handler_decoder_invoicing:make_invoice_and_token(Invoice, Context)}};
                 {exception, #'payproc_PartyNotFound'{}} ->
                     {ok, logic_error('invalidPartyID', <<"Party not found">>)};
-                {exception, #'InvalidRequest'{errors = Errors}} ->
+                {exception, #base_InvalidRequest{errors = Errors}} ->
                     FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                     {ok, logic_error('invalidRequest', FormattedErrors)};
                 {exception, #payproc_ShopNotFound{}} ->
@@ -215,7 +217,7 @@ prepare('GetInvoiceEvents' = OperationID, Req, Context) ->
                 {ok, general_error(404, <<"Invoice not found">>)};
             {exception, #payproc_EventNotFound{}} ->
                 {ok, general_error(404, <<"Event not found">>)};
-            {exception, #'InvalidRequest'{errors = Errors}} ->
+            {exception, #base_InvalidRequest{errors = Errors}} ->
                 FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                 {ok, logic_error('invalidRequest', FormattedErrors)}
         end

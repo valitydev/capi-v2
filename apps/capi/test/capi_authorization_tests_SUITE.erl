@@ -3,7 +3,7 @@
 -include_lib("common_test/include/ct.hrl").
 
 -include_lib("capi_dummy_data.hrl").
--include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("jose/include/jose_jwk.hrl").
 
 -export([all/0]).

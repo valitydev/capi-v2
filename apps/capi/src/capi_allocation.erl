@@ -1,6 +1,8 @@
 -module(capi_allocation).
 
--include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_thrift.hrl").
+-include_lib("damsel/include/dmsl_base_thrift.hrl").
 
 -export([validate/1]).
 -export([transaction_error/1]).
@@ -11,7 +13,7 @@
 -type allocation_prototype() :: dmsl_domain_thrift:'AllocationPrototype'().
 -type decode_data() :: _.
 -type validate_error() :: allocation_duplicate | allocation_wrong_cart.
--type invalid_transaction() :: dmsl_payment_processing_thrift:'AllocationInvalidTransaction'().
+-type invalid_transaction() :: dmsl_payproc_thrift:'AllocationInvalidTransaction'().
 
 -spec validate(list() | undefined) -> ok | validate_error().
 validate(undefined) ->
@@ -93,10 +95,10 @@ encode_parts(#{<<"m">> := M, <<"exp">> := Exp}) ->
     case Exp < 0 of
         true ->
             Q = erlang:trunc(math:pow(10, -Exp)),
-            #'Rational'{p = M, q = Q};
+            #base_Rational{p = M, q = Q};
         _ ->
             P = M * erlang:trunc(math:pow(10, Exp)),
-            #'Rational'{p = P, q = 1}
+            #base_Rational{p = P, q = 1}
     end.
 
 -spec decode(allocation() | undefined) -> decode_data() | undefined.
@@ -167,7 +169,7 @@ decode_fee(Fee, FeeTarget, FeeAmount) ->
     }.
 
 decode_parts(Parts) ->
-    #'Rational'{p = P, q = Q} = Parts,
+    #base_Rational{p = P, q = Q} = Parts,
     Exponent = erlang:trunc(math:log10(Q)),
     #{
         <<"m">> => P,
@@ -272,7 +274,8 @@ decode_test() ->
             #domain_InvoiceLine{
                 product = <<"info">>,
                 quantity = 2,
-                price = make_cash(16)
+                price = make_cash(16),
+                metadata = #{}
             }
         ]
     },
@@ -331,6 +334,6 @@ decode_test() ->
 
 make_cash(Amount) -> #domain_Cash{amount = Amount, currency = #domain_CurrencyRef{symbolic_code = <<"RUB">>}}.
 make_decimal(M, E) -> #{<<"m">> => M, <<"exp">> => E}.
-make_rational(P, Q) -> #'Rational'{p = P, q = Q}.
+make_rational(P, Q) -> #base_Rational{p = P, q = Q}.
 
 -endif.

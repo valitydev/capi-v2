@@ -1,7 +1,10 @@
 -module(capi_handler_decoder_invoicing).
 
--include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
--include_lib("damsel/include/dmsl_merch_stat_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_thrift.hrl").
+-include_lib("damsel/include/dmsl_base_thrift.hrl").
+-include_lib("damsel/include/dmsl_merchstat_thrift.hrl").
+-include_lib("damsel/include/dmsl_user_interaction_thrift.hrl").
 
 -export([decode_user_interaction_form/1]).
 -export([decode_user_interaction/1]).
@@ -31,8 +34,8 @@
 decode_user_interaction({payment_terminal_reciept, TerminalReceipt}) ->
     #{
         <<"interactionType">> => <<"PaymentTerminalReceipt">>,
-        <<"shortPaymentID">> => TerminalReceipt#'PaymentTerminalReceipt'.short_payment_id,
-        <<"dueDate">> => TerminalReceipt#'PaymentTerminalReceipt'.due
+        <<"shortPaymentID">> => TerminalReceipt#user_interaction_PaymentTerminalReceipt.short_payment_id,
+        <<"dueDate">> => TerminalReceipt#user_interaction_PaymentTerminalReceipt.due
     };
 decode_user_interaction({redirect, BrowserRequest}) ->
     #{
@@ -47,48 +50,51 @@ decode_user_interaction({qr_code_display_request, QrCodeDisplayRequest}) ->
 decode_user_interaction({crypto_currency_transfer_request, CryptoCurrencyTransferRequest}) ->
     #{
         <<"interactionType">> => <<"CryptoCurrencyTransferRequest">>,
-        <<"cryptoAddress">> => CryptoCurrencyTransferRequest#'CryptoCurrencyTransferRequest'.crypto_address,
+        <<"cryptoAddress">> =>
+            CryptoCurrencyTransferRequest#'user_interaction_CryptoCurrencyTransferRequest'.crypto_address,
         <<"symbolicCode">> => decode_crypto_symcode(CryptoCurrencyTransferRequest),
         <<"cryptoAmount">> => decode_crypto_amount(CryptoCurrencyTransferRequest)
     }.
 
-decode_browser_request({get_request, #'BrowserGetRequest'{uri = UriTemplate}}) ->
+decode_browser_request({get_request, #'user_interaction_BrowserGetRequest'{uri = UriTemplate}}) ->
     #{
         <<"requestType">> => <<"BrowserGetRequest">>,
         <<"uriTemplate">> => UriTemplate
     };
-decode_browser_request({post_request, #'BrowserPostRequest'{uri = UriTemplate, form = UserInteractionForm}}) ->
+decode_browser_request(
+    {post_request, #'user_interaction_BrowserPostRequest'{uri = UriTemplate, form = UserInteractionForm}}
+) ->
     #{
         <<"requestType">> => <<"BrowserPostRequest">>,
         <<"uriTemplate">> => UriTemplate,
         <<"form">> => decode_user_interaction_form(UserInteractionForm)
     }.
 
-decode_qr_code(#'QrCodeDisplayRequest'{qr_code = QrCode}) ->
-    QrCode#'QrCode'.payload.
+decode_qr_code(#'user_interaction_QrCodeDisplayRequest'{qr_code = QrCode}) ->
+    QrCode#'user_interaction_QrCode'.payload.
 
-decode_crypto_symcode(#'CryptoCurrencyTransferRequest'{crypto_cash = Cash}) ->
-    Cash#'CryptoCash'.crypto_symbolic_code.
+decode_crypto_symcode(#'user_interaction_CryptoCurrencyTransferRequest'{crypto_cash = Cash}) ->
+    Cash#'user_interaction_CryptoCash'.crypto_symbolic_code.
 
-decode_crypto_amount(#'CryptoCurrencyTransferRequest'{crypto_cash = Cash}) ->
+decode_crypto_amount(#'user_interaction_CryptoCurrencyTransferRequest'{crypto_cash = Cash}) ->
     % apparently Q is always a power of ten
-    Amount = Cash#'CryptoCash'.crypto_amount,
+    Amount = Cash#'user_interaction_CryptoCash'.crypto_amount,
     ok = ensure_correct_exponent(Amount),
     Integral = decode_integral_part(Amount),
     Fractional = decode_fractional_part(Amount),
     build_decoded_crypto_amount(Integral, Fractional).
 
-ensure_correct_exponent(#'Rational'{q = Q}) ->
+ensure_correct_exponent(#base_Rational{q = Q}) ->
     Log = math:log10(Q),
     case Log - trunc(Log) of
         0.0 -> ok;
         _ -> error('expected a power of 10 denominator')
     end.
 
-decode_integral_part(#'Rational'{p = P, q = Q}) ->
+decode_integral_part(#base_Rational{p = P, q = Q}) ->
     erlang:integer_to_binary(P div Q).
 
-decode_fractional_part(#'Rational'{p = P, q = Q}) ->
+decode_fractional_part(#base_Rational{p = P, q = Q}) ->
     Exponent = get_exponent(Q),
     build_fractional(P rem Q, Exponent).
 
@@ -579,8 +585,8 @@ crypto_amount_decoder_test() ->
     ?assertEqual(<<"0.110007">>, decode_crypto_amount(build_request(11000700, 100000000))).
 
 build_request(P, Q) ->
-    Amount = #'Rational'{p = P, q = Q},
-    Cash = #'CryptoCash'{crypto_amount = Amount, crypto_symbolic_code = <<>>},
-    #'CryptoCurrencyTransferRequest'{crypto_address = <<>>, crypto_cash = Cash}.
+    Amount = #base_Rational{p = P, q = Q},
+    Cash = #'user_interaction_CryptoCash'{crypto_amount = Amount, crypto_symbolic_code = <<>>},
+    #'user_interaction_CryptoCurrencyTransferRequest'{crypto_address = <<>>, crypto_cash = Cash}.
 
 -endif.

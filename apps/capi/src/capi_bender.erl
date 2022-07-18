@@ -1,6 +1,6 @@
 -module(capi_bender).
 
--include_lib("bender_proto/include/bender_thrift.hrl").
+-include_lib("bender_proto/include/bender_bender_thrift.hrl").
 
 -type id() :: binary().
 -type idempotent_key_prefix() :: binary() | atom().

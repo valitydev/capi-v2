@@ -1,7 +1,7 @@
 -module(capi_handler_webhooks).
 
 -include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
--include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 
 -behaviour(capi_handler).
 
