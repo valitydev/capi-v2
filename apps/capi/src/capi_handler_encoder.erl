@@ -1,7 +1,9 @@
 -module(capi_handler_encoder).
 
--include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
--include_lib("damsel/include/dmsl_merch_stat_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_thrift.hrl").
+-include_lib("damsel/include/dmsl_merchstat_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_thrift.hrl").
+-include_lib("damsel/include/dmsl_base_thrift.hrl").
 
 -export([encode_contact_info/1]).
 -export([encode_client_info/1]).
@@ -11,13 +13,11 @@
 -export([encode_invoice_cart/1]).
 -export([encode_invoice_cart/2]).
 -export([encode_invoice_bank_account/1]).
--export([encode_stat_request/1]).
 -export([encode_invoice_context/1]).
 -export([encode_payment_context/1]).
 -export([encode_invoice_line_meta/1]).
 -export([encode_residence/1]).
 -export([encode_content/2]).
--export([encode_stat_request/2]).
 
 -export_type([encode_data/0]).
 
@@ -136,20 +136,7 @@ encode_payment_context(#{}) ->
 
 -spec encode_content(json, term()) -> encode_data().
 encode_content(json, Data) ->
-    #'Content'{
+    #base_Content{
         type = <<"application/json">>,
         data = jsx:encode(Data)
-    }.
-
--spec encode_stat_request(map() | binary()) -> encode_data().
-encode_stat_request(Dsl) ->
-    encode_stat_request(Dsl, undefined).
-
--spec encode_stat_request(map() | binary(), binary() | undefined) -> encode_data().
-encode_stat_request(Dsl, ContinuationToken) when is_map(Dsl) ->
-    encode_stat_request(jsx:encode(Dsl), ContinuationToken);
-encode_stat_request(Dsl, ContinuationToken) when is_binary(Dsl) ->
-    #merchstat_StatRequest{
-        dsl = Dsl,
-        continuation_token = ContinuationToken
     }.

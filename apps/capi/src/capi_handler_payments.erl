@@ -1,6 +1,8 @@
 -module(capi_handler_payments).
 
--include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_thrift.hrl").
+-include_lib("damsel/include/dmsl_base_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_thrift.hrl").
 
 -behaviour(capi_handler).
 
@@ -38,7 +40,7 @@ prepare(OperationID = 'CreatePayment', Req, Context) ->
                     {ok, logic_error('invalidInvoiceStatus', <<"Invalid invoice status">>)};
                 {exception, #payproc_InvoicePaymentPending{}} ->
                     {ok, logic_error('invoicePaymentPending', <<"Invoice payment pending">>)};
-                {exception, #'InvalidRequest'{errors = Errors}} ->
+                {exception, #base_InvalidRequest{errors = Errors}} ->
                     FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                     {ok, logic_error('invalidRequest', FormattedErrors)};
                 {exception, #payproc_InvalidPartyStatus{}} ->
@@ -168,7 +170,7 @@ prepare(OperationID = 'CapturePayment', Req, Context) ->
                 {ok, logic_error('invalidPaymentStatus', <<"Invalid payment status">>)};
             {exception, #payproc_InvoiceNotFound{}} ->
                 {ok, general_error(404, <<"Invoice not found">>)};
-            {exception, #'InvalidRequest'{errors = Errors}} ->
+            {exception, #base_InvalidRequest{errors = Errors}} ->
                 FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                 {ok, logic_error('invalidRequest', FormattedErrors)};
             {exception, #payproc_OperationNotPermitted{}} ->
@@ -229,7 +231,7 @@ prepare(OperationID = 'CancelPayment', Req, Context) ->
                 {ok, logic_error('invalidPaymentStatus', <<"Invalid payment status">>)};
             {exception, #payproc_InvoiceNotFound{}} ->
                 {ok, general_error(404, <<"Invoice not found">>)};
-            {exception, #'InvalidRequest'{errors = Errors}} ->
+            {exception, #base_InvalidRequest{errors = Errors}} ->
                 FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                 {ok, logic_error('invalidRequest', FormattedErrors)};
             {exception, #payproc_OperationNotPermitted{}} ->
@@ -283,7 +285,7 @@ prepare(OperationID = 'CreateRefund', Req, Context) ->
                 {ok, logic_error('invoicePaymentAmountExceeded', <<"Payment amount exceeded">>)};
             {exception, #payproc_InconsistentRefundCurrency{}} ->
                 {ok, logic_error('inconsistentRefundCurrency', <<"Inconsistent refund currency">>)};
-            {exception, #'InvalidRequest'{errors = Errors}} ->
+            {exception, #base_InvalidRequest{errors = Errors}} ->
                 FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                 {ok, logic_error('invalidRequest', FormattedErrors)};
             {exception, #payproc_AllocationNotAllowed{}} ->

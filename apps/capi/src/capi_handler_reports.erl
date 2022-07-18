@@ -181,7 +181,7 @@ create_report(PartyID, Req, Context) ->
             {ok, {201, #{}, decode_report(Report)}};
         {exception, Exception} ->
             case Exception of
-                #reporter_base_InvalidRequest{errors = Errors} ->
+                #base_InvalidRequest{errors = Errors} ->
                     FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                     {ok, logic_error('invalidRequest', FormattedErrors)};
                 #reports_ShopNotFound{} ->
@@ -223,7 +223,7 @@ get_reports(PartyID, Req, Context) ->
             {ok, {200, #{}, [decode_report(R) || R <- Reports]}};
         {exception, Exception} ->
             case Exception of
-                #reporter_base_InvalidRequest{errors = Errors} ->
+                #base_InvalidRequest{errors = Errors} ->
                     FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                     {ok, logic_error('invalidRequest', FormattedErrors)};
                 #reports_DatasetTooBig{limit = Limit} ->
@@ -261,7 +261,7 @@ generate_report_presigned_url(FileID, Context) ->
             {ok, {200, #{}, #{<<"url">> => URL}}};
         {exception, Exception} ->
             case Exception of
-                #reporter_base_InvalidRequest{errors = Errors} ->
+                #base_InvalidRequest{errors = Errors} ->
                     FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                     {ok, logic_error('invalidRequest', FormattedErrors)};
                 #reports_FileNotFound{} ->

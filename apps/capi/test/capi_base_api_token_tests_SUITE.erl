@@ -3,10 +3,12 @@
 -include_lib("common_test/include/ct.hrl").
 -include_lib("stdlib/include/assert.hrl").
 
--include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
--include_lib("damsel/include/dmsl_payment_processing_errors_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_error_thrift.hrl").
 -include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
--include_lib("damsel/include/dmsl_merch_stat_thrift.hrl").
+-include_lib("damsel/include/dmsl_merchstat_thrift.hrl").
+-include_lib("damsel/include/dmsl_base_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("reporter_proto/include/reporter_reports_thrift.hrl").
 -include_lib("payout_manager_proto/include/payouts_payout_manager_thrift.hrl").
 -include_lib("capi_dummy_data.hrl").
@@ -37,7 +39,14 @@
     create_customer_access_token_ok_test/1,
     rescind_invoice_ok_test/1,
     fulfill_invoice_ok_test/1,
-    get_merchant_payment_status_test/1,
+    get_payment_status_preauthorization_failed_test/1,
+    get_payment_status_payment_tool_rejected_test/1,
+    get_payment_status_account_limit_exceeded_test/1,
+    get_payment_status_account_blocked_test/1,
+    get_payment_status_rejected_by_issuer_test/1,
+    get_payment_status_account_not_found_test/1,
+    get_payment_status_insufficient_funds_test/1,
+
     create_payment_ok_test/1,
     create_refund/1,
     create_refund_blocked_error/1,
@@ -97,15 +106,6 @@
     get_webhooks/1,
     get_webhook_by_id/1,
     delete_webhook_by_id/1,
-    search_invoices_ok_test/1,
-    search_payments_ok_test/1,
-    search_refunds_ok_test/1,
-    search_payouts_ok_test/1,
-    get_payment_conversion_stats_ok_test/1,
-    get_payment_revenue_stats_ok_test/1,
-    get_payment_geo_stats_ok_test/1,
-    get_payment_rate_stats_ok_test/1,
-    get_payment_method_stats_ok_test/1,
     get_reports_ok_test/1,
     get_reports_for_party_ok_test/1,
     get_report_ok_test/1,
@@ -234,7 +234,13 @@ groups() ->
             get_refunds,
             get_refund_by_external_id,
             check_no_internal_id_for_external_id_test,
-            get_merchant_payment_status_test,
+            get_payment_status_preauthorization_failed_test,
+            get_payment_status_payment_tool_rejected_test,
+            get_payment_status_account_limit_exceeded_test,
+            get_payment_status_account_blocked_test,
+            get_payment_status_rejected_by_issuer_test,
+            get_payment_status_account_not_found_test,
+            get_payment_status_insufficient_funds_test,
 
             get_payment_institutions,
             get_payment_institution_by_ref,
@@ -266,16 +272,7 @@ groups() ->
             create_payout_autorization_error,
             get_payout,
             get_payout_fail,
-            search_invoices_ok_test,
-            search_payments_ok_test,
-            search_refunds_ok_test,
-            search_payouts_ok_test,
 
-            get_payment_conversion_stats_ok_test,
-            get_payment_revenue_stats_ok_test,
-            get_payment_geo_stats_ok_test,
-            get_payment_rate_stats_ok_test,
-            get_payment_method_stats_ok_test,
             get_reports_ok_test,
             get_reports_for_party_ok_test,
             get_report_ok_test,
@@ -650,35 +647,111 @@ fulfill_invoice_ok_test(Config) ->
     ),
     ok = capi_client_invoices:fulfill_invoice(?config(context, Config), ?STRING, ?STRING).
 
--spec get_merchant_payment_status_test(config()) -> _.
-get_merchant_payment_status_test(Config) ->
+-spec get_payment_status_preauthorization_failed_test(config()) -> _.
+get_payment_status_preauthorization_failed_test(Config) ->
+    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
+    MappedFailure = #{
+        <<"code">> => <<"preauthorization_failed">>,
+        <<"subError">> => #{
+            <<"code">> => <<"unknown">>
+        }
+    },
+    Failure =
+        payproc_errors:construct(
+            'PaymentFailure',
+            {preauthorization_failed, {unknown, #payproc_error_GeneralFailure{}}},
+            <<"Reason">>
+        ),
+    get_merchant_payment_status_test_impl(MappedFailure, Failure, Config).
+
+-spec get_payment_status_payment_tool_rejected_test(config()) -> _.
+get_payment_status_payment_tool_rejected_test(Config) ->
+    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
+    MappedFailure = #{
+        <<"code">> => <<"authorization_failed">>,
+        <<"subError">> => #{
+            <<"code">> => <<"payment_tool_rejected">>,
+            <<"subError">> => #{
+                <<"code">> => <<"bank_card_rejected">>,
+                <<"subError">> => #{<<"code">> => <<"cvv_invalid">>}
+            }
+        }
+    },
     Failure =
         payproc_errors:construct(
             'PaymentFailure',
             {authorization_failed,
-                {payment_tool_rejected, {bank_card_rejected, {cvv_invalid, #payprocerr_GeneralFailure{}}}}},
+                {payment_tool_rejected, {bank_card_rejected, {cvv_invalid, #payproc_error_GeneralFailure{}}}}},
             <<"Reason">>
         ),
+    get_merchant_payment_status_test_impl(MappedFailure, Failure, Config).
+
+-spec get_payment_status_account_limit_exceeded_test(config()) -> _.
+get_payment_status_account_limit_exceeded_test(Config) ->
+    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
+    MappedFailure = #{
+        <<"code">> => <<"authorization_failed">>,
+        <<"subError">> => #{
+            <<"code">> => <<"account_limit_exceeded">>,
+            <<"subError">> => #{
+                <<"code">> => <<"unknown">>
+            }
+        }
+    },
+    Failure =
+        payproc_errors:construct(
+            'PaymentFailure',
+            {authorization_failed, {account_limit_exceeded, {unknown, #payproc_error_GeneralFailure{}}}},
+            <<"Reason">>
+        ),
+    get_merchant_payment_status_test_impl(MappedFailure, Failure, Config).
+
+-spec get_payment_status_account_blocked_test(config()) -> _.
+get_payment_status_account_blocked_test(Config) ->
+    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
+    get_merchant_payment_status_test_(account_blocked, Config).
+
+-spec get_payment_status_rejected_by_issuer_test(config()) -> _.
+get_payment_status_rejected_by_issuer_test(Config) ->
+    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
+    get_merchant_payment_status_test_(rejected_by_issuer, Config).
+
+-spec get_payment_status_account_not_found_test(config()) -> _.
+get_payment_status_account_not_found_test(Config) ->
+    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
+    get_merchant_payment_status_test_(account_not_found, Config).
+
+-spec get_payment_status_insufficient_funds_test(config()) -> _.
+get_payment_status_insufficient_funds_test(Config) ->
+    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
+    get_merchant_payment_status_test_(insufficient_funds, Config).
+
+get_merchant_payment_status_test_(SubErrorCode, Config) ->
+    MappedFailure6 = #{
+        <<"code">> => <<"authorization_failed">>,
+        <<"subError">> => #{
+            <<"code">> => atom_to_binary(SubErrorCode)
+        }
+    },
+    Failure6 =
+        payproc_errors:construct(
+            'PaymentFailure',
+            {authorization_failed, {SubErrorCode, #payproc_error_GeneralFailure{}}},
+            <<"Reason">>
+        ),
+    get_merchant_payment_status_test_impl(MappedFailure6, Failure6, Config).
+
+get_merchant_payment_status_test_impl(MappedFailure, Failure, Config) ->
     _ = capi_ct_helper:mock_services(
         [
             {invoicing, fun('Get', _) -> {ok, ?PAYPROC_INVOICE([?PAYPROC_FAILED_PAYMENT({failure, Failure})])} end}
         ],
         Config
     ),
-    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
     ?assertMatch(
         {ok, #{
             <<"status">> := <<"failed">>,
-            <<"error">> := #{
-                <<"code">> := <<"authorization_failed">>,
-                <<"subError">> := #{
-                    <<"code">> := <<"payment_tool_rejected">>,
-                    <<"subError">> := #{
-                        <<"code">> := <<"bank_card_rejected">>,
-                        <<"subError">> := #{<<"code">> := <<"cvv_invalid">>}
-                    }
-                }
-            }
+            <<"error">> := MappedFailure
         }},
         capi_client_payments:get_payment_by_id(?config(context, Config), ?STRING, ?STRING)
     ).
@@ -1538,7 +1611,7 @@ get_contract_by_id_ok_test(Config) ->
 
     _ = capi_ct_helper_bouncer:mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_CONTRACT_OP(<<"GetContractByID">>, ?STRING, _))
             }
         ),
@@ -1771,9 +1844,9 @@ get_payout_fail(Config) ->
     _ = capi_ct_helper:mock_services([{payouts, fun('GetPayout', _) -> {ok, Payout} end}], Config),
     _ = capi_ct_helper_bouncer:mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_PAYOUT_OP(<<"GetPayout">>, ?STRING, ?STRING)),
-                payouts = #bctx_v1_ContextPayouts{
+                payouts = #ctx_v1_ContextPayouts{
                     payout = undefined
                 }
             }
@@ -1886,256 +1959,6 @@ delete_webhook_by_id(Config) ->
         Config
     ),
     ok = capi_client_webhooks:delete_webhook_by_id(?config(context, Config), ?INTEGER_BINARY).
-
--spec search_invoices_ok_test(config()) -> _.
-search_invoices_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {invoicing, fun('Get', _) -> {ok, ?PAYPROC_INVOICE} end},
-            {customer_management, fun('Get', _) -> {ok, ?CUSTOMER} end},
-            {merchant_stat, fun('GetInvoices', _) -> {ok, ?STAT_RESPONSE_INVOICES} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_search_invoice_op_ctx(
-        <<"SearchInvoices">>,
-        ?STRING,
-        ?STRING,
-        <<"testInvoiceID">>,
-        <<"testPaymentID">>,
-        <<"testCustomerID">>,
-        Config
-    ),
-    ok = search_invoices_ok_test_(<<"applepay">>, Config),
-    ok = search_invoices_ok_test_(<<"yandexpay">>, Config).
-
-search_invoices_ok_test_(BankCardTokenProvider, Config) ->
-    Query = [
-        {limit, 2},
-        {from_time, {{2015, 08, 11}, {19, 42, 35}}},
-        {to_time, {{2020, 08, 11}, {19, 42, 35}}},
-        {'invoiceStatus', <<"fulfilled">>},
-        {'payerEmail', <<"test@test.ru">>},
-        {'payerIP', <<"192.168.0.1">>},
-        {'paymentStatus', <<"processed">>},
-        {'paymentFlow', <<"instant">>},
-        {'paymentMethod', <<"bankCard">>},
-        {'invoiceID', <<"testInvoiceID">>},
-        {'paymentID', <<"testPaymentID">>},
-        {'customerID', <<"testCustomerID">>},
-        {'payerFingerprint', <<"blablablalbalbal">>},
-        {'first6', <<"424242">>},
-        {'last4', <<"2222">>},
-        {'rrn', <<"090909090909">>},
-        {'bankCardTokenProvider', BankCardTokenProvider},
-        {'bankCardPaymentSystem', <<"visa">>},
-        {'paymentAmount', 10000},
-        {'continuationToken', <<"come_back_next_time">>}
-    ],
-    {ok, _, _} = capi_client_searches:search_invoices(?config(context, Config), ?STRING, Query),
-    ok.
-
--spec search_payments_ok_test(config()) -> _.
-search_payments_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {invoicing, fun('Get', _) -> {ok, ?PAYPROC_INVOICE} end},
-            {merchant_stat, fun('GetPayments', _) -> {ok, ?STAT_RESPONSE_PAYMENTS} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_search_payment_op_ctx(
-        <<"SearchPayments">>,
-        ?STRING,
-        ?STRING,
-        <<"testInvoiceID">>,
-        <<"testPaymentID">>,
-        Config
-    ),
-    ok = search_payments_ok_(<<"applepay">>, Config),
-    ok = search_payments_ok_(<<"yandexpay">>, Config).
-
-search_payments_ok_(BankCardTokenProvider, Config) ->
-    Query = [
-        {limit, 2},
-        {from_time, {{2015, 08, 11}, {19, 42, 35}}},
-        {to_time, {{2020, 08, 11}, {19, 42, 35}}},
-        {'payerEmail', <<"test@test.ru">>},
-        {'payerIP', <<"192.168.0.1">>},
-        {'paymentStatus', <<"processed">>},
-        {'paymentFlow', <<"instant">>},
-        {'paymentMethod', <<"bankCard">>},
-        {'invoiceID', <<"testInvoiceID">>},
-        {'paymentID', <<"testPaymentID">>},
-        {'payerFingerprint', <<"blablablalbalbal">>},
-        {'first6', <<"424242">>},
-        {'last4', <<"2222">>},
-        {'rrn', <<"090909090909">>},
-        {'approvalCode', <<"808080">>},
-        {'bankCardTokenProvider', BankCardTokenProvider},
-        {'bankCardPaymentSystem', <<"visa">>},
-        {'paymentAmount', 10000},
-        {'continuationToken', <<"come_back_next_time">>}
-    ],
-    {ok, _, _} = capi_client_searches:search_payments(?config(context, Config), ?STRING, Query),
-    ok.
-
--spec search_refunds_ok_test(config()) -> _.
-search_refunds_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {invoicing, fun('Get', _) -> {ok, ?PAYPROC_INVOICE} end},
-            {customer_management, fun('Get', _) -> {ok, ?CUSTOMER} end},
-            {merchant_stat, fun('GetRefunds', _) -> {ok, ?STAT_RESPONSE_REFUNDS} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_search_refund_op_ctx(
-        <<"SearchRefunds">>,
-        ?STRING,
-        <<"testShopID">>,
-        <<"testInvoiceID">>,
-        <<"testPaymentID">>,
-        <<"testRefundID">>,
-        Config
-    ),
-    ShopID = <<"testShopID">>,
-    Query = [
-        {limit, 2},
-        {offset, 2},
-        {from_time, {{2015, 08, 11}, {19, 42, 35}}},
-        {to_time, {{2020, 08, 11}, {19, 42, 35}}},
-        {'shopID', ShopID},
-        {'invoiceID', <<"testInvoiceID">>},
-        {'paymentID', <<"testPaymentID">>},
-        {'refundID', <<"testRefundID">>},
-        % {rrn, <<"090909090909">>},
-        % {approvalCode, <<"808080">>},
-        {'refundStatus', <<"succeeded">>}
-    ],
-
-    {ok, _, _} = capi_client_searches:search_refunds(?config(context, Config), ShopID, Query).
-
--spec search_payouts_ok_test(config()) -> _.
-search_payouts_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [{merchant_stat, fun('GetPayouts', _) -> {ok, ?STAT_RESPONSE_PAYOUTS} end}],
-        Config
-    ),
-    ShopID = <<"testShopID">>,
-    _ = capi_ct_helper_bouncer:mock_assert_search_payout_op_ctx(
-        <<"SearchPayouts">>,
-        ?STRING,
-        ShopID,
-        <<"testPayoutID">>,
-        Config
-    ),
-    Query = [
-        {limit, 2},
-        {offset, 2},
-        {from_time, {{2015, 08, 11}, {19, 42, 35}}},
-        {to_time, {{2020, 08, 11}, {19, 42, 35}}},
-        {'payoutID', <<"testPayoutID">>},
-        {'payoutToolType', <<"Wallet">>}
-    ],
-
-    {ok, _, _} = capi_client_searches:search_payouts(?config(context, Config), ShopID, Query).
-
--spec get_payment_conversion_stats_ok_test(_) -> _.
-get_payment_conversion_stats_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {merchant_stat, fun('GetStatistics', _) -> {ok, ?STAT_RESPONSE_RECORDS} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetPaymentConversionStats">>, ?STRING, Config),
-    Query = [
-        {limit, 2},
-        {offset, 2},
-        {from_time, {{2015, 08, 11}, {19, 42, 35}}},
-        {to_time, {{2020, 08, 11}, {19, 42, 35}}},
-        {split_unit, minute},
-        {split_size, 1}
-    ],
-    {ok, _} = capi_client_analytics:get_payment_conversion_stats(?config(context, Config), ?STRING, Query).
-
--spec get_payment_revenue_stats_ok_test(config()) -> _.
-get_payment_revenue_stats_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {merchant_stat, fun('GetStatistics', _) -> {ok, ?STAT_RESPONSE_RECORDS} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetPaymentRevenueStats">>, ?STRING, Config),
-    Query = [
-        {limit, 2},
-        {offset, 2},
-        {from_time, {{2015, 08, 11}, {19, 42, 36}}},
-        {to_time, {{2020, 08, 11}, {19, 42, 36}}},
-        {split_unit, hour},
-        {split_size, 1}
-    ],
-    {ok, _} = capi_client_analytics:get_payment_revenue_stats(?config(context, Config), ?STRING, Query).
-
--spec get_payment_geo_stats_ok_test(config()) -> _.
-get_payment_geo_stats_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {merchant_stat, fun('GetStatistics', _) -> {ok, ?STAT_RESPONSE_RECORDS} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetPaymentGeoStats">>, ?STRING, Config),
-    Query = [
-        {limit, 2},
-        {offset, 0},
-        {from_time, {{2015, 08, 11}, {19, 42, 37}}},
-        {to_time, {{2020, 08, 11}, {19, 42, 37}}},
-        {split_unit, day},
-        {split_size, 1}
-    ],
-    {ok, _} = capi_client_analytics:get_payment_geo_stats(?config(context, Config), ?STRING, Query).
-
--spec get_payment_rate_stats_ok_test(config()) -> _.
-get_payment_rate_stats_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {merchant_stat, fun('GetStatistics', _) -> {ok, ?STAT_RESPONSE_RECORDS} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetPaymentRateStats">>, ?STRING, Config),
-    Query = [
-        {limit, 2},
-        {offset, 0},
-        {from_time, {{2015, 08, 11}, {19, 42, 38}}},
-        {to_time, {{2020, 08, 11}, {19, 42, 38}}},
-        {split_unit, week},
-        {split_size, 1}
-    ],
-    {ok, _} = capi_client_analytics:get_payment_rate_stats(?config(context, Config), ?STRING, Query).
-
--spec get_payment_method_stats_ok_test(config()) -> _.
-get_payment_method_stats_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {merchant_stat, fun('GetStatistics', _) -> {ok, ?STAT_RESPONSE_RECORDS} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetPaymentMethodStats">>, ?STRING, Config),
-    Query = [
-        {limit, 2},
-        {offset, 0},
-        {from_time, {{2015, 08, 11}, {19, 42, 35}}},
-        {to_time, {{2020, 08, 11}, {19, 42, 35}}},
-        {split_unit, month},
-        {split_size, 1},
-        {'paymentMethod', <<"bankCard">>}
-    ],
-    {ok, _} = capi_client_analytics:get_payment_method_stats(?config(context, Config), ?STRING, Query).
 
 -spec get_reports_ok_test(config()) -> _.
 get_reports_ok_test(Config) ->

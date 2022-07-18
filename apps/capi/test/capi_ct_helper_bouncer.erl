@@ -36,7 +36,7 @@
 mock_assert_op_ctx(Op, Config) ->
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_CAPI_OP(Op))
             }
         ),
@@ -47,7 +47,7 @@ mock_assert_op_ctx(Op, Config) ->
 mock_assert_party_op_ctx(Op, PartyID, Config) ->
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_PARTY_OP(Op, PartyID))
             }
         ),
@@ -58,7 +58,7 @@ mock_assert_party_op_ctx(Op, PartyID, Config) ->
 mock_assert_shop_op_ctx(Op, PartyID, ShopID, Config) ->
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_SHOP_OP(Op, PartyID, ShopID))
             }
         ),
@@ -69,7 +69,7 @@ mock_assert_shop_op_ctx(Op, PartyID, ShopID, Config) ->
 mock_assert_contract_op_ctx(Op, PartyID, ContractID, Config) ->
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_CONTRACT_OP(Op, PartyID, ContractID))
             }
         ),
@@ -80,9 +80,9 @@ mock_assert_contract_op_ctx(Op, PartyID, ContractID, Config) ->
 mock_assert_invoice_op_ctx(Op, InvoiceID, PartyID, ShopID, Config) ->
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_INVOICE_OP(Op, InvoiceID)),
-                payment_processing = #bctx_v1_ContextPaymentProcessing{
+                payment_processing = #ctx_v1_ContextPaymentProcessing{
                     invoice = ?CTX_INVOICE(InvoiceID, PartyID, ShopID)
                 }
             }
@@ -94,9 +94,9 @@ mock_assert_invoice_op_ctx(Op, InvoiceID, PartyID, ShopID, Config) ->
 mock_assert_payment_op_ctx(Op, InvoiceID, PaymentID, PartyID, ShopID, Config) ->
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_PAYMENT_OP(Op, InvoiceID, PaymentID)),
-                payment_processing = #bctx_v1_ContextPaymentProcessing{
+                payment_processing = #ctx_v1_ContextPaymentProcessing{
                     invoice = ?CTX_INVOICE(InvoiceID, PartyID, ShopID, [?CTX_PAYMENT(PaymentID)])
                 }
             }
@@ -108,9 +108,9 @@ mock_assert_payment_op_ctx(Op, InvoiceID, PaymentID, PartyID, ShopID, Config) ->
 mock_assert_payment_op_ctx(Op, InvoiceID, PartyID, ShopID, Config) ->
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_PAYMENT_OP(Op, InvoiceID)),
-                payment_processing = #bctx_v1_ContextPaymentProcessing{
+                payment_processing = #ctx_v1_ContextPaymentProcessing{
                     invoice = ?CTX_INVOICE(InvoiceID, PartyID, ShopID, [])
                 }
             }
@@ -122,9 +122,9 @@ mock_assert_payment_op_ctx(Op, InvoiceID, PartyID, ShopID, Config) ->
 mock_assert_refund_op_ctx(Op, InvoiceID, PaymentID, RefundID, PartyID, ShopID, Config) ->
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_REFUND_OP(Op, InvoiceID, PaymentID, RefundID)),
-                payment_processing = #bctx_v1_ContextPaymentProcessing{
+                payment_processing = #ctx_v1_ContextPaymentProcessing{
                     invoice = ?CTX_INVOICE(InvoiceID, PartyID, ShopID, [?CTX_PAYMENT(PaymentID)])
                 }
             }
@@ -136,9 +136,9 @@ mock_assert_refund_op_ctx(Op, InvoiceID, PaymentID, RefundID, PartyID, ShopID, C
 mock_assert_invoice_tpl_op_ctx(Op, InvoiceTemplateID, PartyID, ShopID, Config) ->
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_INVOICE_TPL_OP(Op, InvoiceTemplateID)),
-                payment_processing = #bctx_v1_ContextPaymentProcessing{
+                payment_processing = #ctx_v1_ContextPaymentProcessing{
                     invoice_template = ?CTX_INVOICE_TPL(InvoiceTemplateID, PartyID, ShopID)
                 }
             }
@@ -150,9 +150,9 @@ mock_assert_invoice_tpl_op_ctx(Op, InvoiceTemplateID, PartyID, ShopID, Config) -
 mock_assert_customer_op_ctx(Op, CustomerID, PartyID, ShopID, Config) ->
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_CUSTOMER_OP(Op, CustomerID)),
-                payment_processing = #bctx_v1_ContextPaymentProcessing{
+                payment_processing = #ctx_v1_ContextPaymentProcessing{
                     customer = ?CTX_CUSTOMER(CustomerID, PartyID, ShopID)
                 }
             }
@@ -164,7 +164,7 @@ mock_assert_customer_op_ctx(Op, CustomerID, PartyID, ShopID, Config) ->
 mock_assert_claim_op_ctx(Op, PartyID, ClaimID, Config) ->
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_CLAIM_OP(Op, PartyID, ClaimID))
             }
         ),
@@ -175,9 +175,9 @@ mock_assert_claim_op_ctx(Op, PartyID, ClaimID, Config) ->
 mock_assert_webhook_op_ctx(Op, WebhookID, PartyID, Config) ->
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_WEBHOOK_OP(Op, WebhookID)),
-                webhooks = #bctx_v1_ContextWebhooks{
+                webhooks = #ctx_v1_ContextWebhooks{
                     webhook = ?CTX_WEBHOOK(WebhookID, PartyID)
                 }
             }
@@ -189,9 +189,9 @@ mock_assert_webhook_op_ctx(Op, WebhookID, PartyID, Config) ->
 mock_assert_payout_op_ctx(Op, PayoutID, PartyID, ContractID, ShopID, Config) ->
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_PAYOUT_OP(Op, PayoutID, PartyID)),
-                payouts = #bctx_v1_ContextPayouts{
+                payouts = #ctx_v1_ContextPayouts{
                     payout = ?CTX_PAYOUT(PayoutID, PartyID, ContractID, ShopID)
                 }
             }
@@ -210,7 +210,7 @@ mock_assert_search_payment_op_ctx(Op, PartyID, ShopID, InvoiceID, PaymentID, Con
     ),
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(SearchCtx)
             }
         ),
@@ -229,7 +229,7 @@ mock_assert_search_invoice_op_ctx(Op, PartyID, ShopID, InvoiceID, PaymentID, Cus
     ),
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(SearchCtx)
             }
         ),
@@ -248,7 +248,7 @@ mock_assert_search_refund_op_ctx(Op, PartyID, ShopID, InvoiceID, PaymentID, Refu
     ),
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(SearchCtx)
             }
         ),
@@ -264,7 +264,7 @@ mock_assert_search_payout_op_ctx(Op, PartyID, ShopID, PayoutID, Config) ->
     ),
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(SearchCtx)
             }
         ),
@@ -275,7 +275,7 @@ mock_assert_search_payout_op_ctx(Op, PartyID, ShopID, PayoutID, Config) ->
 mock_assert_report_op_ctx(Op, PartyID, ShopID, ReportID, Files, Config) ->
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_REPORT_OP(Op, ReportID)),
                 reports = ?CTX_CONTEXT_REPORTS(?CTX_REPORT(ReportID, PartyID, ShopID, Files))
             }
@@ -287,7 +287,7 @@ mock_assert_report_op_ctx(Op, PartyID, ShopID, ReportID, Files, Config) ->
 mock_assert_report_op_ctx(Op, PartyID, ShopID, ReportID, FileID, Files, Config) ->
     mock_arbiter(
         ?assertContextMatches(
-            #bctx_v1_ContextFragment{
+            #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_FILE_OP(Op, ReportID, FileID)),
                 reports = ?CTX_CONTEXT_REPORTS(?CTX_REPORT(ReportID, PartyID, ShopID, Files))
             }
@@ -308,7 +308,7 @@ mock_client(SupOrConfig) ->
             [
                 {
                     org_management,
-                    {orgmgmt_auth_context_provider_thrift, 'AuthContextProvider'},
+                    {orgmgmt_authctx_provider_thrift, 'AuthContextProvider'},
                     fun('GetUserContext', {UserID}) ->
                         {encoded_fragment, Fragment} = bouncer_client:bake_context_fragment(
                             bouncer_context_helpers:make_user_fragment(#{
@@ -332,7 +332,7 @@ mock_arbiter(JudgeFun, SupOrConfig) ->
             [
                 {
                     bouncer,
-                    {bouncer_decisions_thrift, 'Arbiter'},
+                    {bouncer_decision_thrift, 'Arbiter'},
                     fun('Judge', {?TEST_RULESET_ID, Context}) ->
                         Fragments = decode_context(Context),
                         Combined = combine_fragments(Fragments),
@@ -344,11 +344,11 @@ mock_arbiter(JudgeFun, SupOrConfig) ->
         )
     ).
 
-decode_context(#bdcs_Context{fragments = Fragments}) ->
+decode_context(#decision_Context{fragments = Fragments}) ->
     maps:map(fun(_, Fragment) -> decode_fragment(Fragment) end, Fragments).
 
-decode_fragment(#bctx_ContextFragment{type = v1_thrift_binary, content = Content}) ->
-    Type = {struct, struct, {bouncer_context_v1_thrift, 'ContextFragment'}},
+decode_fragment(#ctx_ContextFragment{type = v1_thrift_binary, content = Content}) ->
+    Type = {struct, struct, {bouncer_ctx_v1_thrift, 'ContextFragment'}},
     Codec = thrift_strict_binary_codec:new(Content),
     {ok, Fragment, _} = thrift_strict_binary_codec:read(Codec, Type),
     Fragment.
@@ -365,7 +365,7 @@ combine_fragments(Fragments) ->
     [Fragment | Rest] = maps:values(Fragments),
     lists:foldl(fun combine_fragments/2, Fragment, Rest).
 
-combine_fragments(Fragment1 = #bctx_v1_ContextFragment{}, Fragment2 = #bctx_v1_ContextFragment{}) ->
+combine_fragments(Fragment1 = #ctx_v1_ContextFragment{}, Fragment2 = #ctx_v1_ContextFragment{}) ->
     combine_records(Fragment1, Fragment2).
 
 combine_records(Record1, Record2) ->

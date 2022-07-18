@@ -1,6 +1,6 @@
 -module(capi_handler_utils).
 
--include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 
 -export([conflict_error/1]).
@@ -34,17 +34,15 @@
 
 -export([get_invoice_by_id/2]).
 -export([get_payment_by_id/3]).
--export([get_refund_by_id/4]).
 -export([get_payment_methods/3]).
 
--export([create_dsl/3]).
 -export([emplace_token_provider_data/3]).
 
 -type processing_context() :: capi_handler:processing_context().
 -type response() :: capi_handler:response().
 -type entity() ::
     dmsl_domain_thrift:'Invoice'()
-    | dmsl_payment_processing_thrift:'Customer'()
+    | dmsl_payproc_thrift:'Customer'()
     | dmsl_domain_thrift:'InvoiceTemplate'().
 -type token_source() :: capi_auth:token_spec() | entity().
 
@@ -273,10 +271,6 @@ get_invoice_by_id(InvoiceID, Context) ->
 get_payment_by_id(InvoiceID, PaymentID, Context) ->
     service_call({invoicing, 'GetPayment', {InvoiceID, PaymentID}}, Context).
 
--spec get_refund_by_id(binary(), binary(), binary(), processing_context()) -> woody:result().
-get_refund_by_id(InvoiceID, PaymentID, RefundID, Context) ->
-    service_call({invoicing, 'GetPaymentRefund', {InvoiceID, PaymentID, RefundID}}, Context).
-
 -spec get_payment_methods(atom(), tuple(), processing_context()) -> woody:result().
 get_payment_methods(ServiceName, Args, Context) ->
     case service_call({ServiceName, 'ComputeTerms', Args}, Context) of
@@ -291,13 +285,6 @@ get_payment_methods(ServiceName, Args, Context) ->
         Error ->
             Error
     end.
-
--spec create_dsl(atom(), map(), map()) -> map().
-create_dsl(QueryType, QueryBody, QueryParams) ->
-    merge_and_compact(
-        #{<<"query">> => maps:put(genlib:to_binary(QueryType), genlib_map:compact(QueryBody), #{})},
-        QueryParams
-    ).
 
 -spec assert_party_accessible(binary(), binary()) -> ok.
 assert_party_accessible(PartyID, PartyID) ->

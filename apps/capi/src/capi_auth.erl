@@ -128,7 +128,7 @@ issue_access_token(TokenSpec, WoodyContext) ->
 -define(DEFAULT_INVOICE_ACCESS_TOKEN_LIFETIME, 259200).
 -define(DEFAULT_CUSTOMER_ACCESS_TOKEN_LIFETIME, 259200).
 
--include_lib("bouncer_proto/include/bouncer_context_v1_thrift.hrl").
+-include_lib("bouncer_proto/include/bouncer_ctx_v1_thrift.hrl").
 
 create_context_fragment(TokenSpec) ->
     AuthContext = resolve_auth_context(TokenSpec),
@@ -162,9 +162,9 @@ resolve_auth_scope(TokenSpec) ->
         TokenSpec
     ).
 
-resolve_auth_method(#{scope := {invoice, _}}) -> ?BCTX_V1_AUTHMETHOD_INVOICEACCESSTOKEN;
-resolve_auth_method(#{scope := {customer, _}}) -> ?BCTX_V1_AUTHMETHOD_CUSTOMERACCESSTOKEN;
-resolve_auth_method(#{scope := {invoice_template, _}}) -> ?BCTX_V1_AUTHMETHOD_INVOICETEMPLATEACCESSTOKEN.
+resolve_auth_method(#{scope := {invoice, _}}) -> ?CTX_V1_AUTHMETHOD_INVOICEACCESSTOKEN;
+resolve_auth_method(#{scope := {customer, _}}) -> ?CTX_V1_AUTHMETHOD_CUSTOMERACCESSTOKEN;
+resolve_auth_method(#{scope := {invoice_template, _}}) -> ?CTX_V1_AUTHMETHOD_INVOICETEMPLATEACCESSTOKEN.
 
 resolve_auth_expiration(TokenSpec) ->
     case get_token_lifetime(TokenSpec) of

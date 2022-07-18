@@ -1,7 +1,8 @@
 -module(capi_handler_invoice_templates).
 
+-include_lib("damsel/include/dmsl_base_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
--include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 
 -behaviour(capi_handler).
 
@@ -35,7 +36,7 @@ prepare('CreateInvoiceTemplate' = OperationID, Req, Context) ->
         of
             {ok, InvoiceTpl} ->
                 {ok, {201, #{}, make_invoice_tpl_and_token(InvoiceTpl, Context)}};
-            {exception, #'InvalidRequest'{errors = Errors}} ->
+            {exception, #base_InvalidRequest{errors = Errors}} ->
                 FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                 {ok, logic_error('invalidRequest', FormattedErrors)};
             {exception, #payproc_PartyNotFound{}} ->
@@ -90,7 +91,7 @@ prepare('UpdateInvoiceTemplate' = OperationID, Req, Context) ->
         of
             {ok, UpdatedInvoiceTpl} ->
                 {ok, {200, #{}, decode_invoice_tpl(UpdatedInvoiceTpl)}};
-            {exception, #'InvalidRequest'{errors = Errors}} ->
+            {exception, #base_InvalidRequest{errors = Errors}} ->
                 FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                 {ok, logic_error('invalidRequest', FormattedErrors)};
             {exception, #payproc_InvalidPartyStatus{}} ->
@@ -157,7 +158,7 @@ prepare('CreateInvoiceWithTemplate' = OperationID, Req, Context) ->
         try create_invoice(PartyID, InvoiceTplID, InvoiceParams, Context, OperationID) of
             {ok, #'payproc_Invoice'{invoice = Invoice}} ->
                 {ok, {201, #{}, capi_handler_decoder_invoicing:make_invoice_and_token(Invoice, Context)}};
-            {exception, #'InvalidRequest'{errors = Errors}} ->
+            {exception, #base_InvalidRequest{errors = Errors}} ->
                 FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                 {ok, logic_error('invalidRequest', FormattedErrors)};
             {exception, #payproc_InvalidPartyStatus{}} ->

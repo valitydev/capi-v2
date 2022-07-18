@@ -3,8 +3,11 @@
 -include_lib("common_test/include/ct.hrl").
 -include_lib("stdlib/include/assert.hrl").
 
--include_lib("damsel/include/dmsl_payment_processing_thrift.hrl").
--include_lib("damsel/include/dmsl_payment_processing_errors_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_error_thrift.hrl").
+-include_lib("damsel/include/dmsl_base_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_thrift.hrl").
+
 -include_lib("capi_dummy_data.hrl").
 
 -export([all/0]).
@@ -650,7 +653,7 @@ get_failed_payment_with_invalid_cvv(Config) ->
         payproc_errors:construct(
             'PaymentFailure',
             {authorization_failed,
-                {payment_tool_rejected, {bank_card_rejected, {cvv_invalid, #payprocerr_GeneralFailure{}}}}},
+                {payment_tool_rejected, {bank_card_rejected, {cvv_invalid, #payproc_error_GeneralFailure{}}}}},
             <<"Reason">>
         ),
     _ = capi_ct_helper:mock_services(
