@@ -3,7 +3,6 @@
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("damsel/include/dmsl_base_thrift.hrl").
--include_lib("damsel/include/dmsl_merchstat_thrift.hrl").
 -include_lib("damsel/include/dmsl_user_interaction_thrift.hrl").
 
 -export([decode_user_interaction_form/1]).
@@ -286,11 +285,6 @@ decode_make_recurrent(Value) when is_boolean(Value) ->
 
 -spec decode_recurrent_parent(capi_handler_encoder:encode_data()) -> decode_data().
 decode_recurrent_parent(#domain_RecurrentParentPayment{invoice_id = InvoiceID, payment_id = PaymentID}) ->
-    #{
-        <<"invoiceID">> => InvoiceID,
-        <<"paymentID">> => PaymentID
-    };
-decode_recurrent_parent(#merchstat_RecurrentParentPayment{invoice_id = InvoiceID, payment_id = PaymentID}) ->
     #{
         <<"invoiceID">> => InvoiceID,
         <<"paymentID">> => PaymentID

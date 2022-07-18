@@ -1,3 +1,6 @@
+-ifndef(__CAPI_DUMMY_DATA_HRL__).
+-define(__CAPI_DUMMY_DATA_HRL__, 42).
+
 -define(STRING, <<"TEST">>).
 -define(RUB, <<"RUB">>).
 -define(USD, <<"USD">>).
@@ -912,19 +915,6 @@
     approval_code = <<"808080">>
 }).
 
--define(STAT_PAYER(PaymentTool), ?STAT_PAYER(PaymentTool, ?STRING)).
-
--define(STAT_PAYER(PaymentTool, SessionId),
-    {payment_resource, #merchstat_PaymentResourcePayer{
-        payment_tool = PaymentTool,
-        ip_address = ?STRING,
-        fingerprint = ?STRING,
-        phone_number = ?STRING,
-        email = <<"test@test.ru">>,
-        session_id = SessionId
-    }}
-).
-
 -define(STAT_CUSTOMER_PAYER(PaymentTool),
     {customer, #magista_CustomerPayer{
         customer_id = ?STRING,
@@ -932,16 +922,6 @@
         contact_info = ?CONTACT_INFO
     }}
 ).
-
--define(STAT_RECURRENT_PAYER(PaymentTool),
-    {recurrent, #merchstat_RecurrentPayer{
-        payment_tool = PaymentTool,
-        recurrent_parent = ?RECURRENT_PARENT,
-        phone_number = ?STRING
-    }}
-).
-
--define(RECURRENT_PARENT, #merchstat_RecurrentParentPayment{invoice_id = ?STRING, payment_id = ?STRING}).
 
 -define(STAT_PAYMENT_STATUS_PENDING, {pending, #domain_InvoicePaymentPending{}}).
 
@@ -962,48 +942,6 @@
     <<"amount_without_fee">> => ?INTEGER_BINARY,
     <<"unic_count">> => ?INTEGER_BINARY,
     <<"payment_system">> => <<"visa">>
-}).
-
--define(STAT_REFUND, #merchstat_StatRefund{
-    id = ?STRING,
-    payment_id = ?STRING,
-    invoice_id = ?STRING,
-    owner_id = ?STRING,
-    shop_id = ?STRING,
-    status = {succeeded, #merchstat_InvoicePaymentRefundSucceeded{at = ?TIMESTAMP}},
-    created_at = ?TIMESTAMP,
-    amount = ?INTEGER,
-    fee = ?INTEGER,
-    currency_symbolic_code = ?RUB,
-    external_id = ?STRING,
-    allocation = ?ALLOCATION
-}).
-
--define(STAT_PAYOUT(Type), #merchstat_StatPayout{
-    id = ?STRING,
-    party_id = ?STRING,
-    shop_id = ?STRING,
-    created_at = ?TIMESTAMP,
-    status = {paid, #merchstat_PayoutPaid{}},
-    amount = ?INTEGER,
-    fee = ?INTEGER,
-    currency_symbolic_code = ?RUB,
-    payout_tool_info = Type
-}).
-
--define(STAT_BANK_CARD, #merchstat_BankCard{
-    token = ?STRING,
-    payment_system = #domain_PaymentSystemRef{id = <<"visa">>},
-    bin = <<"411111">>,
-    masked_pan = <<"411111******1111">>
-}).
-
--define(STAT_BANK_CARD_WITH_TP, #merchstat_BankCard{
-    token = ?STRING,
-    payment_system = #domain_PaymentSystemRef{id = <<"visa">>},
-    bin = <<"411111">>,
-    masked_pan = <<"411111******1111">>,
-    payment_token = #domain_BankCardTokenServiceRef{id = <<"APPLE PAY">>}
 }).
 
 -define(REPORT_TYPE, <<"paymentRegistry">>).
@@ -1410,3 +1348,5 @@
         #{<<"product">> => ?STRING, <<"quantity">> => ?INTEGER, <<"price">> => ?INTEGER}
     ]
 }).
+
+-endif.
