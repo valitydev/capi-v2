@@ -122,8 +122,6 @@ search_payments_without_all_optional_fields_ok_test(Config) ->
         <<"SearchPayments">>,
         ?STRING,
         ?STRING,
-        <<"testInvoiceID">>,
-        <<"testPaymentID">>,
         Config
     ),
     Query = [
