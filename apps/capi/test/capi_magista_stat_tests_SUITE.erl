@@ -21,6 +21,7 @@
 -export([init/1]).
 
 -export([
+    search_payments_without_all_optional_fields_ok_test/1,
     search_payments_ok_test/1,
     search_payments_invalid_request_test/1,
     search_payments_invalid_token_test/1,
@@ -54,6 +55,7 @@ groups() ->
             {group, operations_by_any_token}
         ]},
         {operations_by_any_token, [], [
+            search_payments_without_all_optional_fields_ok_test,
             search_payments_ok_test,
             search_payments_invalid_request_test,
             search_payments_invalid_token_test,
@@ -106,6 +108,30 @@ end_per_testcase(_Name, C) ->
     ok.
 
 %%% Tests
+
+-spec search_payments_without_all_optional_fields_ok_test(config()) -> _.
+search_payments_without_all_optional_fields_ok_test(Config) ->
+    _ = capi_ct_helper:mock_services(
+        [
+            capi_test_hack:get_invoice_mock(),
+            {magista, fun('SearchPayments', _) -> {ok, ?STAT_RESPONSE_PAYMENTS} end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_search_payment_op_ctx(
+        <<"SearchPayments">>,
+        ?STRING,
+        ?STRING,
+        <<"testInvoiceID">>,
+        <<"testPaymentID">>,
+        Config
+    ),
+    Query = [
+        {limit, 2},
+        {from_time, {{2015, 08, 11}, {19, 42, 35}}},
+        {to_time, {{2020, 08, 11}, {19, 42, 35}}}
+    ],
+    {ok, _, _} = capi_client_searches:search_payments(?config(context, Config), ?STRING, Query).
 
 -spec search_payments_ok_test(config()) -> _.
 search_payments_ok_test(Config) ->
