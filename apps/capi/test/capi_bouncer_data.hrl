@@ -100,6 +100,12 @@
     payment = ?CTX_ENTITY(PaymentID)
 }).
 
+-define(CTX_SEARCH_PAYMENT_OP(ID, PartyID, ShopID), #ctx_v1_CommonAPIOperation{
+    id = ID,
+    party = ?CTX_ENTITY(PartyID),
+    shop = ?CTX_ENTITY(ShopID)
+}).
+
 -define(CTX_SEARCH_PAYOUT_OP(ID, PartyID, ShopID, PayoutID), #ctx_v1_CommonAPIOperation{
     id = ID,
     party = ?CTX_ENTITY(PartyID),
