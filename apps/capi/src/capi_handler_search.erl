@@ -61,7 +61,7 @@ make_query(payments, Context, Req) ->
     #magista_PaymentSearchQuery{
         common_search_query_params = CommonSearchQueryParams,
         payment_params = PaymentParams,
-        invoice_ids = genlib_list:wrap(genlib_map:get('invoiceID', Req))
+        invoice_ids = encode_invoice_ids(genlib_map:get('invoiceID', Req))
     }.
 
 process_search_request(QueryType, Query, _Req, Context, Opts = #{thrift_fun := ThriftFun}) ->
@@ -113,6 +113,9 @@ encode_payment_system_ref(undefined) -> undefined.
 
 encode_payment_token_provider(ID) when is_binary(ID) -> #domain_BankCardTokenServiceRef{id = ID};
 encode_payment_token_provider(undefined) -> undefined.
+
+encode_invoice_ids(ID) when is_binary(ID) -> [ID];
+encode_invoice_ids(undefined) -> undefined.
 
 %%
 
