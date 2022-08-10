@@ -253,6 +253,7 @@ different_payment_tools_test(Config) ->
             [<<"metadata">>, <<"bla">>, 0],
             [<<"payer">>, <<"contactInfo">>],
             [<<"payer">>, <<"paymentSession">>],
+            [<<"payer">>, <<"paymentTool">>, <<"token">>],
             [<<"payer">>, <<"paymentToolToken">>],
             [<<"processingDeadline">>]
         ],

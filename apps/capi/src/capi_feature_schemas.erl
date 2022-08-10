@@ -191,13 +191,15 @@ payment_tool_schema() ->
                 ?token => <<"token">>,
                 ?exp_date => <<"exp_date">>
             }},
-        <<"payment_terminal">> => {?terminal, #{?terminal_type => <<"terminal_type">>}},
-
+        <<"payment_terminal">> =>
+            {?terminal, #{
+                ?terminal_type => <<"terminal_type">>
+            }},
         <<"digital_wallet">> =>
             {?wallet, #{
                 ?provider => <<"provider">>,
                 ?id => <<"id">>,
-                ?token => <<"token">>
+                ?token => reserved
             }},
         <<"crypto_wallet">> =>
             {?crypto, #{
