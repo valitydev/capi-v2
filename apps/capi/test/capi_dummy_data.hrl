@@ -398,7 +398,7 @@
 
 -define(CONTRACT, #domain_Contract{
     id = ?STRING,
-    contractor = ?CONTRACTOR,
+    contractor = ?CONTRACTOR_REGISTERED_USER,
     payment_institution = #domain_PaymentInstitutionRef{id = ?INTEGER},
     created_at = ?TIMESTAMP,
     valid_since = ?TIMESTAMP,
@@ -411,10 +411,29 @@
         ?PAYOUT_TOOL(?BANKID_US, ?INTERNATIONAL_BANK_ACCOUNT),
         ?PAYOUT_TOOL(?WALLET_TOOL, ?WALLET_INFO),
         ?PAYOUT_TOOL(?PI_ACCOUNT_TOOL, ?PAYMENT_INSTITUTION_ACCOUNT)
-    ]
+    ],
+    legal_agreement = ?CONTRACT_LEGAL_AGREEMENT,
+    report_preferences = ?CONTRACT_REPORT_PREFS
 }).
 
--define(CONTRACTOR, {registered_user, #domain_RegisteredUser{email = ?STRING}}).
+-define(CONTRACT_LEGAL_AGREEMENT, #domain_LegalAgreement{
+    signed_at = ?TIMESTAMP,
+    legal_agreement_id = ?STRING,
+    valid_until = ?TIMESTAMP
+}).
+
+-define(CONTRACT_REPORT_PREFS, #domain_ReportPreferences{
+    service_acceptance_act_preferences = #domain_ServiceAcceptanceActPreferences{
+        schedule = #domain_BusinessScheduleRef{id = ?INTEGER},
+        signer = #domain_Representative{
+            position = ?STRING,
+            full_name = ?STRING,
+            document = {articles_of_association, #domain_ArticlesOfAssociation{}}
+        }
+    }
+}).
+
+-define(CONTRACTOR_REGISTERED_USER, {registered_user, #domain_RegisteredUser{email = ?STRING}}).
 
 -define(BLOCKING,
     {unblocked, #domain_Unblocked{
