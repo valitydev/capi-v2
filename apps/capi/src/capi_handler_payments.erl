@@ -481,8 +481,7 @@ create_payment_id(Invoice, PaymentParams0, Context, OperationID, PaymentToolThri
     InvoiceID = Invoice#domain_Invoice.id,
     PartyID = Invoice#domain_Invoice.owner_id,
     Payer = maps:get(<<"payer">>, PaymentParams0),
-    PaymentTool = capi_utils:maybe(PaymentToolThrift, fun capi_handler_decoder_party:decode_payment_tool/1),
-
+    PaymentTool = capi_utils:maybe(PaymentToolThrift, fun capi_handler_decoder_invoicing:decode_payment_tool/1),
     PaymentParams = PaymentParams0#{
         % Требуется для последующей кодировки параметров плательщика
         <<"invoiceID">> => InvoiceID,
