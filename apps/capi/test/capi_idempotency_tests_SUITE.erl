@@ -689,7 +689,7 @@ create_payment(BenderKey, Requests, Config) ->
                     {ok, ?PAYPROC_INVOICE};
                 ('StartPayment', {_, IPP}) ->
                     #payproc_InvoicePaymentParams{id = ID, external_id = EID, context = ?CONTENT} = IPP,
-                    {ok, ?PAYPROC_PAYMENT(ID, EID)}
+                    {ok, ?PAYPROC_PAYMENT(?PAYMENT_W_EXTERNAL_ID(ID, EID))}
             end},
             {bender, fun('GenerateID', {_, _, CtxMsgPack}) ->
                 capi_ct_helper_bender:get_internal_id(Tid, BenderKey, CtxMsgPack)

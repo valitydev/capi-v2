@@ -37,6 +37,7 @@
     create_customer_access_token_ok_test/1,
     rescind_invoice_ok_test/1,
     fulfill_invoice_ok_test/1,
+
     get_payment_status_preauthorization_failed_test/1,
     get_payment_status_payment_tool_rejected_test/1,
     get_payment_status_account_limit_exceeded_test/1,
@@ -739,7 +740,7 @@ create_payment_ok_test(Config) ->
                         context = ?CONTENT
                     } =
                         PaymentParams,
-                    {ok, ?PAYPROC_PAYMENT(ID, EID)}
+                    {ok, ?PAYPROC_PAYMENT(?PAYMENT_W_EXTERNAL_ID(ID, EID))}
             end},
             {party_management, fun('GetShop', _) ->
                 {ok, ?SHOP}
@@ -1796,7 +1797,7 @@ retrieve_payment_by_external_id_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
             {invoicing, fun('Get', _) ->
-                {ok, ?PAYPROC_INVOICE([?PAYPROC_PAYMENT(PaymentID, ExternalID)])}
+                {ok, ?PAYPROC_INVOICE([?PAYPROC_PAYMENT(?PAYMENT_W_EXTERNAL_ID(PaymentID, ExternalID))])}
             end},
             {bender, fun('GetInternalID', _) ->
                 {ok, capi_ct_helper_bender:get_internal_id_result(PaymentID, BenderContext)}

@@ -240,8 +240,8 @@
     year = Year
 }).
 
--define(DISP_PAYMENT_RESOURCE, #domain_DisposablePaymentResource{
-    payment_tool = {bank_card, ?BANK_CARD},
+-define(DISP_PAYMENT_RESOURCE(PT), #domain_DisposablePaymentResource{
+    payment_tool = PT,
     payment_session_id = ?STRING,
     client_info = #domain_ClientInfo{
         fingerprint = ?STRING,
@@ -249,10 +249,7 @@
     }
 }).
 
--define(PAYMENT_RESOURCE_PAYER, #domain_PaymentResourcePayer{
-    resource = ?DISP_PAYMENT_RESOURCE,
-    contact_info = ?CONTACT_INFO
-}).
+-define(DISP_PAYMENT_RESOURCE, ?DISP_PAYMENT_RESOURCE({bank_card, ?BANK_CARD})).
 
 -define(RECURRENT_PAYER,
     {recurrent, #domain_RecurrentPayer{
@@ -275,55 +272,43 @@
     }}
 ).
 
--define(PAYER, {payment_resource, ?PAYMENT_RESOURCE_PAYER}).
+-define(PAYER(PT),
+    {payment_resource, #domain_PaymentResourcePayer{
+        resource = ?DISP_PAYMENT_RESOURCE(PT),
+        contact_info = ?CONTACT_INFO
+    }}
+).
+
+-define(PAYER, ?PAYER({bank_card, ?BANK_CARD})).
 
 -define(PAYER_SESSION_INFO, #domain_PayerSessionInfo{
     redirect_url = ?URL
 }).
 
--define(PAYMENT(ID, IED, Status), #domain_InvoicePayment{
+-define(PAYMENT_STATUS_PENDING, {pending, #domain_InvoicePaymentPending{}}).
+-define(PAYMENT_STATUS_FAILED(F), {failed, #domain_InvoicePaymentFailed{failure = F}}).
+
+-define(PAYMENT(ID, Status, Payer, ExternalID), #domain_InvoicePayment{
     id = ID,
     created_at = ?TIMESTAMP,
     domain_revision = ?INTEGER,
     status = Status,
-    payer = ?PAYER,
+    payer = Payer,
     payer_session_info = ?PAYER_SESSION_INFO,
     cost = ?CASH,
     flow = {instant, #domain_InvoicePaymentFlowInstant{}},
     context = ?CONTENT,
     make_recurrent = false,
-    external_id = IED
+    external_id = ExternalID
 }).
 
--define(PAYMENT_WITH_RECURRENT_PAYER, #domain_InvoicePayment{
-    id = ?STRING,
-    created_at = ?TIMESTAMP,
-    domain_revision = ?INTEGER,
-    status = {pending, #domain_InvoicePaymentPending{}},
-    payer = ?RECURRENT_PAYER,
-    cost = ?CASH,
-    flow = {instant, #domain_InvoicePaymentFlowInstant{}},
-    context = ?CONTENT,
-    make_recurrent = false,
-    external_id = undefined
-}).
+-define(PAYMENT(ID, Status, Payer), ?PAYMENT(ID, Status, Payer, undefined)).
+-define(PAYMENT, ?PAYMENT(?STRING, ?PAYMENT_STATUS_PENDING, ?PAYER)).
 
--define(PAYMENT_WITH_CUSTOMER_PAYER, #domain_InvoicePayment{
-    id = ?STRING,
-    created_at = ?TIMESTAMP,
-    domain_revision = ?INTEGER,
-    status = {pending, #domain_InvoicePaymentPending{}},
-    payer = ?CUSTOMER_PAYER,
-    cost = ?CASH,
-    flow = {instant, #domain_InvoicePaymentFlowInstant{}},
-    context = ?CONTENT,
-    make_recurrent = false,
-    external_id = undefined
-}).
+-define(PAYMENT_WITH_RECURRENT_PAYER, ?PAYMENT(?STRING, ?PAYMENT_STATUS_PENDING, ?RECURRENT_PAYER)).
+-define(PAYMENT_WITH_CUSTOMER_PAYER, ?PAYMENT(?STRING, ?PAYMENT_STATUS_PENDING, ?CUSTOMER_PAYER)).
 
--define(PAYMENT, ?PAYMENT(?STRING, undefined, {pending, #domain_InvoicePaymentPending{}})).
-
--define(PAYMENT(ID, IED), ?PAYMENT(ID, IED, {pending, #domain_InvoicePaymentPending{}})).
+-define(PAYMENT_W_EXTERNAL_ID(ID, ExternalID), ?PAYMENT(ID, ?PAYMENT_STATUS_PENDING, ?PAYER, ExternalID)).
 
 -define(RECURRENT_PAYMENT(Status), #domain_InvoicePayment{
     id = ?STRING,
@@ -350,11 +335,11 @@
     allocation = ?ALLOCATION
 }).
 
+-define(PAYPROC_PAYMENT(Payment), ?PAYPROC_PAYMENT(Payment, [?REFUND], [?ADJUSTMENT], [?PAYPROC_CHARGEBACK])).
+
 -define(PAYPROC_PAYMENT, ?PAYPROC_PAYMENT(?PAYMENT, [?REFUND], [?ADJUSTMENT], [?PAYPROC_CHARGEBACK])).
 
--define(PAYPROC_PAYMENT(ID, IED), ?PAYPROC_PAYMENT(?PAYMENT(ID, IED), [?REFUND], [?ADJUSTMENT], [?PAYPROC_CHARGEBACK])).
-
--define(FAILED_PAYMENT(Failure), ?PAYMENT(?STRING, ?STRING, {failed, #domain_InvoicePaymentFailed{failure = Failure}})).
+-define(FAILED_PAYMENT(Failure), ?PAYMENT(?STRING, ?PAYMENT_STATUS_FAILED(Failure), ?PAYER)).
 
 -define(PAYPROC_FAILED_PAYMENT(Failure), ?PAYPROC_PAYMENT(?FAILED_PAYMENT(Failure), [?REFUND], [], [])).
 
