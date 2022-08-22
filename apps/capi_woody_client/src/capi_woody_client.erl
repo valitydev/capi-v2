@@ -79,8 +79,6 @@ get_service_modname(invoice_templating) ->
     {dmsl_payproc_thrift, 'InvoiceTemplating'};
 get_service_modname(magista) ->
     {magista_magista_thrift, 'MerchantStatisticsService'};
-get_service_modname(reporting) ->
-    {reporter_reports_thrift, 'Reporting'};
 get_service_modname(payouts) ->
     {payouts_payout_manager_thrift, 'PayoutManagement'};
 get_service_modname(webhook_manager) ->

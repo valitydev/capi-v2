@@ -6,7 +6,6 @@
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
--include_lib("reporter_proto/include/reporter_reports_thrift.hrl").
 -include_lib("payout_manager_proto/include/payouts_payout_manager_thrift.hrl").
 
 -type fragment() :: bouncer_client:context_fragment().
@@ -22,7 +21,6 @@
     {operation, prototype_operation()}
     | {payproc, prototype_payproc()}
     | {payouts, prototype_payouts()}
-    | {reports, prototype_reports()}
     | {webhooks, prototype_webhooks()}
 ].
 
@@ -37,10 +35,8 @@
     invoice_template => entity_id(),
     customer => entity_id(),
     binding => entity_id(),
-    report => report_id(),
     file => entity_id(),
     webhook => entity_id(),
-    claim => entity_id(),
     payout => entity_id()
 }.
 
@@ -59,10 +55,6 @@
     webhook => webhook_id() | webhook() | undefined
 }.
 
--type prototype_reports() :: #{
-    report => report_id() | report() | undefined
-}.
-
 -type invoice_id() :: dmsl_domain_thrift:'InvoiceID'().
 -type invoice() :: dmsl_domain_thrift:'Invoice'().
 
@@ -75,9 +67,6 @@
 -type webhook_id() :: dmsl_webhooker_thrift:'WebhookID'().
 -type webhook() :: dmsl_webhooker_thrift:'Webhook'().
 
--type report_id() :: reporter_reports_thrift:'ReportID'().
--type report() :: reporter_reports_thrift:'Report'().
-
 -type payout_id() :: payouts_payout_manager_thrift:'PayoutID'().
 -type payout() :: payouts_payout_manager_thrift:'Payout'().
 
@@ -88,7 +77,6 @@
 -export_type([prototype_payproc/0]).
 -export_type([prototype_payouts/0]).
 -export_type([prototype_webhooks/0]).
--export_type([prototype_reports/0]).
 
 -export([new/0]).
 -export([build/3]).
@@ -124,10 +112,8 @@ build(operation, Params = #{id := OperationID}, Acc, _WoodyCtx) ->
                 invoice_template = maybe_entity(invoice_template, Params),
                 customer = maybe_entity(customer, Params),
                 binding = maybe_entity(binding, Params),
-                report = maybe_entity(report, Params),
                 file = maybe_entity(file, Params),
                 webhook = maybe_entity(webhook, Params),
-                claim = maybe_entity(claim, Params),
                 payout = maybe_entity(payout, Params)
             }
         }
@@ -159,16 +145,6 @@ build(webhooks, Params = #{}, Acc, WoodyCtx) ->
                 webhook,
                 Params,
                 fun(V) -> build_webhook_ctx(V, WoodyCtx) end
-            )
-        }
-    };
-build(reports, Params = #{}, Acc, WoodyCtx) ->
-    Acc#ctx_v1_ContextFragment{
-        reports = #ctx_v1_ContextReports{
-            report = maybe_with(
-                report,
-                Params,
-                fun(V) -> build_report_ctx(V, WoodyCtx) end
             )
         }
     };
@@ -303,24 +279,6 @@ build_webhook_filter_details(#webhooker_CustomerEventFilter{shop_id = ShopID}, C
     Ctx#ctx_v1_WebhookFilter{shop = maybe(ShopID, fun build_entity/1)};
 build_webhook_filter_details(#webhooker_WalletEventFilter{}, Ctx) ->
     Ctx.
-
-%%
-
-build_report_ctx(ID, WoodyCtx) when is_integer(ID) ->
-    maybe_with_woody_result(reporting, 'GetReport', {ID}, WoodyCtx, fun build_report_ctx/1);
-build_report_ctx(Report, _WoodyCtx) ->
-    build_report_ctx(Report).
-
-build_report_ctx(#reports_Report{report_id = ID, party_id = PartyID, shop_id = ShopID, files = Files}) ->
-    #ctx_v1_Report{
-        id = integer_to_binary(ID),
-        party = build_entity(PartyID),
-        shop = maybe(ShopID, fun build_entity/1),
-        files = build_set(lists:map(fun build_report_file_ctx/1, Files))
-    }.
-
-build_report_file_ctx(#reports_FileMeta{file_id = ID}) ->
-    build_entity(ID).
 
 %%
 

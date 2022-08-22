@@ -11,10 +11,6 @@
 -export([activate_shop/3]).
 -export([suspend_shop/3]).
 -export([compute_payment_institution_terms/3]).
--export([create_claim/3]).
--export([revoke_claim/5]).
--export([get_claim/3]).
--export([get_claims/2]).
 
 -type result() :: ok | {ok, woody:result()} | {error, woody_error:business_error()}.
 -type processing_context() :: capi_handler:processing_context().
@@ -26,10 +22,6 @@
 -type varset() :: party_client_thrift:varset().
 -type contract_id() :: party_client_thrift:contract_id().
 -type shop_id() :: party_client_thrift:shop_id().
--type claim_id() :: party_client_thrift:claim_id().
--type claim_revision() :: party_client_thrift:claim_revision().
--type changeset() :: party_client_thrift:changeset().
--type revoke_reason() :: party_client_thrift:revoke_reason().
 
 -spec create_party(party_id(), party_params(), processing_context()) -> result().
 create_party(PartyID, PartyParams, Context) ->
@@ -94,39 +86,6 @@ compute_payment_institution_terms(Ref, Varset, Context) ->
         Client,
         ClientContext
     ).
-
--spec create_claim(party_id(), changeset(), processing_context()) -> result().
-create_claim(PartyID, Changeset, Context) ->
-    {Client, ClientContext} = client_context(Context),
-    party_client_thrift:create_claim(PartyID, Changeset, Client, ClientContext).
-
--spec revoke_claim(
-    party_id(),
-    claim_id(),
-    claim_revision(),
-    revoke_reason(),
-    processing_context()
-) -> result().
-revoke_claim(PartyID, ClaimID, Revision, Reason, Context) ->
-    {Client, ClientContext} = client_context(Context),
-    party_client_thrift:revoke_claim(
-        PartyID,
-        ClaimID,
-        Revision,
-        Reason,
-        Client,
-        ClientContext
-    ).
-
--spec get_claim(party_id(), claim_id(), processing_context()) -> result().
-get_claim(PartyID, ClaimID, Context) ->
-    {Client, ClientContext} = client_context(Context),
-    party_client_thrift:get_claim(PartyID, ClaimID, Client, ClientContext).
-
--spec get_claims(party_id(), processing_context()) -> result().
-get_claims(PartyID, Context) ->
-    {Client, ClientContext} = client_context(Context),
-    party_client_thrift:get_claims(PartyID, Client, ClientContext).
 
 client_context(#{party_client := Client, party_client_context := ClientContext}) ->
     {Client, ClientContext}.

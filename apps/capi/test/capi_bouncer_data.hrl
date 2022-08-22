@@ -113,25 +113,6 @@
     payout = ?CTX_ENTITY(PayoutID)
 }).
 
--define(CTX_REPORT_OP(ID, ReportID), #ctx_v1_CommonAPIOperation{
-    id = ID,
-    report = ?CTX_ENTITY(ReportID)
-}).
-
--define(CTX_REPORT_OP(ID, PartyID, ShopID, ReportID, FileID), #ctx_v1_CommonAPIOperation{
-    id = ID,
-    party = ?CTX_ENTITY(PartyID),
-    shop = ?CTX_ENTITY(ShopID),
-    report = ?CTX_ENTITY(ReportID),
-    file = ?CTX_ENTITY(FileID)
-}).
-
--define(CTX_FILE_OP(ID, ReportID, FileID), #ctx_v1_CommonAPIOperation{
-    id = ID,
-    report = ?CTX_ENTITY(ReportID),
-    file = ?CTX_ENTITY(FileID)
-}).
-
 -define(CTX_SEARCH_REFUND_OP(ID, PartyID, ShopID, InvoiceID, PaymentID, RefundID), #ctx_v1_CommonAPIOperation{
     id = ID,
     party = ?CTX_ENTITY(PartyID),
@@ -162,12 +143,6 @@
         refund = ?CTX_ENTITY(RefundID)
     }
 ).
-
--define(CTX_CLAIM_OP(ID, PartyID, ClaimID), #ctx_v1_CommonAPIOperation{
-    id = ID,
-    party = ?CTX_ENTITY(PartyID),
-    claim = ?CTX_ENTITY(ClaimID)
-}).
 
 -define(CTX_INVOICE(ID, PartyID, ShopID), #ctx_v1_Invoice{
     id = ID,
@@ -206,17 +181,6 @@
     party = ?CTX_ENTITY(PartyID),
     contract = ?CTX_ENTITY(ContractID),
     shop = ?CTX_ENTITY(ShopID)
-}).
-
--define(CTX_REPORT(ID, PartyID, ShopID, Files), #ctx_v1_Report{
-    id = ID,
-    party = ?CTX_ENTITY(PartyID),
-    shop = ?CTX_ENTITY(ShopID),
-    files = Files
-}).
-
--define(CTX_CONTEXT_REPORTS(Report), #ctx_v1_ContextReports{
-    report = Report
 }).
 
 -define(assertContextMatches(Expect), fun(Context) ->
