@@ -1,10 +1,10 @@
 -module(capi_magista_stat_tests_SUITE).
 
 -include_lib("common_test/include/ct.hrl").
--include_lib("stdlib/include/assert.hrl").
 
 -include_lib("damsel/include/dmsl_base_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("magista_proto/include/magista_magista_thrift.hrl").
 -include_lib("capi_dummy_data.hrl").
 -include_lib("capi_bouncer_data.hrl").
@@ -113,7 +113,7 @@ end_per_testcase(_Name, C) ->
 search_payments_without_all_optional_fields_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
-            capi_test_hack:get_invoice_mock(),
+            {invoicing, fun('Get', _) -> {ok, ?PAYPROC_INVOICE} end},
             {magista, fun('SearchPayments', _) -> {ok, ?STAT_RESPONSE_PAYMENTS} end}
         ],
         Config
@@ -135,7 +135,7 @@ search_payments_without_all_optional_fields_ok_test(Config) ->
 search_payments_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
-            capi_test_hack:get_invoice_mock(),
+            {invoicing, fun('Get', _) -> {ok, ?PAYPROC_INVOICE} end},
             {magista, fun('SearchPayments', _) -> {ok, ?STAT_RESPONSE_PAYMENTS} end}
         ],
         Config
@@ -187,7 +187,7 @@ make_search_payments_query(QueryAdds, Config) ->
 search_payments_invalid_request_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
-            capi_test_hack:get_invoice_mock(),
+            {invoicing, fun('Get', _) -> {ok, ?PAYPROC_INVOICE} end},
             {magista, fun('SearchPayments', _) -> {throwing, #base_InvalidRequest{errors = [<<"error">>]}} end}
         ],
         Config
@@ -214,7 +214,7 @@ search_payments_invalid_request_test(Config) ->
 search_payments_invalid_token_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
-            capi_test_hack:get_invoice_mock(),
+            {invoicing, fun('Get', _) -> {ok, ?PAYPROC_INVOICE} end},
             {magista, fun('SearchPayments', _) -> {throwing, #magista_BadContinuationToken{reason = <<"">>}} end}
         ],
         Config
@@ -241,7 +241,7 @@ search_payments_invalid_token_test(Config) ->
 search_payments_limit_exceeded_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
-            capi_test_hack:get_invoice_mock(),
+            {invoicing, fun('Get', _) -> {ok, ?PAYPROC_INVOICE} end},
             {magista, fun('SearchPayments', _) -> {throwing, #magista_LimitExceeded{}} end}
         ],
         Config
