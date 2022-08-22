@@ -2,7 +2,6 @@
 
 -export([create_party/3]).
 -export([get_party/2]).
--export([checkout_party/3]).
 -export([activate_party/2]).
 -export([suspend_party/2]).
 -export([get_contract/3]).
@@ -17,7 +16,6 @@
 
 -type party_id() :: party_client_thrift:party_id().
 -type party_params() :: party_client_thrift:party_params().
--type party_revision_param() :: party_client_thrift:party_revision_param().
 -type payment_institution_ref() :: party_client_thrift:payment_institution_ref().
 -type varset() :: party_client_thrift:varset().
 -type contract_id() :: party_client_thrift:contract_id().
@@ -32,11 +30,6 @@ create_party(PartyID, PartyParams, Context) ->
 get_party(PartyID, Context) ->
     {Client, ClientContext} = client_context(Context),
     party_client_thrift:get(PartyID, Client, ClientContext).
-
--spec checkout_party(party_id(), party_revision_param(), processing_context()) -> result().
-checkout_party(PartyID, PartyRevision, Context) ->
-    {Client, ClientContext} = client_context(Context),
-    party_client_thrift:checkout(PartyID, PartyRevision, Client, ClientContext).
 
 -spec activate_party(party_id(), processing_context()) -> result().
 activate_party(PartyID, Context) ->
