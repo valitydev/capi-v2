@@ -138,7 +138,7 @@ search_invoices_ok_test(Config) ->
     {ok, _, _} = search_invoices([{'offset', 42}], Config),
     {ok, _, _} = search_invoices([{'invoiceStatus', <<"unpaid">>}], Config),
     {ok, _, _} = search_invoices([{'invoiceStatus', <<"cancelled">>}], Config),
-    {ok, _, _} = search_invoices([{'invoiceStatus', <<"paid">>}, {'invoiceAmount', 42}], Config),
+    {ok, _, _} = search_invoices([{'invoiceStatus', <<"fulfilled">>}, {'invoiceAmount', 42}], Config),
     {ok, _, _} = search_invoices(
         [
             {'paymentStatus', <<"failed">>},
@@ -266,6 +266,7 @@ search_payments_ok_test(Config) ->
             {'rrn', <<"090909090909">>},
             {'approvalCode', <<"808080">>},
             {'paymentAmount', 10000},
+            {'paymentTerminalProvider', <<"NEUROSET">>},
             {'barnkCardPaymentSystem', <<"MONSTERCARD">>},
             {'barnkCardTokenProvider', <<"BLABLAPAY">>}
         ],
