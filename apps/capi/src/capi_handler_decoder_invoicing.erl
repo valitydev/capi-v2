@@ -12,6 +12,7 @@
 -export([decode_chargeback/2]).
 -export([decode_refund/1]).
 -export([decode_invoice/1]).
+-export([decode_invoice_status/1]).
 -export([decode_invoice_cart/1]).
 -export([decode_invoice_bank_account/1]).
 -export([decode_invoice_line_tax_mode/1]).
@@ -397,8 +398,7 @@ payment_error_client_maping({authorization_failed, {insufficient_funds, _}}) ->
 payment_error_client_maping(_) ->
     <<"PaymentRejected">>.
 
--spec decode_refund(capi_handler_encoder:encode_data()) ->
-    decode_data().
+-spec decode_refund(dmsl_domain_thrift:'InvoicePaymentRefund'()) -> decode_data().
 decode_refund(Refund) ->
     #domain_Cash{amount = Amount, currency = Currency} = Refund#domain_InvoicePaymentRefund.cash,
     capi_handler_utils:merge_and_compact(
@@ -409,12 +409,13 @@ decode_refund(Refund) ->
             <<"amount">> => Amount,
             <<"currency">> => capi_handler_decoder_utils:decode_currency(Currency),
             <<"externalID">> => Refund#domain_InvoicePaymentRefund.external_id,
+            <<"cart">> => decode_invoice_cart(Refund#domain_InvoicePaymentRefund.cart),
             <<"allocation">> => capi_allocation:decode(Refund#domain_InvoicePaymentRefund.allocation)
         },
         decode_refund_status(Refund#domain_InvoicePaymentRefund.status)
     ).
 
--spec decode_refund_status({atom(), _}) -> decode_data().
+-spec decode_refund_status(dmsl_domain_thrift:'InvoicePaymentRefundStatus'()) -> decode_data().
 decode_refund_status({Status, StatusInfo}) ->
     Error =
         case StatusInfo of
@@ -467,7 +468,7 @@ decode_chargeback_stage({arbitration, _StageDetails}) ->
 decode_chargeback_reason_code(#domain_InvoicePaymentChargebackReason{code = Code}) ->
     #{<<"reasonCode">> => Code}.
 
--spec decode_invoice(capi_handler_encoder:encode_data()) -> decode_data().
+-spec decode_invoice(dmsl_domain_thrift:'Invoice'()) -> decode_data().
 decode_invoice(Invoice) ->
     #domain_Cash{amount = Amount, currency = Currency} = Invoice#domain_Invoice.cost,
     Details = Invoice#domain_Invoice.details,
@@ -491,6 +492,7 @@ decode_invoice(Invoice) ->
         decode_invoice_status(Invoice#domain_Invoice.status)
     ).
 
+-spec decode_invoice_status(dmsl_domain_thrift:'InvoiceStatus'()) -> decode_data().
 decode_invoice_status({Status, StatusInfo}) ->
     Reason =
         case StatusInfo of
