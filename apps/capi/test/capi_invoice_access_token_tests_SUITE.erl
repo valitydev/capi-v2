@@ -531,7 +531,7 @@ capture_partial_payment_ok_test(Config) ->
                         _,
                         #payproc_InvoicePaymentCaptureParams{
                             cash = ?CASH,
-                            cart = ?THRIFT_INVOICE_CART
+                            cart = ?INVOICE_CART(#{<<"TaxMode">> := {str, <<"10%">>}})
                         }
                     }
                 ) ->
@@ -544,7 +544,7 @@ capture_partial_payment_ok_test(Config) ->
         <<"reason">> => ?STRING,
         <<"amount">> => ?INTEGER,
         <<"currency">> => ?RUB,
-        <<"cart">> => ?INVOICE_CART
+        <<"cart">> => ?SWAG_INVOICE_CART
     },
     _ = capi_ct_helper_bouncer:mock_assert_payment_op_ctx(
         <<"CapturePayment">>,

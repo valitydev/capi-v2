@@ -26,6 +26,7 @@
 -define(DETAILS, #domain_InvoiceDetails{
     product = ?STRING,
     description = ?STRING,
+    cart = ?INVOICE_CART,
     bank_account = ?INVOICE_BANK_ACCOUNT
 }).
 
@@ -81,17 +82,15 @@
     external_id = EID
 }).
 
--define(INVOICE_CART_TAXMODE, #{
-    <<"type">> => <<"InvoiceLineTaxVAT">>,
-    <<"rate">> => <<"10%">>
-}).
-
--define(INVOICE_CART, [
+-define(SWAG_INVOICE_CART, [
     #{
-        <<"taxMode">> => ?INVOICE_CART_TAXMODE,
         <<"product">> => ?STRING,
         <<"price">> => ?INTEGER,
-        <<"quantity">> => ?INTEGER
+        <<"quantity">> => ?INTEGER,
+        <<"taxMode">> => #{
+            <<"type">> => <<"InvoiceLineTaxVAT">>,
+            <<"rate">> => <<"10%">>
+        }
     }
 ]).
 
@@ -166,13 +165,14 @@
     ]
 }).
 
--define(THRIFT_INVOICE_CART, #domain_InvoiceCart{
+-define(INVOICE_CART, ?INVOICE_CART(#{<<"TaxMode">> => {str, <<"10%">>}})).
+-define(INVOICE_CART(MD), #domain_InvoiceCart{
     lines = [
         #domain_InvoiceLine{
             product = ?STRING,
             quantity = ?INTEGER,
             price = ?CASH,
-            metadata = #{<<"TaxMode">> := {str, <<"10%">>}}
+            metadata = MD
         }
     ]
 }).
@@ -716,6 +716,33 @@
     enabled = true
 }).
 
+-define(STAT_RESPONSE_INVOICES, #magista_StatInvoiceResponse{
+    invoices = [
+        ?STAT_INVOICE({unpaid, #domain_InvoiceUnpaid{}}),
+        ?STAT_INVOICE({paid, #domain_InvoicePaid{}}),
+        ?STAT_INVOICE({cancelled, #domain_InvoiceCancelled{details = ?STRING}}),
+        ?STAT_INVOICE({fulfilled, #domain_InvoiceFulfilled{details = ?STRING}})
+    ],
+    continuation_token = ?STRING
+}).
+
+-define(STAT_INVOICE(Status), #magista_StatInvoice{
+    id = ?STRING,
+    owner_id = ?STRING,
+    shop_id = ?STRING,
+    created_at = ?TIMESTAMP,
+    status = Status,
+    product = ?STRING,
+    description = ?STRING,
+    due = ?TIMESTAMP,
+    amount = ?INTEGER,
+    currency_symbolic_code = ?RUB,
+    context = ?CONTENT,
+    cart = ?INVOICE_CART,
+    external_id = ?STRING,
+    status_changed_at = ?TIMESTAMP
+}).
+
 -define(STAT_RESPONSE_PAYMENTS, #magista_StatPaymentResponse{
     payments = [
         ?STAT_PAYMENT(
@@ -781,17 +808,32 @@
     {failed, #domain_InvoicePaymentFailed{failure = {failure, #domain_Failure{code = <<"error_code">>}}}}
 ).
 
--define(STAT_RECORD, #{
-    <<"offset">> => ?INTEGER_BINARY,
-    <<"successful_count">> => ?INTEGER_BINARY,
-    <<"total_count">> => ?INTEGER_BINARY,
-    <<"conversion">> => ?INTEGER_BINARY,
-    <<"city_id">> => ?INTEGER_BINARY,
-    <<"currency_symbolic_code">> => ?RUB,
-    <<"amount_with_fee">> => ?INTEGER_BINARY,
-    <<"amount_without_fee">> => ?INTEGER_BINARY,
-    <<"unic_count">> => ?INTEGER_BINARY,
-    <<"payment_system">> => <<"visa">>
+-define(STAT_RESPONSE_REFUNDS, #magista_StatRefundResponse{
+    refunds = [
+        ?STAT_REFUND({pending, #domain_InvoicePaymentRefundPending{}}),
+        ?STAT_REFUND({succeeded, #domain_InvoicePaymentRefundSucceeded{}})
+        ?STAT_REFUND({failed, #domain_InvoicePaymentRefundFailed{
+            failure = {operation_timeout, #domain_OperationTimeout{}}
+        }})
+    ],
+    continuation_token = ?STRING
+}).
+
+-define(STAT_REFUND(Status), #magista_StatRefund{
+    id = ?STRING,
+    payment_id = ?STRING,
+    invoice_id = ?STRING,
+    owner_id = ?STRING,
+    shop_id = ?STRING,
+    status = Status,
+    created_at = ?TIMESTAMP,
+    amount = ?INTEGER,
+    fee = ?INTEGER,
+    currency_symbolic_code = ?RUB,
+    reason = ?STRING,
+    cart = ?INVOICE_CART,
+    external_id = ?STRING,
+    status_changed_at = ?TIMESTAMP
 }).
 
 -define(SNAPSHOT, #'domain_conf_Snapshot'{

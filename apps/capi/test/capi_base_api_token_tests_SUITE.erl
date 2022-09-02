@@ -865,7 +865,7 @@ create_partial_refund(Config) ->
                         _,
                         #payproc_InvoicePaymentRefundParams{
                             cash = ?CASH,
-                            cart = ?THRIFT_INVOICE_CART
+                            cart = ?INVOICE_CART(#{<<"TaxMode">> := {str, <<"10%">>}})
                         }
                     }
                 ) ->
@@ -879,7 +879,7 @@ create_partial_refund(Config) ->
         <<"reason">> => ?STRING,
         <<"currency">> => ?RUB,
         <<"amount">> => ?INTEGER,
-        <<"cart">> => ?INVOICE_CART
+        <<"cart">> => ?SWAG_INVOICE_CART
     },
     _ = capi_ct_helper_bouncer:mock_assert_payment_op_ctx(
         <<"CreateRefund">>,
