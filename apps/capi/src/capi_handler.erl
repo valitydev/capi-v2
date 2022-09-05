@@ -98,7 +98,6 @@ map_error(validation_error, Error) ->
 get_handlers() ->
     [
         capi_handler_categories,
-        capi_handler_claims,
         capi_handler_contracts,
         capi_handler_countries,
         capi_handler_customers,
@@ -108,7 +107,6 @@ get_handlers() ->
         capi_handler_payment_institutions,
         capi_handler_payments,
         capi_handler_payouts,
-        capi_handler_reports,
         capi_handler_search,
         capi_handler_shops,
         capi_handler_trade_blocs,
@@ -301,7 +299,6 @@ set_request_meta(OperationID, Req) ->
         'invoiceTemplateID',
         'contractID',
         'webhookID',
-        'reportID',
         'shopID',
         'customerID'
     ],

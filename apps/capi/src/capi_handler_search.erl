@@ -15,16 +15,28 @@
     Req :: capi_handler:request_data(),
     Context :: capi_handler:processing_context()
 ) -> {ok, capi_handler:request_state()} | {error, noimpl}.
+prepare(OperationID, Req, Context) when OperationID =:= 'SearchInvoices' ->
+    Prototypes = build_prototypes(OperationID, Context, Req),
+    Authorize = fun() -> {ok, capi_auth:authorize_operation(Prototypes, Context)} end,
+    Process = fun() ->
+        Query = make_invoices_search_query(Context, Req),
+        process_search_request('SearchInvoices', Query, Req, Context)
+    end,
+    {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID, Req, Context) when OperationID =:= 'SearchPayments' ->
     Prototypes = build_prototypes(OperationID, Context, Req),
     Authorize = fun() -> {ok, capi_auth:authorize_operation(Prototypes, Context)} end,
     Process = fun() ->
-        Query = make_query(payments, Context, Req),
-        Opts = #{
-            thrift_fun => 'SearchPayments',
-            decode_fun => fun decode_stat_payment/2
-        },
-        process_search_request(payments, Query, Req, Context, Opts)
+        Query = make_payments_search_query(Context, Req),
+        process_search_request('SearchPayments', Query, Req, Context)
+    end,
+    {ok, #{authorize => Authorize, process => Process}};
+prepare(OperationID, Req, Context) when OperationID =:= 'SearchRefunds' ->
+    Prototypes = build_prototypes(OperationID, Context, Req),
+    Authorize = fun() -> {ok, capi_auth:authorize_operation(Prototypes, Context)} end,
+    Process = fun() ->
+        Query = make_refunds_search_query(Context, Req),
+        process_search_request('SearchRefunds', Query, Req, Context)
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare(_OperationID, _Req, _Context) ->
@@ -32,20 +44,48 @@ prepare(_OperationID, _Req, _Context) ->
 
 %%
 
-make_query(payments, Context, Req) ->
-    CommonSearchQueryParams = #magista_CommonSearchQueryParams{
+make_invoices_search_query(Context, Req) ->
+    #magista_InvoiceSearchQuery{
+        common_search_query_params = make_common_query_params(Context, Req),
+        payment_params = make_payment_query_params(Req),
+        invoice_ids = encode_invoice_ids(genlib_map:get('invoiceID', Req)),
+        invoice_status = encode_invoice_status(genlib_map:get('invoiceStatus', Req)),
+        invoice_amount = genlib_map:get('invoiceAmount', Req)
+    }.
+
+make_payments_search_query(Context, Req) ->
+    #magista_PaymentSearchQuery{
+        common_search_query_params = make_common_query_params(Context, Req),
+        payment_params = make_payment_query_params(Req),
+        invoice_ids = encode_invoice_ids(genlib_map:get('invoiceID', Req))
+    }.
+
+make_refunds_search_query(Context, Req) ->
+    #magista_RefundSearchQuery{
+        common_search_query_params = make_common_query_params(Context, Req),
+        invoice_ids = encode_invoice_ids(genlib_map:get('invoiceID', Req)),
+        payment_id = genlib_map:get('paymentID', Req),
+        refund_id = genlib_map:get('refundID', Req),
+        refund_status = encode_refund_status(genlib_map:get('refundStatus', Req))
+    }.
+
+make_common_query_params(Context, Req) ->
+    #magista_CommonSearchQueryParams{
         to_time = capi_handler_utils:get_time('toTime', Req),
         from_time = capi_handler_utils:get_time('fromTime', Req),
         shop_ids = [genlib_map:get('shopID', Req)],
         party_id = capi_handler_utils:get_party_id(Context),
         continuation_token = genlib_map:get('continuationToken', Req),
         limit = genlib_map:get('limit', Req)
-    },
-    PaymentParams = #magista_PaymentParams{
+    }.
+
+make_payment_query_params(Req) ->
+    #magista_PaymentParams{
         payment_id = genlib_map:get('paymentID', Req),
         payment_status = encode_payment_status(genlib_map:get('paymentStatus', Req)),
         payment_flow = encode_payment_flow(genlib_map:get('paymentFlow', Req)),
         payment_tool = encode_payment_method(genlib_map:get('paymentMethod', Req)),
+        payment_terminal_provider = encode_terminal_provider(genlib_map:get('paymentTerminalProvider', Req)),
         payment_email = genlib_map:get('payerEmail', Req),
         payment_ip = genlib_map:get('payerIP', Req),
         payment_fingerprint = genlib_map:get('payerFingerprint', Req),
@@ -56,28 +96,20 @@ make_query(payments, Context, Req) ->
         payment_amount = genlib_map:get('paymentAmount', Req),
         payment_rrn = genlib_map:get('rrn', Req),
         payment_approval_code = genlib_map:get('approvalCode', Req),
-        payment_token_provider = encode_payment_token_provider(genlib_map:get('BankCardTokenProvider', Req))
-    },
-    #magista_PaymentSearchQuery{
-        common_search_query_params = CommonSearchQueryParams,
-        payment_params = PaymentParams,
-        invoice_ids = encode_invoice_ids(genlib_map:get('invoiceID', Req))
+        payment_token_provider = encode_payment_token_provider(genlib_map:get('bankCardTokenProvider', Req))
     }.
 
-process_search_request(QueryType, Query, _Req, Context, Opts = #{thrift_fun := ThriftFun}) ->
-    Call = {magista, ThriftFun, {Query}},
-    process_search_request_result(QueryType, capi_handler_utils:service_call(Call, Context), Context, Opts).
+process_search_request(Function, Query, _Req, Context) ->
+    Call = {magista, Function, {Query}},
+    process_search_request_result(Function, capi_handler_utils:service_call(Call, Context), Context).
 
-process_search_request_result(payments, Result, Context, #{decode_fun := DecodeFun}) ->
+process_search_request_result(Function, Result, Context) ->
     case Result of
-        {ok, #magista_StatPaymentResponse{
-            payments = Payments,
-            continuation_token = ContinuationToken
-        }} ->
-            DecodedData = [DecodeFun(Payment, Context) || Payment <- Payments],
+        {ok, Response} ->
+            {Results, ContinuationToken} = decode_search_response(Function, Response, Context),
             Resp = genlib_map:compact(#{
-                <<"result">> => DecodedData,
-                <<"totalCount">> => length(DecodedData),
+                <<"result">> => Results,
+                <<"totalCount">> => length(Results),
                 <<"continuationToken">> => ContinuationToken
             }),
             {ok, {200, #{}, Resp}};
@@ -90,7 +122,47 @@ process_search_request_result(payments, Result, Context, #{decode_fun := DecodeF
             {ok, logic_error('invalidRequest', <<"Invalid token">>)}
     end.
 
+decode_search_response(
+    'SearchInvoices',
+    #magista_StatInvoiceResponse{
+        invoices = Invoices,
+        continuation_token = ContinuationToken
+    },
+    _Context
+) ->
+    {
+        [decode_stat_invoice(Invoice) || Invoice <- Invoices],
+        ContinuationToken
+    };
+decode_search_response(
+    'SearchPayments',
+    #magista_StatPaymentResponse{
+        payments = Payments,
+        continuation_token = ContinuationToken
+    },
+    Context
+) ->
+    {
+        [decode_stat_payment(Payment, Context) || Payment <- Payments],
+        ContinuationToken
+    };
+decode_search_response(
+    'SearchRefunds',
+    #magista_StatRefundResponse{
+        refunds = Refunds,
+        continuation_token = ContinuationToken
+    },
+    _Context
+) ->
+    {[decode_stat_refund(Refund) || Refund <- Refunds], ContinuationToken}.
+
 %%
+
+encode_invoice_status(unpaid) -> unpaid;
+encode_invoice_status(cancelled) -> cancelled;
+encode_invoice_status(paid) -> paid;
+encode_invoice_status(fulfilled) -> fulfilled;
+encode_invoice_status(undefined) -> undefined.
 
 encode_payment_status(pending) -> pending;
 encode_payment_status(processed) -> processed;
@@ -100,6 +172,11 @@ encode_payment_status(refunded) -> refunded;
 encode_payment_status(failed) -> failed;
 encode_payment_status(undefined) -> undefined.
 
+encode_refund_status(pending) -> pending;
+encode_refund_status(succeeded) -> succeeded;
+encode_refund_status(failed) -> failed;
+encode_refund_status(undefined) -> undefined.
+
 encode_payment_flow(instant) -> instant;
 encode_payment_flow(hold) -> hold;
 encode_payment_flow(undefined) -> undefined.
@@ -107,6 +184,11 @@ encode_payment_flow(undefined) -> undefined.
 encode_payment_method('bankCard') -> bank_card;
 encode_payment_method('paymentTerminal') -> payment_terminal;
 encode_payment_method(undefined) -> undefined.
+
+encode_terminal_provider(ID) -> encode_payment_service_ref(ID).
+
+encode_payment_service_ref(ID) when is_binary(ID) -> #domain_PaymentServiceRef{id = ID};
+encode_payment_service_ref(undefined) -> undefined.
 
 encode_payment_system_ref(ID) when is_binary(ID) -> #domain_PaymentSystemRef{id = ID};
 encode_payment_system_ref(undefined) -> undefined.
@@ -118,6 +200,24 @@ encode_invoice_ids(ID) when is_binary(ID) -> [ID];
 encode_invoice_ids(undefined) -> undefined.
 
 %%
+
+decode_stat_invoice(Stat) ->
+    capi_handler_utils:merge_and_compact(
+        #{
+            <<"id">> => Stat#magista_StatInvoice.id,
+            <<"externalID">> => Stat#magista_StatInvoice.external_id,
+            <<"shopID">> => Stat#magista_StatInvoice.shop_id,
+            <<"createdAt">> => Stat#magista_StatInvoice.created_at,
+            <<"dueDate">> => Stat#magista_StatInvoice.due,
+            <<"amount">> => Stat#magista_StatInvoice.amount,
+            <<"currency">> => Stat#magista_StatInvoice.currency_symbolic_code,
+            <<"metadata">> => capi_handler_decoder_utils:decode_context(Stat#magista_StatInvoice.context),
+            <<"product">> => Stat#magista_StatInvoice.product,
+            <<"description">> => Stat#magista_StatInvoice.description,
+            <<"cart">> => capi_handler_decoder_invoicing:decode_invoice_cart(Stat#magista_StatInvoice.cart)
+        },
+        capi_handler_decoder_invoicing:decode_invoice_status(Stat#magista_StatInvoice.status)
+    ).
 
 decode_stat_payment(Stat, Context) ->
     capi_handler_utils:merge_and_compact(
@@ -141,6 +241,23 @@ decode_stat_payment(Stat, Context) ->
             <<"cart">> => capi_handler_decoder_invoicing:decode_invoice_cart(Stat#magista_StatPayment.cart)
         },
         decode_stat_payment_status(Stat#magista_StatPayment.status, Context)
+    ).
+
+decode_stat_refund(Stat) ->
+    Status = capi_handler_decoder_invoicing:decode_refund_status(Stat#magista_StatRefund.status),
+    capi_handler_utils:merge_and_compact(
+        #{
+            <<"id">> => Stat#magista_StatRefund.id,
+            <<"externalID">> => Stat#magista_StatRefund.external_id,
+            <<"invoiceID">> => Stat#magista_StatRefund.invoice_id,
+            <<"paymentID">> => Stat#magista_StatRefund.payment_id,
+            <<"createdAt">> => Stat#magista_StatRefund.created_at,
+            <<"reason">> => Stat#magista_StatRefund.reason,
+            <<"amount">> => Stat#magista_StatRefund.amount,
+            <<"currency">> => Stat#magista_StatRefund.currency_symbolic_code,
+            <<"cart">> => capi_handler_decoder_invoicing:decode_invoice_cart(Stat#magista_StatRefund.cart)
+        },
+        Status
     ).
 
 decode_stat_tx_info(undefined) ->
@@ -317,5 +434,8 @@ build_prototypes(OperationID, Context, Req) ->
             payout => genlib_map:get('payoutID', Req),
             refund => genlib_map:get('refundID', Req)
         }},
-        {payproc, #{invoice => InvoiceID, customer => CustomerID}}
+        {payproc, #{
+            invoice => InvoiceID,
+            customer => CustomerID
+        }}
     ].

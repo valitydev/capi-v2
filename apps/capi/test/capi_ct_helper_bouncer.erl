@@ -1,15 +1,11 @@
 -module(capi_ct_helper_bouncer).
 
--include_lib("common_test/include/ct.hrl").
 -include_lib("capi_dummy_data.hrl").
 -include_lib("capi_bouncer_data.hrl").
--include_lib("stdlib/include/assert.hrl").
 
 -export([mock_assert_op_ctx/2]).
 -export([mock_assert_party_op_ctx/3]).
 -export([mock_assert_shop_op_ctx/4]).
--export([mock_assert_report_op_ctx/6]).
--export([mock_assert_report_op_ctx/7]).
 -export([mock_assert_contract_op_ctx/4]).
 -export([mock_assert_invoice_op_ctx/5]).
 -export([mock_assert_payment_op_ctx/5]).
@@ -17,14 +13,10 @@
 -export([mock_assert_refund_op_ctx/7]).
 -export([mock_assert_invoice_tpl_op_ctx/5]).
 -export([mock_assert_customer_op_ctx/5]).
--export([mock_assert_claim_op_ctx/4]).
 -export([mock_assert_webhook_op_ctx/4]).
 -export([mock_assert_payout_op_ctx/6]).
--export([mock_assert_search_invoice_op_ctx/7]).
--export([mock_assert_search_payment_op_ctx/4]).
--export([mock_assert_search_payment_op_ctx/6]).
--export([mock_assert_search_payout_op_ctx/5]).
--export([mock_assert_search_refund_op_ctx/7]).
+-export([mock_assert_search_op_ctx/2]).
+-export([mock_assert_search_op_ctx/3]).
 
 -export([mock_client/1]).
 -export([mock_arbiter/2]).
@@ -161,17 +153,6 @@ mock_assert_customer_op_ctx(Op, CustomerID, PartyID, ShopID, Config) ->
         Config
     ).
 
--spec mock_assert_claim_op_ctx(_, _, _, _) -> _.
-mock_assert_claim_op_ctx(Op, PartyID, ClaimID, Config) ->
-    mock_arbiter(
-        ?assertContextMatches(
-            #ctx_v1_ContextFragment{
-                capi = ?CTX_CAPI(?CTX_CLAIM_OP(Op, PartyID, ClaimID))
-            }
-        ),
-        Config
-    ).
-
 -spec mock_assert_webhook_op_ctx(_, _, _, _) -> _.
 mock_assert_webhook_op_ctx(Op, WebhookID, PartyID, Config) ->
     mock_arbiter(
@@ -200,13 +181,8 @@ mock_assert_payout_op_ctx(Op, PayoutID, PartyID, ContractID, ShopID, Config) ->
         Config
     ).
 
--spec mock_assert_search_payment_op_ctx(_, _, _, _) -> _.
-mock_assert_search_payment_op_ctx(Op, PartyID, ShopID, Config) ->
-    SearchCtx = ?CTX_SEARCH_PAYMENT_OP(
-        Op,
-        PartyID,
-        ShopID
-    ),
+-spec mock_assert_search_op_ctx(_, _) -> _.
+mock_assert_search_op_ctx(SearchCtx, Config) ->
     mock_arbiter(
         ?assertContextMatches(
             #ctx_v1_ContextFragment{
@@ -216,97 +192,13 @@ mock_assert_search_payment_op_ctx(Op, PartyID, ShopID, Config) ->
         Config
     ).
 
--spec mock_assert_search_payment_op_ctx(_, _, _, _, _, _) -> _.
-mock_assert_search_payment_op_ctx(Op, PartyID, ShopID, InvoiceID, PaymentID, Config) ->
-    SearchCtx = ?CTX_SEARCH_PAYMENT_OP(
-        Op,
-        PartyID,
-        ShopID,
-        InvoiceID,
-        PaymentID
-    ),
+-spec mock_assert_search_op_ctx(_, _, _) -> _.
+mock_assert_search_op_ctx(SearchCtx, PayprocCtx, Config) ->
     mock_arbiter(
         ?assertContextMatches(
             #ctx_v1_ContextFragment{
-                capi = ?CTX_CAPI(SearchCtx)
-            }
-        ),
-        Config
-    ).
-
--spec mock_assert_search_invoice_op_ctx(_, _, _, _, _, _, _) -> _.
-mock_assert_search_invoice_op_ctx(Op, PartyID, ShopID, InvoiceID, PaymentID, CustomerID, Config) ->
-    SearchCtx = ?CTX_SEARCH_INVOICE_OP(
-        Op,
-        PartyID,
-        ShopID,
-        InvoiceID,
-        PaymentID,
-        CustomerID
-    ),
-    mock_arbiter(
-        ?assertContextMatches(
-            #ctx_v1_ContextFragment{
-                capi = ?CTX_CAPI(SearchCtx)
-            }
-        ),
-        Config
-    ).
-
--spec mock_assert_search_refund_op_ctx(_, _, _, _, _, _, _) -> _.
-mock_assert_search_refund_op_ctx(Op, PartyID, ShopID, InvoiceID, PaymentID, RefundID, Config) ->
-    SearchCtx = ?CTX_SEARCH_REFUND_OP(
-        Op,
-        PartyID,
-        ShopID,
-        InvoiceID,
-        PaymentID,
-        RefundID
-    ),
-    mock_arbiter(
-        ?assertContextMatches(
-            #ctx_v1_ContextFragment{
-                capi = ?CTX_CAPI(SearchCtx)
-            }
-        ),
-        Config
-    ).
--spec mock_assert_search_payout_op_ctx(_, _, _, _, _) -> _.
-mock_assert_search_payout_op_ctx(Op, PartyID, ShopID, PayoutID, Config) ->
-    SearchCtx = ?CTX_SEARCH_PAYOUT_OP(
-        Op,
-        PartyID,
-        ShopID,
-        PayoutID
-    ),
-    mock_arbiter(
-        ?assertContextMatches(
-            #ctx_v1_ContextFragment{
-                capi = ?CTX_CAPI(SearchCtx)
-            }
-        ),
-        Config
-    ).
-
--spec mock_assert_report_op_ctx(_, _, _, _, _, _) -> _.
-mock_assert_report_op_ctx(Op, PartyID, ShopID, ReportID, Files, Config) ->
-    mock_arbiter(
-        ?assertContextMatches(
-            #ctx_v1_ContextFragment{
-                capi = ?CTX_CAPI(?CTX_REPORT_OP(Op, ReportID)),
-                reports = ?CTX_CONTEXT_REPORTS(?CTX_REPORT(ReportID, PartyID, ShopID, Files))
-            }
-        ),
-        Config
-    ).
-
--spec mock_assert_report_op_ctx(_, _, _, _, _, _, _) -> _.
-mock_assert_report_op_ctx(Op, PartyID, ShopID, ReportID, FileID, Files, Config) ->
-    mock_arbiter(
-        ?assertContextMatches(
-            #ctx_v1_ContextFragment{
-                capi = ?CTX_CAPI(?CTX_FILE_OP(Op, ReportID, FileID)),
-                reports = ?CTX_CONTEXT_REPORTS(?CTX_REPORT(ReportID, PartyID, ShopID, Files))
+                capi = ?CTX_CAPI(SearchCtx),
+                payment_processing = PayprocCtx
             }
         ),
         Config

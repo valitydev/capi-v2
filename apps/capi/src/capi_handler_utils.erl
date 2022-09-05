@@ -25,12 +25,9 @@
 -export([issue_access_token/2]).
 -export([merge_and_compact/2]).
 -export([get_time/2]).
--export([get_split_interval/2]).
--export([get_time_diff/2]).
 -export([collect_events/4]).
 
 -export([unwrap_payment_session/1]).
--export([wrap_payment_session/2]).
 
 -export([get_invoice_by_id/2]).
 -export([get_payment_by_id/3]).
@@ -167,20 +164,6 @@ get_time(Key, Req) ->
             undefined
     end.
 
--spec get_split_interval(integer(), atom()) -> integer().
-get_split_interval(SplitSize, minute) -> SplitSize * 60;
-get_split_interval(SplitSize, hour) -> get_split_interval(SplitSize, minute) * 60;
-get_split_interval(SplitSize, day) -> get_split_interval(SplitSize, hour) * 24;
-get_split_interval(SplitSize, week) -> get_split_interval(SplitSize, day) * 7;
-get_split_interval(SplitSize, month) -> get_split_interval(SplitSize, day) * 30;
-get_split_interval(SplitSize, year) -> get_split_interval(SplitSize, day) * 365.
-
--spec get_time_diff(binary(), binary()) -> integer().
-get_time_diff(From, To) ->
-    UnixFrom = genlib_rfc3339:parse(From, second),
-    UnixTo = genlib_rfc3339:parse(To, second),
-    UnixTo - UnixFrom.
-
 -spec collect_events(
     integer(),
     integer(),
@@ -253,13 +236,6 @@ unwrap_payment_session(Encoded) ->
                 erlang:throw(invalid_payment_session)
         end,
     {ClientInfo, PaymentSession}.
-
--spec wrap_payment_session(map(), binary()) -> binary().
-wrap_payment_session(ClientInfo, PaymentSession) ->
-    capi_utils:map_to_base64url(#{
-        <<"clientInfo">> => ClientInfo,
-        <<"paymentSession">> => PaymentSession
-    }).
 
 -spec get_invoice_by_id(binary(), processing_context()) -> woody:result().
 get_invoice_by_id(InvoiceID, Context) ->

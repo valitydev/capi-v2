@@ -12,9 +12,12 @@
 -export([decode_chargeback/2]).
 -export([decode_refund/1]).
 -export([decode_invoice/1]).
+-export([decode_invoice_status/1]).
 -export([decode_invoice_cart/1]).
 -export([decode_invoice_bank_account/1]).
 -export([decode_invoice_line_tax_mode/1]).
+-export([decode_payment_tool/1]).
+-export([decode_disposable_payment_resource/1]).
 -export([decode_payment_methods/1]).
 -export([decode_payment_status/2]).
 -export([decode_payment_operation_failure/2]).
@@ -191,7 +194,7 @@ decode_payer(
     #{
         <<"payerType">> => <<"CustomerPayer">>,
         <<"customerID">> => ID,
-        <<"paymentToolDetails">> => capi_handler_decoder_party:decode_payment_tool_details(PaymentTool)
+        <<"paymentToolDetails">> => decode_payment_tool_details(PaymentTool)
     };
 decode_payer(
     {recurrent, #domain_RecurrentPayer{
@@ -202,7 +205,7 @@ decode_payer(
 ) ->
     #{
         <<"payerType">> => <<"RecurrentPayer">>,
-        <<"paymentToolDetails">> => capi_handler_decoder_party:decode_payment_tool_details(PaymentTool),
+        <<"paymentToolDetails">> => decode_payment_tool_details(PaymentTool),
         <<"contactInfo">> => capi_handler_decoder_party:decode_contact_info(ContactInfo),
         <<"recurrentParentPayment">> => decode_recurrent_parent(RecurrentParent)
     };
@@ -217,8 +220,90 @@ decode_payer(
             <<"payerType">> => <<"PaymentResourcePayer">>,
             <<"contactInfo">> => capi_handler_decoder_party:decode_contact_info(ContactInfo)
         },
-        capi_handler_decoder_party:decode_disposable_payment_resource(Resource)
+        decode_disposable_payment_resource(Resource)
     ).
+
+-spec decode_payment_tool(capi_handler_encoder:encode_data()) -> capi_handler_decoder_utils:decode_data().
+decode_payment_tool({bank_card, BankCard}) ->
+    decode_bank_card(BankCard);
+decode_payment_tool({payment_terminal, PaymentTerminal}) ->
+    decode_payment_terminal(PaymentTerminal);
+decode_payment_tool({digital_wallet, DigitalWallet}) ->
+    decode_digital_wallet(DigitalWallet);
+decode_payment_tool({mobile_commerce, MobileCommerce}) ->
+    decode_mobile_commerce(MobileCommerce);
+decode_payment_tool({crypto_currency, CryptoCurrency}) ->
+    decode_crypto_wallet(CryptoCurrency).
+
+decode_bank_card(#domain_BankCard{
+    'token' = Token,
+    'payment_system' = PaymentSystem,
+    'exp_date' = ExpDate
+}) ->
+    genlib_map:compact(#{
+        <<"type">> => <<"bank_card">>,
+        <<"token">> => Token,
+        <<"payment_system">> => capi_handler_decoder_utils:decode_payment_system_ref(PaymentSystem),
+        <<"exp_date">> => ExpDate
+    }).
+
+decode_payment_terminal(#domain_PaymentTerminal{payment_service = PaymentService}) ->
+    #{
+        <<"type">> => <<"payment_terminal">>,
+        <<"terminal_type">> => capi_handler_decoder_utils:decode_payment_service_ref(PaymentService)
+    }.
+
+decode_digital_wallet(#domain_DigitalWallet{
+    payment_service = PaymentService,
+    id = ID,
+    token = Token
+}) ->
+    genlib_map:compact(#{
+        <<"type">> => <<"digital_wallet">>,
+        <<"provider">> => capi_handler_decoder_utils:decode_payment_service_ref(PaymentService),
+        <<"id">> => ID,
+        <<"token">> => Token
+    }).
+
+decode_crypto_wallet(CryptoCurrency) ->
+    #{
+        <<"type">> => <<"crypto_wallet">>,
+        <<"crypto_currency">> => capi_handler_decoder_utils:decode_crypto_currency_ref(CryptoCurrency)
+    }.
+
+decode_mobile_commerce(MobileCommerce) ->
+    #domain_MobileCommerce{
+        operator = MobileOperator,
+        phone = #domain_MobilePhone{
+            cc = Cc,
+            ctn = Ctn
+        }
+    } = MobileCommerce,
+    Phone = #{<<"cc">> => Cc, <<"ctn">> => Ctn},
+    #{
+        <<"type">> => <<"mobile_commerce">>,
+        <<"phone">> => Phone,
+        <<"operator">> => capi_handler_decoder_utils:decode_mobile_operator_ref(MobileOperator)
+    }.
+
+-spec decode_disposable_payment_resource(capi_handler_encoder:encode_data()) ->
+    capi_handler_decoder_utils:decode_data().
+decode_disposable_payment_resource(#domain_DisposablePaymentResource{
+    payment_tool = PaymentTool,
+    client_info = ClientInfo
+}) ->
+    #{
+        <<"paymentToolDetails">> => decode_payment_tool_details(PaymentTool),
+        <<"clientInfo">> => decode_client_info(ClientInfo)
+    }.
+
+decode_client_info(undefined) ->
+    undefined;
+decode_client_info(ClientInfo) ->
+    #{
+        <<"fingerprint">> => ClientInfo#domain_ClientInfo.fingerprint,
+        <<"ip">> => ClientInfo#domain_ClientInfo.ip_address
+    }.
 
 decode_payer_session_info(#domain_PayerSessionInfo{
     redirect_url = RedirectURL
@@ -313,8 +398,7 @@ payment_error_client_maping({authorization_failed, {insufficient_funds, _}}) ->
 payment_error_client_maping(_) ->
     <<"PaymentRejected">>.
 
--spec decode_refund(capi_handler_encoder:encode_data()) ->
-    decode_data().
+-spec decode_refund(dmsl_domain_thrift:'InvoicePaymentRefund'()) -> decode_data().
 decode_refund(Refund) ->
     #domain_Cash{amount = Amount, currency = Currency} = Refund#domain_InvoicePaymentRefund.cash,
     capi_handler_utils:merge_and_compact(
@@ -325,12 +409,13 @@ decode_refund(Refund) ->
             <<"amount">> => Amount,
             <<"currency">> => capi_handler_decoder_utils:decode_currency(Currency),
             <<"externalID">> => Refund#domain_InvoicePaymentRefund.external_id,
+            <<"cart">> => decode_invoice_cart(Refund#domain_InvoicePaymentRefund.cart),
             <<"allocation">> => capi_allocation:decode(Refund#domain_InvoicePaymentRefund.allocation)
         },
         decode_refund_status(Refund#domain_InvoicePaymentRefund.status)
     ).
 
--spec decode_refund_status({atom(), _}) -> decode_data().
+-spec decode_refund_status(dmsl_domain_thrift:'InvoicePaymentRefundStatus'()) -> decode_data().
 decode_refund_status({Status, StatusInfo}) ->
     Error =
         case StatusInfo of
@@ -383,7 +468,7 @@ decode_chargeback_stage({arbitration, _StageDetails}) ->
 decode_chargeback_reason_code(#domain_InvoicePaymentChargebackReason{code = Code}) ->
     #{<<"reasonCode">> => Code}.
 
--spec decode_invoice(capi_handler_encoder:encode_data()) -> decode_data().
+-spec decode_invoice(dmsl_domain_thrift:'Invoice'()) -> decode_data().
 decode_invoice(Invoice) ->
     #domain_Cash{amount = Amount, currency = Currency} = Invoice#domain_Invoice.cost,
     Details = Invoice#domain_Invoice.details,
@@ -407,6 +492,7 @@ decode_invoice(Invoice) ->
         decode_invoice_status(Invoice#domain_Invoice.status)
     ).
 
+-spec decode_invoice_status(dmsl_domain_thrift:'InvoiceStatus'()) -> decode_data().
 decode_invoice_status({Status, StatusInfo}) ->
     Reason =
         case StatusInfo of
@@ -476,7 +562,10 @@ decode_payment_method(bank_card, Cards) ->
             Cards
         ),
     [
-        #{<<"method">> => <<"BankCard">>, <<"paymentSystems">> => lists:map(fun decode_bank_card/1, Regular)}
+        #{
+            <<"method">> => <<"BankCard">>,
+            <<"paymentSystems">> => lists:map(fun decode_bank_card_method/1, Regular)
+        }
         | decode_tokenized_bank_cards(Tokenized)
     ];
 decode_payment_method(payment_terminal, Providers) ->
@@ -520,7 +609,7 @@ decode_payment_method(mobile, MobileOperators) ->
         }
     ].
 
-decode_bank_card(#domain_BankCardPaymentMethod{payment_system = PS}) ->
+decode_bank_card_method(#domain_BankCardPaymentMethod{payment_system = PS}) ->
     capi_handler_decoder_utils:decode_payment_system_ref(PS).
 
 decode_tokenized_bank_cards([#domain_BankCardPaymentMethod{} | _] = TokenizedBankCards) ->
@@ -551,6 +640,70 @@ decode_tokenized_bank_card(TokenProvider, PaymentSystems) ->
             [capi_handler_decoder_utils:decode_bank_card_token_service_ref(TokenProvider)]
     }.
 
+-spec decode_payment_tool_details(capi_handler_encoder:encode_data()) -> capi_handler_decoder_utils:decode_data().
+decode_payment_tool_details({bank_card, V}) ->
+    decode_bank_card_details(V, #{<<"detailsType">> => <<"PaymentToolDetailsBankCard">>});
+decode_payment_tool_details({payment_terminal, V}) ->
+    decode_payment_terminal_details(V, #{<<"detailsType">> => <<"PaymentToolDetailsPaymentTerminal">>});
+decode_payment_tool_details({digital_wallet, V}) ->
+    decode_digital_wallet_details(V, #{<<"detailsType">> => <<"PaymentToolDetailsDigitalWallet">>});
+decode_payment_tool_details({crypto_currency, #domain_CryptoCurrencyRef{id = CryptoCurrency}}) ->
+    #{
+        <<"detailsType">> => <<"PaymentToolDetailsCryptoWallet">>,
+        <<"cryptoCurrency">> => CryptoCurrency
+    };
+decode_payment_tool_details({mobile_commerce, MobileCommerce}) ->
+    #domain_MobileCommerce{
+        phone = Phone
+    } = MobileCommerce,
+    PhoneNumber = gen_phone_number(decode_mobile_phone(Phone)),
+    #{
+        <<"detailsType">> => <<"PaymentToolDetailsMobileCommerce">>,
+        <<"phoneNumber">> => mask_phone_number(PhoneNumber)
+    }.
+
+mask_phone_number(PhoneNumber) ->
+    capi_utils:redact(PhoneNumber, <<"^\\+\\d(\\d{1,10}?)\\d{2,4}$">>).
+
+decode_bank_card_details(BankCard, V) ->
+    LastDigits = capi_handler_decoder_utils:decode_last_digits(BankCard#domain_BankCard.last_digits),
+    Bin = capi_handler_decoder_utils:decode_bank_card_bin(BankCard#domain_BankCard.bin),
+    PaymentSystem = BankCard#domain_BankCard.payment_system,
+    TokenProvider = BankCard#domain_BankCard.payment_token,
+    capi_handler_utils:merge_and_compact(V, #{
+        <<"last4">> => LastDigits,
+        <<"first6">> => Bin,
+        <<"cardNumberMask">> => capi_handler_decoder_utils:decode_masked_pan(Bin, LastDigits),
+        <<"paymentSystem">> => capi_handler_decoder_utils:decode_payment_system_ref(PaymentSystem),
+        <<"tokenProvider">> => capi_utils:maybe(
+            TokenProvider,
+            fun capi_handler_decoder_utils:decode_bank_card_token_service_ref/1
+        )
+        % TODO: Uncomment or delete this when we negotiate deploying non-breaking changes
+        % <<"tokenization_method">> => TokenizationMethod
+    }).
+
+decode_payment_terminal_details(
+    #domain_PaymentTerminal{
+        payment_service = PaymentService
+    },
+    V
+) ->
+    V#{
+        <<"provider">> => capi_handler_decoder_utils:decode_payment_service_ref(PaymentService)
+    }.
+
+decode_digital_wallet_details(#domain_DigitalWallet{payment_service = Provider}, V) ->
+    V#{
+        <<"provider">> => Provider#domain_PaymentServiceRef.id
+    }.
+
+decode_mobile_phone(#domain_MobilePhone{cc = Cc, ctn = Ctn}) ->
+    #{<<"cc">> => Cc, <<"ctn">> => Ctn}.
+
+gen_phone_number(#{<<"cc">> := Cc, <<"ctn">> := Ctn}) ->
+    <<"+", Cc/binary, Ctn/binary>>.
+
 -spec make_invoice_and_token(capi_handler_encoder:encode_data(), processing_context()) ->
     capi_handler_decoder_utils:decode_data().
 make_invoice_and_token(Invoice, ProcessingContext) ->
@@ -568,7 +721,6 @@ make_invoice_and_token(Invoice, ProcessingContext) ->
 -spec test() -> _.
 
 -spec crypto_amount_decoder_test() -> _.
-
 crypto_amount_decoder_test() ->
     ?assertError('expected a power of 10 denominator', decode_crypto_amount(build_request(1, 2))),
     ?assertEqual(<<"1100000007">>, decode_crypto_amount(build_request(1100000007, 1))),
@@ -582,5 +734,13 @@ build_request(P, Q) ->
     Amount = #base_Rational{p = P, q = Q},
     Cash = #'user_interaction_CryptoCash'{crypto_amount = Amount, crypto_symbolic_code = <<>>},
     #'user_interaction_CryptoCurrencyTransferRequest'{crypto_address = <<>>, crypto_cash = Cash}.
+
+-spec mask_phone_number_test_() -> [_TestCase].
+mask_phone_number_test_() ->
+    [
+        ?_assertEqual(<<"+7******7890">>, mask_phone_number(<<"+71234567890">>)),
+        ?_assertEqual(<<"+7*23">>, mask_phone_number(<<"+7123">>)),
+        ?_assertEqual(<<"+1NOTANUMBER">>, mask_phone_number(<<"+1NOTANUMBER">>))
+    ].
 
 -endif.

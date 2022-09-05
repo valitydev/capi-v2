@@ -8,7 +8,6 @@
 -include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
 -include_lib("damsel/include/dmsl_base_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
--include_lib("reporter_proto/include/reporter_reports_thrift.hrl").
 -include_lib("payout_manager_proto/include/payouts_payout_manager_thrift.hrl").
 -include_lib("capi_dummy_data.hrl").
 -include_lib("capi_bouncer_data.hrl").
@@ -38,6 +37,7 @@
     create_customer_access_token_ok_test/1,
     rescind_invoice_ok_test/1,
     fulfill_invoice_ok_test/1,
+
     get_payment_status_preauthorization_failed_test/1,
     get_payment_status_payment_tool_rejected_test/1,
     get_payment_status_account_limit_exceeded_test/1,
@@ -54,6 +54,7 @@
     create_partial_refund_without_currency/1,
     get_refund_by_id/1,
     get_refunds/1,
+    get_chargebacks/1,
     get_chargeback_by_id/1,
     get_refund_by_external_id/1,
     update_invoice_template_ok_test/1,
@@ -78,12 +79,6 @@
     get_shops_for_party_error_test/1,
     suspend_shop_for_party_error_test/1,
     activate_shop_for_party_error_test/1,
-    get_claim_by_id_ok_test/1,
-    get_claims_ok_test/1,
-    revoke_claim_ok_test/1,
-    create_claim_ok_test/1,
-    update_claim_by_id_test/1,
-    create_claim_invalid_residence_test/1,
     get_contract_by_id_ok_test/1,
     get_contract_by_id_for_party_ok_test/1,
     get_contracts_ok_test/1,
@@ -105,16 +100,6 @@
     get_webhooks/1,
     get_webhook_by_id/1,
     delete_webhook_by_id/1,
-    get_reports_ok_test/1,
-    get_reports_for_party_ok_test/1,
-    get_report_ok_test/1,
-    get_report_for_party_ok_test/1,
-    get_report_not_found_test/1,
-    create_report_ok_test/1,
-    create_report_for_party_ok_test/1,
-    download_report_file_ok_test/1,
-    download_report_file_for_party_ok_test/1,
-    download_report_file_not_found_test/1,
     get_categories_ok_test/1,
     get_category_by_ref_ok_test/1,
     get_schedule_by_ref_ok_test/1,
@@ -196,12 +181,6 @@ groups() ->
 
             get_categories_ok_test,
 
-            get_claim_by_id_ok_test,
-            get_claims_ok_test,
-            revoke_claim_ok_test,
-            create_claim_ok_test,
-            update_claim_by_id_test,
-            create_claim_invalid_residence_test,
             get_contract_by_id_ok_test,
             get_contract_by_id_for_party_ok_test,
             get_contracts_ok_test,
@@ -228,6 +207,7 @@ groups() ->
             create_refund_expired_error,
             create_partial_refund,
             create_partial_refund_without_currency,
+            get_chargebacks,
             get_chargeback_by_id,
             get_refund_by_id,
             get_refunds,
@@ -270,18 +250,7 @@ groups() ->
             create_payout,
             create_payout_autorization_error,
             get_payout,
-            get_payout_fail,
-
-            get_reports_ok_test,
-            get_reports_for_party_ok_test,
-            get_report_ok_test,
-            get_report_for_party_ok_test,
-            get_report_not_found_test,
-            create_report_ok_test,
-            create_report_for_party_ok_test,
-            download_report_file_ok_test,
-            download_report_file_for_party_ok_test,
-            download_report_file_not_found_test
+            get_payout_fail
         ]}
     ].
 
@@ -773,7 +742,7 @@ create_payment_ok_test(Config) ->
                         context = ?CONTENT
                     } =
                         PaymentParams,
-                    {ok, ?PAYPROC_PAYMENT(ID, EID)}
+                    {ok, ?PAYPROC_PAYMENT(?PAYMENT_W_EXTERNAL_ID(ID, EID))}
             end},
             {party_management, fun('GetShop', _) ->
                 {ok, ?SHOP}
@@ -896,7 +865,7 @@ create_partial_refund(Config) ->
                         _,
                         #payproc_InvoicePaymentRefundParams{
                             cash = ?CASH,
-                            cart = ?THRIFT_INVOICE_CART
+                            cart = ?INVOICE_CART(#{<<"TaxMode">> := {str, <<"10%">>}})
                         }
                     }
                 ) ->
@@ -910,7 +879,7 @@ create_partial_refund(Config) ->
         <<"reason">> => ?STRING,
         <<"currency">> => ?RUB,
         <<"amount">> => ?INTEGER,
-        <<"cart">> => ?INVOICE_CART
+        <<"cart">> => ?SWAG_INVOICE_CART
     },
     _ = capi_ct_helper_bouncer:mock_assert_payment_op_ctx(
         <<"CreateRefund">>,
@@ -1033,8 +1002,8 @@ get_refund_by_external_id(Config) ->
 
 %
 
--spec get_chargeback_by_id(config()) -> _.
-get_chargeback_by_id(Config) ->
+-spec get_chargebacks(config()) -> _.
+get_chargebacks(Config) ->
     _ = capi_ct_helper:mock_services(
         [
             {invoicing, fun('Get', _) ->
@@ -1052,6 +1021,26 @@ get_chargeback_by_id(Config) ->
         Config
     ),
     {ok, _} = capi_client_payments:get_chargebacks(?config(context, Config), ?STRING, ?STRING).
+
+-spec get_chargeback_by_id(config()) -> _.
+get_chargeback_by_id(Config) ->
+    _ = capi_ct_helper:mock_services(
+        [
+            {invoicing, fun('Get', _) ->
+                {ok, ?PAYPROC_INVOICE([?PAYPROC_PAYMENT])}
+            end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_payment_op_ctx(
+        <<"GetChargebackByID">>,
+        ?STRING,
+        ?STRING,
+        ?STRING,
+        ?STRING,
+        Config
+    ),
+    {ok, _} = capi_client_payments:get_chargeback_by_id(?config(context, Config), ?STRING, ?STRING, ?STRING).
 
 %
 
@@ -1387,213 +1376,6 @@ suspend_shop_for_party_error_test(Config) ->
         {error, {404, _}},
         capi_client_shops:suspend_shop_for_party(?config(context, Config), <<"WrongPartyID">>, ?STRING)
     ).
-
--spec get_claim_by_id_ok_test(config()) -> _.
-get_claim_by_id_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {party_management, fun('GetClaim', _) -> {ok, ?CLAIM(?CLAIM_CHANGESET)} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_claim_op_ctx(<<"GetClaimByID">>, ?STRING, ?INTEGER_BINARY, Config),
-    {ok, _} = capi_client_claims:get_claim_by_id(?config(context, Config), ?INTEGER).
-
--spec get_claims_ok_test(config()) -> _.
-get_claims_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {party_management, fun('GetClaims', _) ->
-                {ok, [
-                    ?CLAIM(?CLAIM_CHANGESET),
-                    ?CLAIM(?CONTRACTOR_CLAIM_CHANGESET),
-                    ?CLAIM(?WALLET_CLAIM_CHANGESET)
-                ]}
-            end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetClaims">>, ?STRING, Config),
-    {ok, [_OnlyOneClaim]} = capi_client_claims:get_claims(?config(context, Config)).
-
--spec revoke_claim_ok_test(config()) -> _.
-revoke_claim_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services([{party_management, fun('RevokeClaim', _) -> {ok, ok} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_assert_claim_op_ctx(
-        <<"RevokeClaimByID">>,
-        ?STRING,
-        ?INTEGER_BINARY,
-        Config
-    ),
-    ok = capi_client_claims:revoke_claim_by_id(?config(context, Config), ?STRING, ?INTEGER, ?INTEGER).
-
--spec create_claim_ok_test(config()) -> _.
-create_claim_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {party_management, fun('CreateClaim', _) -> {ok, ?CLAIM(?CLAIM_CHANGESET)} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"CreateClaim">>, ?STRING, Config),
-    Changeset = [
-        #{
-            <<"partyModificationType">> => <<"ContractModification">>,
-            <<"contractID">> => ?STRING,
-            <<"contractModificationType">> => <<"ContractCreation">>,
-            <<"contractor">> => #{
-                <<"contractorType">> => <<"LegalEntity">>,
-                <<"entityType">> => <<"RussianLegalEntity">>,
-                <<"registeredName">> => <<"testRegisteredName">>,
-                <<"registeredNumber">> => <<"1234567890123">>,
-                <<"inn">> => <<"1234567890">>,
-                <<"actualAddress">> => <<"testActualAddress">>,
-                <<"postAddress">> => <<"testPostAddress">>,
-                <<"representativePosition">> => <<"testRepresentativePosition">>,
-                <<"representativeFullName">> => <<"testRepresentativeFullName">>,
-                <<"representativeDocument">> => <<"testRepresentativeDocument">>,
-                <<"bankAccount">> => #{
-                    <<"account">> => <<"12345678901234567890">>,
-                    <<"bankName">> => <<"testBankName">>,
-                    <<"bankPostAccount">> => <<"12345678901234567890">>,
-                    <<"bankBik">> => <<"123456789">>
-                }
-            },
-            <<"paymentInstitutionID">> => ?INTEGER
-        },
-        #{
-            <<"partyModificationType">> => <<"ContractModification">>,
-            <<"contractID">> => <<"PrivateEntityContract">>,
-            <<"contractModificationType">> => <<"ContractCreation">>,
-            <<"contractor">> => #{
-                <<"contractorType">> => <<"PrivateEntity">>,
-                <<"entityType">> => <<"RussianPrivateEntity">>,
-                <<"firstName">> => ?STRING,
-                <<"secondName">> => ?STRING,
-                <<"middleName">> => ?STRING,
-                <<"contactInfo">> => #{}
-            },
-            <<"paymentInstitutionID">> => ?INTEGER
-        },
-        #{
-            <<"partyModificationType">> => <<"ContractModification">>,
-            <<"contractID">> => ?STRING,
-            <<"contractModificationType">> => <<"ContractPayoutToolCreation">>,
-            <<"payoutToolID">> => ?STRING,
-            <<"currency">> => ?RUB,
-            <<"details">> => #{
-                <<"detailsType">> => <<"PayoutToolDetailsBankAccount">>,
-                <<"account">> => <<"12345678901234567890">>,
-                <<"bankName">> => <<"testBankName">>,
-                <<"bankPostAccount">> => <<"12345678901234567890">>,
-                <<"bankBik">> => <<"123456789">>
-            }
-        },
-        #{
-            <<"partyModificationType">> => <<"ContractModification">>,
-            <<"contractID">> => ?STRING,
-            <<"contractModificationType">> => <<"ContractPayoutToolCreation">>,
-            <<"payoutToolID">> => ?STRING,
-            <<"currency">> => ?USD,
-            <<"details">> => #{
-                <<"detailsType">> => <<"PayoutToolDetailsInternationalBankAccount">>,
-                <<"number">> => <<"12345678901234567890">>,
-                <<"iban">> => <<"GR1601101250000000012300695">>,
-                <<"bankDetails">> => #{
-                    <<"bik">> => <<"123456789">>,
-                    <<"countryCode">> => <<"USA">>,
-                    <<"name">> => <<"testUsaBankName">>,
-                    <<"address">> => ?STRING
-                },
-                <<"correspondentBankAccount">> => #{
-                    <<"number">> => <<"00000000000000000000">>
-                }
-            }
-        },
-        #{
-            <<"partyModificationType">> => <<"ContractModification">>,
-            <<"contractID">> => ?STRING,
-            <<"contractModificationType">> => <<"ContractPayoutToolInfoModification">>,
-            <<"payoutToolID">> => ?STRING,
-            <<"details">> => #{
-                <<"detailsType">> => <<"PayoutToolDetailsInternationalBankAccount">>,
-                <<"number">> => <<"12345678901234567890">>,
-                <<"iban">> => <<"GR1601101250000000012300695">>,
-                <<"bankDetails">> => #{
-                    <<"aba_rtn">> => <<"129131673">>,
-                    <<"countryCode">> => <<"USA">>,
-                    <<"name">> => <<"testUsaBankName">>,
-                    <<"address">> => ?STRING
-                },
-                <<"correspondentBankAccount">> => #{
-                    <<"number">> => <<"00000000000000000000">>
-                }
-            }
-        },
-        #{
-            <<"partyModificationType">> => <<"ContractModification">>,
-            <<"contractID">> => ?STRING,
-            <<"contractModificationType">> => <<"ContractLegalAgreementBinding">>,
-            <<"legalAgreement">> => #{
-                <<"id">> => ?STRING,
-                <<"signedAt">> => ?TIMESTAMP,
-                <<"validUntil">> => ?TIMESTAMP
-            }
-        },
-        #{
-            <<"partyModificationType">> => <<"ContractModification">>,
-            <<"contractID">> => ?STRING,
-            <<"contractModificationType">> => <<"ContractReportingPreferencesChange">>,
-            <<"serviceAcceptanceActPreferences">> => #{
-                <<"scheduleID">> => ?INTEGER,
-                <<"signer">> => #{
-                    <<"position">> => ?STRING,
-                    <<"fullName">> => ?STRING,
-                    <<"document">> => #{<<"representativeDocumentType">> => <<"ArticlesOfAssociation">>}
-                }
-            }
-        }
-    ],
-    {ok, _} = capi_client_claims:create_claim(?config(context, Config), Changeset).
-
--spec update_claim_by_id_test(config()) -> _.
-update_claim_by_id_test(_) ->
-    % Not realised yet.
-    ok.
-
--spec create_claim_invalid_residence_test(config()) -> _.
-create_claim_invalid_residence_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {party_management, fun('CreateClaim', _) -> {ok, ?CLAIM(?CLAIM_CHANGESET)} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"CreateClaim">>, ?STRING, Config),
-    Changeset = [
-        #{
-            <<"partyModificationType">> => <<"ContractModification">>,
-            <<"contractID">> => ?STRING,
-            <<"contractModificationType">> => <<"ContractPayoutToolCreation">>,
-            <<"payoutToolID">> => ?STRING,
-            <<"currency">> => ?USD,
-            <<"details">> => #{
-                <<"detailsType">> => <<"PayoutToolDetailsInternationalBankAccount">>,
-                <<"number">> => <<"12345678901234567890">>,
-                <<"iban">> => <<"GR1601101250000000012300695">>,
-                <<"bankDetails">> => #{
-                    <<"bik">> => <<"123456789">>,
-                    <<"countryCode">> => <<"EUR">>,
-                    <<"name">> => <<"testBankName">>,
-                    <<"address">> => ?STRING
-                },
-                <<"correspondentBankAccount">> => #{
-                    <<"number">> => <<"00000000000000000000">>
-                }
-            }
-        }
-    ],
-    {error, {400, _}} = capi_client_claims:create_claim(?config(context, Config), Changeset).
 
 -spec get_contract_by_id_ok_test(config()) -> _.
 get_contract_by_id_ok_test(Config) ->
@@ -1959,178 +1741,6 @@ delete_webhook_by_id(Config) ->
     ),
     ok = capi_client_webhooks:delete_webhook_by_id(?config(context, Config), ?INTEGER_BINARY).
 
--spec get_reports_ok_test(config()) -> _.
-get_reports_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services([{reporting, fun('GetReports', _) -> {ok, ?FOUND_REPORTS} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetReports">>, ?STRING, Config),
-    {ok, _} = capi_client_reports:get_reports(?config(context, Config), ?STRING, ?TIMESTAMP, ?TIMESTAMP).
-
--spec get_reports_for_party_ok_test(config()) -> _.
-get_reports_for_party_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services([{reporting, fun('GetReports', _) -> {ok, ?FOUND_REPORTS} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetReportsForParty">>, ?STRING, Config),
-    {ok, _} = capi_client_reports:get_reports_for_party(
-        ?config(context, Config),
-        ?STRING,
-        ?STRING,
-        ?TIMESTAMP,
-        ?TIMESTAMP
-    ).
-
--spec get_report_ok_test(config()) -> _.
-get_report_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services([{reporting, fun('GetReport', _) -> {ok, ?REPORT} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_assert_report_op_ctx(
-        <<"GetReport">>,
-        ?STRING,
-        ?STRING,
-        ?INTEGER_BINARY,
-        [?CTX_ENTITY(?STRING)],
-        Config
-    ),
-    {ok, _} = capi_client_reports:get_report(?config(context, Config), ?STRING, ?INTEGER_BINARY).
-
--spec get_report_for_party_ok_test(config()) -> _.
-get_report_for_party_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services([{reporting, fun('GetReport', _) -> {ok, ?REPORT} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_assert_report_op_ctx(
-        <<"GetReportForParty">>,
-        ?STRING,
-        ?STRING,
-        ?INTEGER_BINARY,
-        [?CTX_ENTITY(?STRING)],
-        Config
-    ),
-    {ok, _} = capi_client_reports:get_report_for_party(?config(context, Config), ?STRING, ?STRING, ?INTEGER_BINARY).
-
--spec get_report_not_found_test(config()) -> _.
-get_report_not_found_test(Config) ->
-    _ = capi_ct_helper:mock_services([{reporting, fun('GetReport', _) -> {ok, ?REPORT} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_assert_report_op_ctx(
-        <<"GetReport">>,
-        ?STRING,
-        ?STRING,
-        ?INTEGER_BINARY,
-        [?CTX_ENTITY(?STRING)],
-        Config
-    ),
-    {error, {404, #{<<"message">> := <<"Report not found">>}}} =
-        capi_client_reports:get_report(?config(context, Config), <<"WRONG_STRING">>, ?INTEGER_BINARY).
-
--spec create_report_ok_test(config()) -> _.
-create_report_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {reporting, fun
-                ('CreateReport', _) -> {ok, ?INTEGER};
-                ('GetReport', {?INTEGER}) -> {ok, ?REPORT}
-            end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"CreateReport">>, ?STRING, Config),
-    {ok, _} = capi_client_reports:create_report(
-        ?config(context, Config),
-        ?STRING,
-        ?REPORT_TYPE,
-        ?TIMESTAMP,
-        ?TIMESTAMP
-    ).
-
--spec create_report_for_party_ok_test(config()) -> _.
-create_report_for_party_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {reporting, fun
-                ('CreateReport', _) -> {ok, ?INTEGER};
-                ('GetReport', {?INTEGER}) -> {ok, ?REPORT}
-            end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"CreateReportForParty">>, ?STRING, Config),
-    {ok, _} = capi_client_reports:create_report_for_party(
-        ?config(context, Config),
-        ?STRING,
-        ?STRING,
-        ?REPORT_TYPE,
-        ?TIMESTAMP,
-        ?TIMESTAMP
-    ).
-
--spec download_report_file_ok_test(_) -> _.
-download_report_file_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {reporting, fun
-                ('GetReport', _) -> {ok, ?REPORT};
-                ('GeneratePresignedUrl', _) -> {ok, ?STRING}
-            end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_report_op_ctx(
-        <<"DownloadFile">>,
-        ?STRING,
-        ?STRING,
-        ?INTEGER_BINARY,
-        ?STRING,
-        [?CTX_ENTITY(?STRING)],
-        Config
-    ),
-    {ok, _} = capi_client_reports:download_file(?config(context, Config), ?STRING, ?INTEGER_BINARY, ?STRING).
-
--spec download_report_file_for_party_ok_test(_) -> _.
-download_report_file_for_party_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {reporting, fun
-                ('GetReport', _) -> {ok, ?REPORT};
-                ('GeneratePresignedUrl', _) -> {ok, ?STRING}
-            end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_report_op_ctx(
-        <<"DownloadFileForParty">>,
-        ?STRING,
-        ?STRING,
-        ?INTEGER_BINARY,
-        ?STRING,
-        [?CTX_ENTITY(?STRING)],
-        Config
-    ),
-    {ok, _} = capi_client_reports:download_file_for_party(
-        ?config(context, Config),
-        ?STRING,
-        ?STRING,
-        ?INTEGER_BINARY,
-        ?STRING
-    ).
-
--spec download_report_file_not_found_test(_) -> _.
-download_report_file_not_found_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {reporting, fun
-                ('GetReport', _) -> {ok, ?REPORT};
-                ('GeneratePresignedUrl', _) -> {ok, ?STRING}
-            end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_report_op_ctx(
-        <<"DownloadFile">>,
-        ?STRING,
-        ?STRING,
-        ?INTEGER_BINARY,
-        ?STRING,
-        [?CTX_ENTITY(?STRING)],
-        Config
-    ),
-    {error, {404, #{<<"message">> := <<"Report not found">>}}} =
-        capi_client_reports:download_file(?config(context, Config), <<"WRONG_STRING">>, ?INTEGER_BINARY, ?STRING).
-
 -spec get_categories_ok_test(config()) -> _.
 get_categories_ok_test(Config) ->
     _ = capi_ct_helper_bouncer:mock_assert_op_ctx(<<"GetCategories">>, Config),
@@ -2209,7 +1819,7 @@ retrieve_payment_by_external_id_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
             {invoicing, fun('Get', _) ->
-                {ok, ?PAYPROC_INVOICE([?PAYPROC_PAYMENT(PaymentID, ExternalID)])}
+                {ok, ?PAYPROC_INVOICE([?PAYPROC_PAYMENT(?PAYMENT_W_EXTERNAL_ID(PaymentID, ExternalID))])}
             end},
             {bender, fun('GetInternalID', _) ->
                 {ok, capi_ct_helper_bender:get_internal_id_result(PaymentID, BenderContext)}

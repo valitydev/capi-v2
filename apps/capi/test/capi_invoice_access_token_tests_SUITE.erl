@@ -287,7 +287,7 @@ create_payment_ok_test(Config) ->
                         payer_session_info = ?PAYER_SESSION_INFO,
                         context = ?CONTENT
                     } = PaymentParams,
-                    {ok, ?PAYPROC_PAYMENT(ID, EID)}
+                    {ok, ?PAYPROC_PAYMENT(?PAYMENT_W_EXTERNAL_ID(ID, EID))}
             end},
             {bender, fun('GenerateID', _) ->
                 {ok, capi_ct_helper_bender:get_result(BenderKey)}
@@ -314,12 +314,8 @@ create_payment_expired_test(Config) ->
     PaymentTool = {bank_card, ?BANK_CARD},
     _ = capi_ct_helper:mock_services(
         [
-            {invoicing, fun
-                ('Get', _) ->
-                    {ok, ?PAYPROC_INVOICE};
-                ('StartPayment', {_, IPP}) ->
-                    #payproc_InvoicePaymentParams{id = ID, external_id = EID, context = ?CONTENT} = IPP,
-                    {ok, ?PAYPROC_PAYMENT(ID, EID)}
+            {invoicing, fun('Get', _) ->
+                {ok, ?PAYPROC_INVOICE}
             end}
         ],
         Config
@@ -390,7 +386,7 @@ create_payment_w_payment_tool(PaymentTool, Config) ->
                         }},
                         Params#payproc_InvoicePaymentParams.payer
                     ),
-                    {ok, ?PAYPROC_PAYMENT}
+                    {ok, ?PAYPROC_PAYMENT(?PAYMENT(?STRING, ?PAYMENT_STATUS_PENDING, ?PAYER(PaymentTool)))}
             end},
             {generator, fun('GenerateID', _) ->
                 capi_ct_helper_bender:generate_id(?STRING)
@@ -535,7 +531,7 @@ capture_partial_payment_ok_test(Config) ->
                         _,
                         #payproc_InvoicePaymentCaptureParams{
                             cash = ?CASH,
-                            cart = ?THRIFT_INVOICE_CART
+                            cart = ?INVOICE_CART(#{<<"TaxMode">> := {str, <<"10%">>}})
                         }
                     }
                 ) ->
@@ -548,7 +544,7 @@ capture_partial_payment_ok_test(Config) ->
         <<"reason">> => ?STRING,
         <<"amount">> => ?INTEGER,
         <<"currency">> => ?RUB,
-        <<"cart">> => ?INVOICE_CART
+        <<"cart">> => ?SWAG_INVOICE_CART
     },
     _ = capi_ct_helper_bouncer:mock_assert_payment_op_ctx(
         <<"CapturePayment">>,

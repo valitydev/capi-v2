@@ -1,6 +1,8 @@
 -ifndef(capi_bouncer_data_included__).
 -define(capi_bouncer_data_included__, ok).
 
+-include_lib("stdlib/include/assert.hrl").
+
 -include_lib("bouncer_proto/include/bouncer_decision_thrift.hrl").
 -include_lib("bouncer_proto/include/bouncer_base_thrift.hrl").
 -include_lib("bouncer_proto/include/bouncer_ctx_thrift.hrl").
@@ -83,63 +85,17 @@
     party = ?CTX_ENTITY(PartyID)
 }).
 
--define(CTX_SEARCH_INVOICE_OP(ID, PartyID, ShopID, InvoiceID, PaymentID, CustomerID), #ctx_v1_CommonAPIOperation{
-    id = ID,
-    party = ?CTX_ENTITY(PartyID),
-    shop = ?CTX_ENTITY(ShopID),
-    invoice = ?CTX_ENTITY(InvoiceID),
-    payment = ?CTX_ENTITY(PaymentID),
-    customer = ?CTX_ENTITY(CustomerID)
-}).
-
--define(CTX_SEARCH_PAYMENT_OP(ID, PartyID, ShopID, InvoiceID, PaymentID), #ctx_v1_CommonAPIOperation{
-    id = ID,
-    party = ?CTX_ENTITY(PartyID),
-    shop = ?CTX_ENTITY(ShopID),
-    invoice = ?CTX_ENTITY(InvoiceID),
-    payment = ?CTX_ENTITY(PaymentID)
-}).
-
--define(CTX_SEARCH_PAYMENT_OP(ID, PartyID, ShopID), #ctx_v1_CommonAPIOperation{
-    id = ID,
-    party = ?CTX_ENTITY(PartyID),
-    shop = ?CTX_ENTITY(ShopID)
-}).
-
--define(CTX_SEARCH_PAYOUT_OP(ID, PartyID, ShopID, PayoutID), #ctx_v1_CommonAPIOperation{
-    id = ID,
-    party = ?CTX_ENTITY(PartyID),
-    shop = ?CTX_ENTITY(ShopID),
-    payout = ?CTX_ENTITY(PayoutID)
-}).
-
--define(CTX_REPORT_OP(ID, ReportID), #ctx_v1_CommonAPIOperation{
-    id = ID,
-    report = ?CTX_ENTITY(ReportID)
-}).
-
--define(CTX_REPORT_OP(ID, PartyID, ShopID, ReportID, FileID), #ctx_v1_CommonAPIOperation{
-    id = ID,
-    party = ?CTX_ENTITY(PartyID),
-    shop = ?CTX_ENTITY(ShopID),
-    report = ?CTX_ENTITY(ReportID),
-    file = ?CTX_ENTITY(FileID)
-}).
-
--define(CTX_FILE_OP(ID, ReportID, FileID), #ctx_v1_CommonAPIOperation{
-    id = ID,
-    report = ?CTX_ENTITY(ReportID),
-    file = ?CTX_ENTITY(FileID)
-}).
-
--define(CTX_SEARCH_REFUND_OP(ID, PartyID, ShopID, InvoiceID, PaymentID, RefundID), #ctx_v1_CommonAPIOperation{
-    id = ID,
-    party = ?CTX_ENTITY(PartyID),
-    shop = ?CTX_ENTITY(ShopID),
-    invoice = ?CTX_ENTITY(InvoiceID),
-    payment = ?CTX_ENTITY(PaymentID),
-    refund = ?CTX_ENTITY(RefundID)
-}).
+-define(CTX_SEARCH_OP(ID, PartyID, ShopID, InvoiceID, PaymentID),
+    ?CTX_SEARCH_OP(
+        ID,
+        PartyID,
+        ShopID,
+        InvoiceID,
+        PaymentID,
+        undefined,
+        undefined
+    )
+).
 
 -define(CTX_SEARCH_OP(
     ID,
@@ -148,26 +104,18 @@
     InvoiceID,
     PaymentID,
     CustomerID,
-    PayoutID,
     RefundID
 ),
     #ctx_v1_CommonAPIOperation{
         id = ID,
         party = ?CTX_ENTITY(PartyID),
         shop = ?CTX_ENTITY(ShopID),
-        invoice = ?CTX_ENTITY(InvoiceID),
-        payment = ?CTX_ENTITY(PaymentID),
-        customer = ?CTX_ENTITY(CustomerID),
-        payout = ?CTX_ENTITY(PayoutID),
-        refund = ?CTX_ENTITY(RefundID)
+        invoice = capi_utils:maybe(InvoiceID, fun(V) -> ?CTX_ENTITY(V) end),
+        payment = capi_utils:maybe(PaymentID, fun(V) -> ?CTX_ENTITY(V) end),
+        customer = capi_utils:maybe(CustomerID, fun(V) -> ?CTX_ENTITY(V) end),
+        refund = capi_utils:maybe(RefundID, fun(V) -> ?CTX_ENTITY(V) end)
     }
 ).
-
--define(CTX_CLAIM_OP(ID, PartyID, ClaimID), #ctx_v1_CommonAPIOperation{
-    id = ID,
-    party = ?CTX_ENTITY(PartyID),
-    claim = ?CTX_ENTITY(ClaimID)
-}).
 
 -define(CTX_INVOICE(ID, PartyID, ShopID), #ctx_v1_Invoice{
     id = ID,
@@ -206,17 +154,6 @@
     party = ?CTX_ENTITY(PartyID),
     contract = ?CTX_ENTITY(ContractID),
     shop = ?CTX_ENTITY(ShopID)
-}).
-
--define(CTX_REPORT(ID, PartyID, ShopID, Files), #ctx_v1_Report{
-    id = ID,
-    party = ?CTX_ENTITY(PartyID),
-    shop = ?CTX_ENTITY(ShopID),
-    files = Files
-}).
-
--define(CTX_CONTEXT_REPORTS(Report), #ctx_v1_ContextReports{
-    report = Report
 }).
 
 -define(assertContextMatches(Expect), fun(Context) ->

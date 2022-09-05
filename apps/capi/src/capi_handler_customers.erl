@@ -309,7 +309,7 @@ generate_binding_ids(OperationID, CustomerBindingParams, Context = #{woody_conte
 
     PaymentResource = maps:get(<<"paymentResource">>, CustomerBindingParams),
     PaymentToolToken = maps:get(<<"paymentToolToken">>, PaymentResource),
-    PaymentTool = capi_handler_decoder_party:decode_payment_tool(encode_payment_tool_token(PaymentToolToken)),
+    PaymentTool = capi_handler_decoder_invoicing:decode_payment_tool(encode_payment_tool_token(PaymentToolToken)),
     CustomerBindingParamsEncrypted =
         maps:put(
             <<"paymentResource">>,
@@ -405,7 +405,7 @@ decode_customer_binding(CustomerBinding) ->
         #{
             <<"id">> => CustomerBinding#payproc_CustomerBinding.id,
             <<"paymentResource">> =>
-                capi_handler_decoder_party:decode_disposable_payment_resource(
+                capi_handler_decoder_invoicing:decode_disposable_payment_resource(
                     CustomerBinding#payproc_CustomerBinding.payment_resource
                 )
         },
