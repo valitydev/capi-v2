@@ -1115,7 +1115,9 @@
         <<"paymentSession">> => Session,
         <<"clientInfo">> => #{
             <<"fingerprint">> => <<"test fingerprint">>,
-            <<"ip">> => <<"::ffff:127.0.0.1">>
+            <<"ip">> => <<"::ffff:127.0.0.1">>,
+            <<"peer_ip">> => <<"::ffff:127.0.0.1">>,
+            <<"user_ip">> => <<"::ffff:127.127.0.1">>
         }
     })
 ).
