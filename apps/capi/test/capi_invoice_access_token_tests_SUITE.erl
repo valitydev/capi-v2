@@ -31,6 +31,7 @@
     create_payment_crypto_ok_test/1,
     create_payment_mobile_commerce_ok_test/1,
     create_payment_with_empty_cvv_ok_test/1,
+    check_ip_on_payment_creation_ok_test/1,
     get_payments_ok_test/1,
     get_payment_by_id_ok_test/1,
     get_payment_by_id_trx_ok_test/1,
@@ -77,6 +78,7 @@ invoice_access_token_tests() ->
         create_payment_ok_test,
         create_payment_expired_test,
         create_payment_with_empty_cvv_ok_test,
+        check_ip_on_payment_creation_ok_test,
         get_payments_ok_test,
         create_payment_qiwi_access_token_ok_test,
         create_payment_crypto_ok_test,
@@ -405,6 +407,50 @@ create_payment_w_payment_tool(PaymentTool, Config) ->
         }
     },
     capi_client_payments:create_payment(?config(context, Config), Req, ?STRING).
+
+-spec check_ip_on_payment_creation_ok_test(_) -> _.
+check_ip_on_payment_creation_ok_test(Config) ->
+    PaymentTool = {bank_card, ?BANK_CARD(<<"visa">>, ?EXP_DATE(2, 2020))},
+    ClientInfo = #domain_ClientInfo{
+        fingerprint = <<"test fingerprint">>,
+        ip_address = <<"::ffff:127.0.0.1">>,
+        peer_ip_address = <<"::ffff:127.0.0.1">>,
+        user_ip_address = <<"::ffff:127.127.0.1">>
+    },
+    _ = capi_ct_helper:mock_services(
+        [
+            {invoicing, fun
+                ('Get', _) ->
+                    {ok, ?PAYPROC_INVOICE};
+                ('StartPayment', {_InvoiceID, Params}) ->
+                    ?assertMatch(
+                        {payment_resource, #payproc_PaymentResourcePayerParams{
+                            resource = #domain_DisposablePaymentResource{
+                                payment_tool = PaymentTool,
+                                client_info = ClientInfo
+                            }
+                        }},
+                        Params#payproc_InvoicePaymentParams.payer
+                    ),
+                    {ok, ?PAYPROC_PAYMENT(?PAYMENT(?STRING, ?PAYMENT_STATUS_PENDING, ?PAYER(PaymentTool)))}
+            end},
+            {generator, fun('GenerateID', _) ->
+                capi_ct_helper_bender:generate_id(?STRING)
+            end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_invoice_op_ctx(<<"CreatePayment">>, ?STRING, ?STRING, ?STRING, Config),
+    Req = #{
+        <<"flow">> => #{<<"type">> => <<"PaymentFlowInstant">>},
+        <<"payer">> => #{
+            <<"payerType">> => <<"PaymentResourcePayer">>,
+            <<"paymentSession">> => ?TEST_PAYMENT_SESSION,
+            <<"paymentToolToken">> => encrypt_payment_tool(PaymentTool),
+            <<"contactInfo">> => #{<<"email">> => ?EMAIL}
+        }
+    },
+    {ok, _} = capi_client_payments:create_payment(?config(context, Config), Req, ?STRING).
 
 -spec get_payments_ok_test(config()) -> _.
 get_payments_ok_test(Config) ->

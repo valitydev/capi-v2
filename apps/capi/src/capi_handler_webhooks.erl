@@ -263,32 +263,10 @@ decode_event_filter({customer, #webhooker_CustomerEventFilter{shop_id = ShopID, 
 
 decode_invoice_event_type({created, #webhooker_InvoiceCreated{}}) ->
     [<<"InvoiceCreated">>];
-decode_invoice_event_type({status_changed, #webhooker_InvoiceStatusChanged{value = undefined}}) ->
-    % TODO seems unmaintainable
-    [
-        decode_invoice_status_event_type(V)
-     || V <- [
-            ?INVPAID(),
-            ?INVCANCELLED(),
-            ?INVFULFILLED()
-        ]
-    ];
 decode_invoice_event_type({status_changed, #webhooker_InvoiceStatusChanged{value = Value}}) ->
     [decode_invoice_status_event_type(Value)];
 decode_invoice_event_type({payment, {created, #webhooker_InvoicePaymentCreated{}}}) ->
     [<<"PaymentStarted">>];
-decode_invoice_event_type({payment, {status_changed, #webhooker_InvoicePaymentStatusChanged{value = undefined}}}) ->
-    % TODO seems unmaintainable
-    [
-        decode_payment_status_event_type(V)
-     || V <- [
-            ?PMTPROCESSED(),
-            ?PMTCAPTURED(),
-            ?PMTCANCELLED(),
-            ?PMTREFUNDED(),
-            ?PMTFAILED()
-        ]
-    ];
 decode_invoice_event_type({payment, {status_changed, #webhooker_InvoicePaymentStatusChanged{value = Value}}}) ->
     [decode_payment_status_event_type(Value)];
 decode_invoice_event_type({payment, {invoice_payment_refund_change, ?PMTRFNDCREATED()}}) ->
