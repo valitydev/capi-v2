@@ -6,6 +6,7 @@
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_base_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
+-include_lib("damsel/include/dmsl_user_interaction_thrift.hrl").
 -include_lib("capi_dummy_data.hrl").
 
 -export([all/0]).
@@ -236,13 +237,51 @@ get_customer_events_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
             {customer_management, fun
-                ('Get', _) -> {ok, ?CUSTOMER};
-                ('GetEvents', _) -> {ok, []}
+                ('Get', _) ->
+                    {ok, ?CUSTOMER};
+                ('GetEvents', _) ->
+                    {ok, [
+                        ?CUSTOMER_EVENT(1),
+                        ?CUSTOMER_EVENT(2),
+                        ?CUSTOMER_EVENT(3)
+                    ]}
             end}
         ],
         Config
     ),
-    {ok, _} = capi_client_customers:get_customer_events(?config(context, Config), ?STRING, 10).
+    {ok, [Event1, _, _]} = capi_client_customers:get_customer_events(?config(context, Config), ?STRING, 10),
+    _ = ?assertMatch(
+        #{
+            <<"id">> := 1,
+            <<"createdAt">> := ?TIMESTAMP,
+            <<"changes">> := [
+                #{
+                    <<"changeType">> := <<"CustomerBindingStarted">>,
+                    <<"customerBinding">> := #{}
+                },
+                #{
+                    <<"changeType">> := <<"CustomerBindingStatusChanged">>,
+                    <<"customerBindingID">> := ?STRING,
+                    <<"status">> := <<"failed">>
+                },
+                #{
+                    <<"changeType">> := <<"CustomerBindingInteractionRequested">>,
+                    <<"userInteraction">> := #{
+                        <<"interactionType">> := <<"Redirect">>,
+                        <<"request">> := #{}
+                    }
+                },
+                #{
+                    <<"changeType">> := <<"CustomerBindingInteractionCompleted">>,
+                    <<"userInteraction">> := #{
+                        <<"interactionType">> := <<"Redirect">>,
+                        <<"request">> := #{}
+                    }
+                }
+            ]
+        },
+        Event1
+    ).
 
 -spec get_customer_payment_methods_ok_test(config()) -> _.
 get_customer_payment_methods_ok_test(Config) ->

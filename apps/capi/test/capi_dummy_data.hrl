@@ -960,6 +960,9 @@
         }}}
 ).
 
+-define(USER_INTERACTION_REQUESTED, {requested, #user_interaction_Requested{}}).
+-define(USER_INTERACTION_COMPLETED, {completed, #user_interaction_Completed{}}).
+
 -define(INVOICE_PAYMENT_CHANGE(Payload),
     {invoice_payment_change, #payproc_InvoicePaymentChange{
         id = ?STRING,
@@ -989,7 +992,7 @@
                     {processed, #domain_InvoicePaymentProcessed{}},
                     {session_interaction_changed, #payproc_SessionInteractionChanged{
                         interaction = ?USER_INTERACTION,
-                        status = {requested, #user_interaction_Requested{}}
+                        status = ?USER_INTERACTION_REQUESTED
                     }}
                 )
             ),
@@ -998,7 +1001,7 @@
                     {processed, #domain_InvoicePaymentProcessed{}},
                     {session_interaction_changed, #payproc_SessionInteractionChanged{
                         interaction = ?USER_INTERACTION,
-                        status = {completed, #user_interaction_Completed{}}
+                        status = ?USER_INTERACTION_COMPLETED
                     }}
                 )
             )
@@ -1097,12 +1100,14 @@
     id = ID,
     owner_id = ?STRING,
     shop_id = ?STRING,
-    status = {ready, #payproc_CustomerReady{}},
+    status = ?CUSTOMER_READY,
     created_at = ?TIMESTAMP,
     bindings = [?CUSTOMER_BINDING],
     contact_info = ?CONTACT_INFO,
     metadata = {obj, #{}}
 }).
+
+-define(CUSTOMER_READY, {ready, #payproc_CustomerReady{}}).
 
 -define(CUSTOMER_BINDING, ?CUSTOMER_BINDING(?STRING, ?STRING)).
 
@@ -1111,6 +1116,59 @@
     rec_payment_tool_id = RECID,
     payment_resource = ?DISP_PAYMENT_RESOURCE,
     status = {succeeded, #payproc_CustomerBindingSucceeded{}}
+}).
+
+-define(CUSTOMER_EVENT(ID), #payproc_Event{
+    id = ID,
+    created_at = ?TIMESTAMP,
+    source = {customer_id, ?STRING},
+    payload =
+        {customer_changes, [
+            {customer_created, #payproc_CustomerCreated{
+                customer_id = ?STRING,
+                owner_id = ?STRING,
+                shop_id = ?STRING,
+                created_at = ?TIMESTAMP,
+                contact_info = ?CONTACT_INFO,
+                metadata = {obj, #{}}
+            }},
+            {customer_status_changed, #payproc_CustomerStatusChanged{
+                status = ?CUSTOMER_READY
+            }},
+            {customer_binding_changed, #payproc_CustomerBindingChanged{
+                id = ?STRING,
+                payload =
+                    {started, #payproc_CustomerBindingStarted{
+                        binding = ?CUSTOMER_BINDING
+                    }}
+            }},
+            {customer_binding_changed, #payproc_CustomerBindingChanged{
+                id = ?STRING,
+                payload =
+                    {status_changed, #payproc_CustomerBindingStatusChanged{
+                        status =
+                            {failed, #payproc_CustomerBindingFailed{
+                                failure = {failure, #domain_Failure{code = <<"error_code">>}}
+                            }}
+                    }}
+            }},
+            {customer_binding_changed, #payproc_CustomerBindingChanged{
+                id = ?STRING,
+                payload =
+                    {interaction_changed, #payproc_CustomerBindingInteractionChanged{
+                        interaction = ?USER_INTERACTION,
+                        status = ?USER_INTERACTION_REQUESTED
+                    }}
+            }},
+            {customer_binding_changed, #payproc_CustomerBindingChanged{
+                id = ?STRING,
+                payload =
+                    {interaction_changed, #payproc_CustomerBindingInteractionChanged{
+                        interaction = ?USER_INTERACTION,
+                        status = ?USER_INTERACTION_COMPLETED
+                    }}
+            }}
+        ]}
 }).
 
 -define(PUT_CARD_RESULT, #'PutCardResult'{
