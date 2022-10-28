@@ -389,13 +389,20 @@ decode_payment_change(
     _InvoiceID,
     PaymentID,
     {invoice_payment_session_change, #payproc_InvoicePaymentSessionChange{
-        payload = {session_interaction_requested, InteractionRequested}
+        payload =
+            {session_interaction_changed, #payproc_SessionInteractionChanged{
+                interaction = Interaction,
+                status = Status
+            }}
     }},
     _Context
 ) ->
-    #payproc_SessionInteractionRequested{interaction = Interaction} = InteractionRequested,
+    ChangeType = case Status of
+        {requested, _} -> <<"PaymentInteractionRequested">>;
+        {completed, _} -> <<"PaymentInteractionCompleted">>
+    end,
     #{
-        <<"changeType">> => <<"PaymentInteractionRequested">>,
+        <<"changeType">> => ChangeType,
         <<"paymentID">> => PaymentID,
         <<"userInteraction">> => capi_handler_decoder_invoicing:decode_user_interaction(Interaction)
     };

@@ -950,6 +950,30 @@
     }
 }).
 
+-define(USER_INTERACTION,
+    {redirect,
+        {post_request, #user_interaction_BrowserPostRequest{
+            uri = ?URL,
+            form = #{
+                <<"redirect">> => ?URL
+            }
+        }}}
+).
+
+-define(INVOICE_PAYMENT_CHANGE(Payload),
+    {invoice_payment_change, #payproc_InvoicePaymentChange{
+        id = ?STRING,
+        payload = Payload
+    }}
+).
+
+-define(SESSION_CHANGE(Target, Payload),
+    {invoice_payment_session_change, #payproc_InvoicePaymentSessionChange{
+        target = Target,
+        payload = Payload
+    }}
+).
+
 -define(INVOICE_EVENT(ID), #payproc_Event{
     id = ID,
     created_at = ?TIMESTAMP,
@@ -959,7 +983,25 @@
             {invoice_status_changed, #payproc_InvoiceStatusChanged{status = ?INVOICE_STATUS(unpaid)}},
             {invoice_status_changed, #payproc_InvoiceStatusChanged{status = ?INVOICE_STATUS(paid)}},
             {invoice_status_changed, #payproc_InvoiceStatusChanged{status = ?INVOICE_STATUS(cancelled)}},
-            {invoice_status_changed, #payproc_InvoiceStatusChanged{status = ?INVOICE_STATUS(fulfilled)}}
+            {invoice_status_changed, #payproc_InvoiceStatusChanged{status = ?INVOICE_STATUS(fulfilled)}},
+            ?INVOICE_PAYMENT_CHANGE(
+                ?SESSION_CHANGE(
+                    {processed, #domain_InvoicePaymentProcessed{}},
+                    {session_interaction_changed, #payproc_SessionInteractionChanged{
+                        interaction = ?USER_INTERACTION,
+                        status = {requested, #user_interaction_Requested{}}
+                    }}
+                )
+            ),
+            ?INVOICE_PAYMENT_CHANGE(
+                ?SESSION_CHANGE(
+                    {processed, #domain_InvoicePaymentProcessed{}},
+                    {session_interaction_changed, #payproc_SessionInteractionChanged{
+                        interaction = ?USER_INTERACTION,
+                        status = {completed, #user_interaction_Completed{}}
+                    }}
+                )
+            )
         ]},
     source = {invoice_id, ?STRING}
 }).
@@ -969,14 +1011,12 @@
     created_at = ?TIMESTAMP,
     payload =
         {invoice_changes, [
-            {invoice_payment_change, #payproc_InvoicePaymentChange{
-                id = <<"1">>,
-                payload =
-                    {invoice_payment_session_change, #payproc_InvoicePaymentSessionChange{
-                        target = {processed, #domain_InvoicePaymentProcessed{}},
-                        payload = {session_started, #payproc_SessionStarted{}}
-                    }}
-            }}
+            ?INVOICE_PAYMENT_CHANGE(
+                ?SESSION_CHANGE(
+                    {processed, #domain_InvoicePaymentProcessed{}},
+                    {session_started, #payproc_SessionStarted{}}
+                )
+            )
         ]},
     source = {invoice_id, ?STRING}
 }).
