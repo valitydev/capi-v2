@@ -397,10 +397,11 @@ decode_payment_change(
     }},
     _Context
 ) ->
-    ChangeType = case Status of
-        {requested, _} -> <<"PaymentInteractionRequested">>;
-        {completed, _} -> <<"PaymentInteractionCompleted">>
-    end,
+    ChangeType =
+        case Status of
+            {requested, _} -> <<"PaymentInteractionRequested">>;
+            {completed, _} -> <<"PaymentInteractionCompleted">>
+        end,
     #{
         <<"changeType">> => ChangeType,
         <<"paymentID">> => PaymentID,

@@ -467,10 +467,11 @@ decode_customer_binding_change(BindingID, {interaction_changed, InteractionChang
         interaction = UserInteraction,
         status = Status
     } = InteractionChange,
-    ChangeType = case Status of
-        {requested, _} -> <<"CustomerBindingInteractionRequested">>;
-        {completed, _} -> <<"CustomerBindingInteractionCompleted">>
-    end,
+    ChangeType =
+        case Status of
+            {requested, _} -> <<"CustomerBindingInteractionRequested">>;
+            {completed, _} -> <<"CustomerBindingInteractionCompleted">>
+        end,
     {true, #{
         <<"changeType">> => ChangeType,
         <<"customerBindingID">> => BindingID,
