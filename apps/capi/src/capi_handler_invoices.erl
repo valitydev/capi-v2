@@ -400,7 +400,8 @@ decode_payment_change(
     ChangeType =
         case Status of
             {requested, _} -> <<"PaymentInteractionRequested">>;
-            {completed, _} -> <<"PaymentInteractionCompleted">>
+            {completed, _} -> <<"PaymentInteractionCompleted">>;
+            undefined -> <<"PaymentInteractionRequested">>
         end,
     #{
         <<"changeType">> => ChangeType,

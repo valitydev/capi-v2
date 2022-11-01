@@ -264,6 +264,18 @@ get_invoice_events_ok_test(Config) ->
                     }
                 },
                 #{
+                    <<"changeType">> := <<"PaymentInteractionRequested">>,
+                    <<"paymentID">> := ?STRING,
+                    <<"userInteraction">> := #{
+                        <<"interactionType">> := <<"Redirect">>,
+                        <<"request">> := #{
+                            <<"requestType">> := <<"BrowserPostRequest">>,
+                            <<"uriTemplate">> := ?URL,
+                            <<"form">> := [_]
+                        }
+                    }
+                },
+                #{
                     <<"changeType">> := <<"PaymentInteractionCompleted">>,
                     <<"paymentID">> := ?STRING,
                     <<"userInteraction">> := #{

@@ -991,6 +991,14 @@
                 ?SESSION_CHANGE(
                     {processed, #domain_InvoicePaymentProcessed{}},
                     {session_interaction_changed, #payproc_SessionInteractionChanged{
+                        interaction = ?USER_INTERACTION
+                    }}
+                )
+            ),
+            ?INVOICE_PAYMENT_CHANGE(
+                ?SESSION_CHANGE(
+                    {processed, #domain_InvoicePaymentProcessed{}},
+                    {session_interaction_changed, #payproc_SessionInteractionChanged{
                         interaction = ?USER_INTERACTION,
                         status = ?USER_INTERACTION_REQUESTED
                     }}
@@ -1156,8 +1164,7 @@
                 id = ?STRING,
                 payload =
                     {interaction_changed, #payproc_CustomerBindingInteractionChanged{
-                        interaction = ?USER_INTERACTION,
-                        status = ?USER_INTERACTION_REQUESTED
+                        interaction = ?USER_INTERACTION
                     }}
             }},
             {customer_binding_changed, #payproc_CustomerBindingChanged{
