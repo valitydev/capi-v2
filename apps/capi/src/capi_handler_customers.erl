@@ -462,10 +462,19 @@ decode_customer_binding_change(BindingID, {status_changed, StatusChange}) ->
             },
             decode_customer_binding_status(Status)
         )};
-decode_customer_binding_change(BindingID, {interaction_requested, InteractionRequest}) ->
-    #payproc_CustomerBindingInteractionRequested{interaction = UserInteraction} = InteractionRequest,
+decode_customer_binding_change(BindingID, {interaction_changed, InteractionChange}) ->
+    #payproc_CustomerBindingInteractionChanged{
+        interaction = UserInteraction,
+        status = Status
+    } = InteractionChange,
+    ChangeType =
+        case Status of
+            {requested, _} -> <<"CustomerBindingInteractionRequested">>;
+            {completed, _} -> <<"CustomerBindingInteractionCompleted">>;
+            undefined -> <<"CustomerBindingInteractionRequested">>
+        end,
     {true, #{
-        <<"changeType">> => <<"CustomerBindingInteractionRequested">>,
+        <<"changeType">> => ChangeType,
         <<"customerBindingID">> => BindingID,
         <<"userInteraction">> => capi_handler_decoder_invoicing:decode_user_interaction(UserInteraction)
     }}.

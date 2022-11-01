@@ -7,6 +7,7 @@
 -include_lib("damsel/include/dmsl_payproc_error_thrift.hrl").
 -include_lib("damsel/include/dmsl_base_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
+-include_lib("damsel/include/dmsl_user_interaction_thrift.hrl").
 
 -include_lib("capi_dummy_data.hrl").
 
@@ -190,10 +191,6 @@ get_invoice_ok_test(Config) ->
 
 -spec get_invoice_events_ok_test(config()) -> _.
 get_invoice_events_ok_test(Config) ->
-    Inc = fun
-        (X) when is_integer(X) -> X + 1;
-        (_) -> 1
-    end,
     _ = capi_ct_helper:mock_services(
         [
             {invoicing, fun
@@ -209,7 +206,7 @@ get_invoice_events_ok_test(Config) ->
                                 ?INVOICE_EVENT_PRIVATE(6),
                                 ?INVOICE_EVENT(7)
                             ],
-                            Inc(ID),
+                            genlib:define(ID, 0) + 1,
                             N
                         )};
                 ('Get', _) ->
@@ -224,6 +221,75 @@ get_invoice_events_ok_test(Config) ->
         ?STRING,
         ?STRING,
         Config
+    ),
+    {ok, [Event]} = capi_client_invoices:get_invoice_events(?config(context, Config), ?STRING, 1),
+    _ = ?assertMatch(
+        #{
+            <<"id">> := 1,
+            <<"createdAt">> := ?TIMESTAMP,
+            <<"changes">> := [
+                #{
+                    <<"changeType">> := <<"InvoiceCreated">>,
+                    <<"invoice">> := #{
+                        <<"id">> := ?STRING,
+                        <<"status">> := <<"unpaid">>
+                    }
+                },
+                #{
+                    <<"changeType">> := <<"InvoiceStatusChanged">>,
+                    <<"status">> := <<"unpaid">>
+                },
+                #{
+                    <<"changeType">> := <<"InvoiceStatusChanged">>,
+                    <<"status">> := <<"paid">>
+                },
+                #{
+                    <<"changeType">> := <<"InvoiceStatusChanged">>,
+                    <<"status">> := <<"cancelled">>
+                },
+                #{
+                    <<"changeType">> := <<"InvoiceStatusChanged">>,
+                    <<"status">> := <<"fulfilled">>
+                },
+                #{
+                    <<"changeType">> := <<"PaymentInteractionRequested">>,
+                    <<"paymentID">> := ?STRING,
+                    <<"userInteraction">> := #{
+                        <<"interactionType">> := <<"Redirect">>,
+                        <<"request">> := #{
+                            <<"requestType">> := <<"BrowserPostRequest">>,
+                            <<"uriTemplate">> := ?URL,
+                            <<"form">> := [#{<<"key">> := _, <<"template">> := _}]
+                        }
+                    }
+                },
+                #{
+                    <<"changeType">> := <<"PaymentInteractionRequested">>,
+                    <<"paymentID">> := ?STRING,
+                    <<"userInteraction">> := #{
+                        <<"interactionType">> := <<"Redirect">>,
+                        <<"request">> := #{
+                            <<"requestType">> := <<"BrowserPostRequest">>,
+                            <<"uriTemplate">> := ?URL,
+                            <<"form">> := [_]
+                        }
+                    }
+                },
+                #{
+                    <<"changeType">> := <<"PaymentInteractionCompleted">>,
+                    <<"paymentID">> := ?STRING,
+                    <<"userInteraction">> := #{
+                        <<"interactionType">> := <<"Redirect">>,
+                        <<"request">> := #{
+                            <<"requestType">> := <<"BrowserPostRequest">>,
+                            <<"uriTemplate">> := ?URL,
+                            <<"form">> := [_]
+                        }
+                    }
+                }
+            ]
+        },
+        Event
     ),
     {ok, [#{<<"id">> := 1}, #{<<"id">> := 2}, #{<<"id">> := 4}]} =
         capi_client_invoices:get_invoice_events(?config(context, Config), ?STRING, 3),
