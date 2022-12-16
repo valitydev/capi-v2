@@ -31,7 +31,7 @@
 
 -type request_state() :: #{
     authorize := fun(() -> {ok, capi_auth:resolution()} | throw(response())),
-    process := fun(() -> {ok, response()} | throw(response()))
+    process := fun((capi_auth:restrictions() | undefined) -> {ok, response()} | throw(response()))
 }.
 
 -type handler_opts() ::
@@ -146,7 +146,9 @@ handle_function_(OperationID, Req, SwagContext0, HandlerOpts) ->
         {ok, Resolution} = Authorize(),
         case Resolution of
             allowed ->
-                Process();
+                Process(undefined);
+            {restricted, Restrictions} ->
+                Process(Restrictions);
             forbidden ->
                 {ok, {401, #{}, undefined}}
         end

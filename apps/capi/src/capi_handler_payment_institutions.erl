@@ -18,7 +18,7 @@
 ) -> {ok, capi_handler:request_state()} | {error, noimpl}.
 prepare(OperationID = 'GetPaymentInstitutions', Req, Context) ->
     Authorize = mk_authorize_operation(OperationID, Context),
-    Process = fun() ->
+    Process = fun(undefined) ->
         try
             Residence = capi_handler_encoder:encode_residence(genlib_map:get(residence, Req)),
             Realm = genlib_map:get(realm, Req),
@@ -33,7 +33,7 @@ prepare(OperationID = 'GetPaymentInstitutions', Req, Context) ->
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'GetPaymentInstitutionByRef', Req, Context) ->
     Authorize = mk_authorize_operation(OperationID, Context),
-    Process = fun() ->
+    Process = fun(undefined) ->
         PaymentInstitutionID = genlib:to_int(maps:get('paymentInstitutionID', Req)),
         PaymentInstitutionRef = ?PAYMENT_INSTITUTION_REF(PaymentInstitutionID),
         case capi_domain:get({payment_institution, PaymentInstitutionRef}, Context) of
@@ -46,7 +46,7 @@ prepare(OperationID = 'GetPaymentInstitutionByRef', Req, Context) ->
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'GetPaymentInstitutionPaymentTerms', Req, Context) ->
     Authorize = mk_authorize_operation(OperationID, Context),
-    Process = fun() ->
+    Process = fun(undefined) ->
         PaymentInstitutionID = genlib:to_int(maps:get('paymentInstitutionID', Req)),
         case compute_payment_institution_terms(PaymentInstitutionID, #payproc_Varset{}, Context) of
             {ok, #domain_TermSet{payments = PaymentTerms}} ->
@@ -58,7 +58,7 @@ prepare(OperationID = 'GetPaymentInstitutionPaymentTerms', Req, Context) ->
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'GetPaymentInstitutionPayoutMethods', Req, Context) ->
     Authorize = mk_authorize_operation(OperationID, Context),
-    Process = fun() ->
+    Process = fun(undefined) ->
         PaymentInstitutionID = genlib:to_int(maps:get('paymentInstitutionID', Req)),
         case compute_payment_institution_terms(PaymentInstitutionID, prepare_request_varset(Req, Context), Context) of
             {ok, #domain_TermSet{payouts = #domain_PayoutsServiceTerms{payout_methods = PayoutMethods}}} ->
@@ -72,7 +72,7 @@ prepare(OperationID = 'GetPaymentInstitutionPayoutMethods', Req, Context) ->
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'GetPaymentInstitutionPayoutSchedules', Req, Context) ->
     Authorize = mk_authorize_operation(OperationID, Context),
-    Process = fun() ->
+    Process = fun(undefined) ->
         PaymentInstitutionID = genlib:to_int(maps:get('paymentInstitutionID', Req)),
         case compute_payment_institution_terms(PaymentInstitutionID, prepare_request_varset(Req, Context), Context) of
             {ok, #domain_TermSet{payouts = #domain_PayoutsServiceTerms{payout_schedules = Schedules}}} ->
@@ -86,7 +86,7 @@ prepare(OperationID = 'GetPaymentInstitutionPayoutSchedules', Req, Context) ->
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'GetServiceProviderByID', Req, Context) ->
     Authorize = mk_authorize_operation(OperationID, Context),
-    Process = fun() ->
+    Process = fun(undefined) ->
         ServiceProviderID = maps:get('serviceProviderID', Req),
         PaymentServiceRef = {payment_service, #domain_PaymentServiceRef{id = ServiceProviderID}},
         case capi_domain:get(PaymentServiceRef, Context) of

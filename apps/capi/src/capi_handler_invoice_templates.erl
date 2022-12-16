@@ -25,7 +25,7 @@ prepare('CreateInvoiceTemplate' = OperationID, Req, Context) ->
         Resolution = capi_auth:authorize_operation(Prototypes, Context),
         {ok, Resolution}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         try
             InvoiceTemplateID = generate_invoice_template_id(OperationID, InvoiceTemplateParams, PartyID, Context),
             CallArgs = {encode_invoice_tpl_create_params(InvoiceTemplateID, PartyID, InvoiceTemplateParams)},
@@ -68,7 +68,7 @@ prepare('GetInvoiceTemplateByID' = OperationID, Req, Context) ->
         Resolution = mask_invoice_template_notfound(capi_auth:authorize_operation(Prototypes, Context)),
         {ok, Resolution}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         capi_handler:respond_if_undefined(InvoiceTpl, general_error(404, <<"Invoice template not found">>)),
         {ok, {200, #{}, decode_invoice_tpl(InvoiceTpl)}}
     end,
@@ -83,7 +83,7 @@ prepare('UpdateInvoiceTemplate' = OperationID, Req, Context) ->
         Resolution = capi_auth:authorize_operation(Prototypes, Context),
         {ok, Resolution}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         try
             Params = encode_invoice_tpl_update_params(maps:get('InvoiceTemplateUpdateParams', Req)),
             Call = {invoice_templating, 'Update', {InvoiceTemplateID, Params}},
@@ -124,7 +124,7 @@ prepare('DeleteInvoiceTemplate' = OperationID, Req, Context) ->
         Resolution = capi_auth:authorize_operation(Prototypes, Context),
         {ok, Resolution}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         Call = {invoice_templating, 'Delete', {InvoiceTemplateID}},
         case capi_handler_utils:service_call(Call, Context) of
             {ok, _R} ->
@@ -151,7 +151,7 @@ prepare('CreateInvoiceWithTemplate' = OperationID, Req, Context) ->
         Resolution = capi_auth:authorize_operation(Prototypes, Context),
         {ok, Resolution}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         capi_handler:respond_if_undefined(InvoiceTpl, general_error(404, <<"Invoice template not found">>)),
         InvoiceParams = maps:get('InvoiceParamsWithTemplate', Req),
         PartyID = InvoiceTpl#domain_InvoiceTemplate.owner_id,
@@ -192,7 +192,7 @@ prepare('GetInvoicePaymentMethodsByTemplateID' = OperationID, Req, Context) ->
         Resolution = mask_invoice_template_notfound(capi_auth:authorize_operation(Prototypes, Context)),
         {ok, Resolution}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         capi_handler:respond_if_undefined(InvoiceTemplate, general_error(404, <<"Invoice template not found">>)),
         Timestamp = genlib_rfc3339:format_relaxed(erlang:system_time(microsecond), microsecond),
         PartyID = InvoiceTemplate#domain_InvoiceTemplate.owner_id,

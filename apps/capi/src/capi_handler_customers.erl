@@ -30,7 +30,7 @@ prepare('CreateCustomer' = OperationID, Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         try
             CustomerID = generate_customer_id(OperationID, PartyID, CustomerParams, Context),
             EncodedCustomerParams = encode_customer_params(CustomerID, PartyID, CustomerParams),
@@ -65,7 +65,7 @@ prepare('GetCustomerById' = OperationID, Req, Context) ->
         ],
         {ok, mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context))}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         case Customer of
             #payproc_Customer{} ->
                 {ok, {200, #{}, decode_customer(Customer)}};
@@ -83,7 +83,7 @@ prepare('DeleteCustomer' = OperationID, Req, Context) ->
         ],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         Call = {customer_management, 'Delete', {CustomerID}},
         case capi_handler_utils:service_call(Call, Context) of
             {ok, _} ->
@@ -107,7 +107,7 @@ prepare('CreateCustomerAccessToken' = OperationID, Req, Context) ->
         ],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         case Customer of
             #payproc_Customer{} ->
                 Response = capi_handler_utils:issue_access_token(Customer, Context),
@@ -126,7 +126,7 @@ prepare('CreateBinding' = OperationID, Req, Context) ->
         ],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         Result =
             try
                 CustomerBindingParams = maps:get('CustomerBindingParams', Req),
@@ -181,7 +181,7 @@ prepare('GetBindings' = OperationID, Req, Context) ->
         ],
         {ok, mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context))}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         _ = capi_handler:respond_if_undefined(Customer, general_error(404, <<"Customer not found">>)),
         {ok, {200, #{}, [decode_customer_binding(B) || B <- Customer#payproc_Customer.bindings]}}
     end,
@@ -197,7 +197,7 @@ prepare('GetBinding' = OperationID, Req, Context) ->
         ],
         {ok, mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context))}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         _ = capi_handler:respond_if_undefined(Customer, general_error(404, <<"Customer not found">>)),
         Bindings = Customer#payproc_Customer.bindings,
         case lists:keyfind(CustomerBindingID, #payproc_CustomerBinding.id, Bindings) of
@@ -217,7 +217,7 @@ prepare('GetCustomerEvents' = OperationID, Req, Context) ->
         ],
         {ok, mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context))}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         GetterFun = fun(Range) ->
             capi_handler_utils:service_call(
                 {customer_management, 'GetEvents', {CustomerID, Range}},
@@ -250,7 +250,7 @@ prepare('GetCustomerPaymentMethods' = OperationID, Req, Context) ->
         ],
         {ok, mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context))}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         capi_handler:respond_if_undefined(Customer, general_error(404, <<"Customer not found">>)),
         PartyID = Customer#payproc_Customer.owner_id,
         % В данном контексте - Party не может не существовать

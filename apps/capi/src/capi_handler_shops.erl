@@ -21,7 +21,7 @@ prepare(OperationID = 'ActivateShop', Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         case capi_party:activate_shop(PartyID, ShopID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
@@ -39,7 +39,7 @@ prepare(OperationID = 'SuspendShop', Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         case capi_party:suspend_shop(PartyID, ShopID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
@@ -56,7 +56,7 @@ prepare(OperationID = 'GetShops', _Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         Party = capi_utils:unwrap(capi_party:get_party(PartyID, Context)),
         {ok, {200, #{}, decode_shops_map(Party#domain_Party.shops)}}
     end,
@@ -68,7 +68,7 @@ prepare(OperationID = 'GetShopByID', Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         case capi_party:get_shop(PartyID, ShopID, Context) of
             {ok, Shop} ->
                 {ok, {200, #{}, decode_shop(Shop)}};
@@ -85,10 +85,11 @@ prepare(OperationID = 'GetShopsForParty', Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun() ->
+    Process = fun(Restrictions) ->
         case capi_party:get_party(PartyID, Context) of
             {ok, Party} ->
-                {ok, {200, #{}, decode_shops_map(Party#domain_Party.shops)}};
+                Shops = restrict_shops(Party#domain_Party.shops, Restrictions),
+                {ok, {200, #{}, decode_shops_map(Shops)}};
             {error, #payproc_PartyNotFound{}} ->
                 {ok, general_error(404, <<"Party not found">>)}
         end
@@ -101,7 +102,7 @@ prepare(OperationID = 'GetShopByIDForParty', Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         case capi_party:get_shop(PartyID, ShopID, Context) of
             {ok, Shop} ->
                 {ok, {200, #{}, decode_shop(Shop)}};
@@ -119,7 +120,7 @@ prepare(OperationID = 'ActivateShopForParty', Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         case capi_party:activate_shop(PartyID, ShopID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
@@ -139,7 +140,7 @@ prepare(OperationID = 'SuspendShopForParty', Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         case capi_party:suspend_shop(PartyID, ShopID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
@@ -156,6 +157,18 @@ prepare(_OperationID, _Req, _Context) ->
     {error, noimpl}.
 
 %%
+
+restrict_shops(Shops, Restrictions) ->
+    ShopIDs = [ID || #domain_Shop{id = ID} <- Shops],
+    RestrictedShopIDs = capi_bouncer_restrictions:get_restricted_shop_ids(Restrictions),
+    ResultShopIDs = intersect_lists(ShopIDs, RestrictedShopIDs),
+    lists:filter(fun (#domain_Shop{id = ID}) -> lists:any(ID, ResultShopIDs) end, Shops).
+
+intersect_lists(Lists1, Lists2) ->
+    Set1 = ordsets:from_list(Lists1),
+    Set2 = ordsets:from_list(Lists2),
+    IntersectedSet = ordsets:intersection(Set1, Set2),
+    ordsets:to_list(IntersectedSet).
 
 decode_shops_map(Shops) ->
     capi_handler_decoder_utils:decode_map(Shops, fun decode_shop/1).

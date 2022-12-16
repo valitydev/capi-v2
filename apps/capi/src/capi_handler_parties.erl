@@ -22,7 +22,7 @@ prepare('GetMyParty' = OperationID, _Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         case get_or_create_party(PartyID, Context) of
             {ok, Party} ->
                 DecodedParty = capi_handler_decoder_party:decode_party(Party),
@@ -38,7 +38,7 @@ prepare('ActivateMyParty' = OperationID, _Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         case capi_party:activate_party(PartyID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
@@ -55,7 +55,7 @@ prepare('SuspendMyParty' = OperationID, _Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         case capi_party:suspend_party(PartyID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
@@ -72,7 +72,7 @@ prepare('GetPartyByID' = OperationID, Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID}}],
         {ok, mask_party_notfound(capi_auth:authorize_operation(Prototypes, Context))}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         case capi_party:get_party(PartyID, Context) of
             {ok, Party} ->
                 DecodedParty = capi_handler_decoder_party:decode_party(Party),
@@ -88,7 +88,7 @@ prepare('ActivatePartyByID' = OperationID, Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         case capi_party:activate_party(PartyID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
@@ -105,7 +105,7 @@ prepare('SuspendPartyByID' = OperationID, Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun() ->
+    Process = fun(undefined) ->
         case capi_party:suspend_party(PartyID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
