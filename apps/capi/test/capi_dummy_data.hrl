@@ -1,6 +1,15 @@
 -ifndef(__CAPI_DUMMY_DATA_HRL__).
 -define(__CAPI_DUMMY_DATA_HRL__, 42).
 
+-include_lib("damsel/include/dmsl_base_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_thrift.hrl").
+-include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_conf_thrift.hrl").
+-include_lib("damsel/include/dmsl_user_interaction_thrift.hrl").
+-include_lib("payout_manager_proto/include/payouts_payout_manager_thrift.hrl").
+-include_lib("magista_proto/include/magista_magista_thrift.hrl").
+
 -define(STRING, <<"TEST">>).
 -define(RUB, <<"RUB">>).
 -define(USD, <<"USD">>).
@@ -811,10 +820,12 @@
 -define(STAT_RESPONSE_REFUNDS, #magista_StatRefundResponse{
     refunds = [
         ?STAT_REFUND({pending, #domain_InvoicePaymentRefundPending{}}),
-        ?STAT_REFUND({succeeded, #domain_InvoicePaymentRefundSucceeded{}})
-        ?STAT_REFUND({failed, #domain_InvoicePaymentRefundFailed{
-            failure = {operation_timeout, #domain_OperationTimeout{}}
-        }})
+        ?STAT_REFUND({succeeded, #domain_InvoicePaymentRefundSucceeded{}}),
+        ?STAT_REFUND(
+            {failed, #domain_InvoicePaymentRefundFailed{
+                failure = {operation_timeout, #domain_OperationTimeout{}}
+            }}
+        )
     ],
     continuation_token = ?STRING
 }).
@@ -1176,10 +1187,6 @@
                     }}
             }}
         ]}
-}).
-
--define(PUT_CARD_RESULT, #'PutCardResult'{
-    bank_card = ?BANK_CARD
 }).
 
 -define(PAYOUT, ?PAYOUT(?PI_ACCOUNT_TOOL, ?STRING)).

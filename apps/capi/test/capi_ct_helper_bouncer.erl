@@ -208,7 +208,7 @@ mock_assert_search_op_ctx(SearchCtx, PayprocCtx, Config) ->
 -spec mock_restricted_shops(_, _) -> _.
 mock_restricted_shops(Shops, Config) ->
     mock_arbiter(
-        fun (_Context) ->
+        fun(_Context) ->
             {ok, ?JUDGEMENT(?RESTRICTED(?CAPI_SHOP_RESTRICTIONS(Shops)))}
         end,
         Config

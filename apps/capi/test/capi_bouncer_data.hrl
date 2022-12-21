@@ -12,9 +12,11 @@
 -define(JUDGEMENT(Resolution), #decision_Judgement{resolution = Resolution}).
 -define(ALLOWED, {allowed, #decision_ResolutionAllowed{}}).
 -define(FORBIDDEN, {forbidden, #decision_ResolutionForbidden{}}).
--define(RESTRICTED(Restrictions), {restricted, #decision_ResolutionRestricted{
-    restrictions = Restrictions
-}}).
+-define(RESTRICTED(Restrictions),
+    {restricted, #decision_ResolutionRestricted{
+        restrictions = Restrictions
+    }}
+).
 
 -define(CAPI_SHOP_RESTRICTIONS(Shops), #rstn_Restrictions{
     capi = #rstn_RestrictionsCommonAPI{

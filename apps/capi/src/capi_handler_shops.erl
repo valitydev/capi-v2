@@ -163,7 +163,7 @@ restrict_shops(Shops, undefined) ->
 restrict_shops(Shops, Restrictions) ->
     RestrictedShopIDs = capi_bouncer_restrictions:get_restricted_shop_ids(Restrictions),
     lists:foldl(
-        fun (ShopID, Acc) ->
+        fun(ShopID, Acc) ->
             case maps:get(ShopID, Shops, undefined) of
                 undefined ->
                     Acc;
