@@ -158,17 +158,22 @@ prepare(_OperationID, _Req, _Context) ->
 
 %%
 
+restrict_shops(Shops, undefined) ->
+    Shops;
 restrict_shops(Shops, Restrictions) ->
-    ShopIDs = [ID || #domain_Shop{id = ID} <- Shops],
     RestrictedShopIDs = capi_bouncer_restrictions:get_restricted_shop_ids(Restrictions),
-    ResultShopIDs = intersect_lists(ShopIDs, RestrictedShopIDs),
-    lists:filter(fun (#domain_Shop{id = ID}) -> lists:any(ID, ResultShopIDs) end, Shops).
-
-intersect_lists(Lists1, Lists2) ->
-    Set1 = ordsets:from_list(Lists1),
-    Set2 = ordsets:from_list(Lists2),
-    IntersectedSet = ordsets:intersection(Set1, Set2),
-    ordsets:to_list(IntersectedSet).
+    lists:foldl(
+        fun (ShopID, Acc) ->
+            case maps:get(ShopID, Shops, undefined) of
+                undefined ->
+                    Acc;
+                Shop ->
+                    Acc#{ShopID => Shop}
+            end
+        end,
+        #{},
+        RestrictedShopIDs
+    ).
 
 decode_shops_map(Shops) ->
     capi_handler_decoder_utils:decode_map(Shops, fun decode_shop/1).
