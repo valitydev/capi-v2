@@ -7,10 +7,22 @@
 -include_lib("bouncer_proto/include/bouncer_base_thrift.hrl").
 -include_lib("bouncer_proto/include/bouncer_ctx_thrift.hrl").
 -include_lib("bouncer_proto/include/bouncer_ctx_v1_thrift.hrl").
+-include_lib("bouncer_proto/include/bouncer_rstn_thrift.hrl").
 
 -define(JUDGEMENT(Resolution), #decision_Judgement{resolution = Resolution}).
 -define(ALLOWED, {allowed, #decision_ResolutionAllowed{}}).
 -define(FORBIDDEN, {forbidden, #decision_ResolutionForbidden{}}).
+-define(RESTRICTED(Restrictions), {restricted, #decision_ResolutionRestricted{
+    restrictions = Restrictions
+}}).
+
+-define(CAPI_SHOP_RESTRICTIONS(Shops), #rstn_Restrictions{
+    capi = #rstn_RestrictionsCommonAPI{
+        op = #rstn_CommonAPIOperationRestrictions{
+            shops = Shops
+        }
+    }
+}).
 
 -define(CTX_ENTITY(ID), #base_Entity{id = ID}).
 
