@@ -162,18 +162,7 @@ restrict_shops(Shops, undefined) ->
     Shops;
 restrict_shops(Shops, Restrictions) ->
     RestrictedShopIDs = capi_bouncer_restrictions:get_restricted_shop_ids(Restrictions),
-    lists:foldl(
-        fun(ShopID, Acc) ->
-            case maps:get(ShopID, Shops, undefined) of
-                undefined ->
-                    Acc;
-                Shop ->
-                    Acc#{ShopID => Shop}
-            end
-        end,
-        #{},
-        RestrictedShopIDs
-    ).
+    maps:filter(fun(Key, _Value) -> lists:member(Key, Restrictions) end, Shops).
 
 decode_shops_map(Shops) ->
     capi_handler_decoder_utils:decode_map(Shops, fun decode_shop/1).
