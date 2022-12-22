@@ -23,7 +23,7 @@ prepare(OperationID = 'GetContracts', _Req, Context) ->
         ],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         {ok, Party} = capi_party:get_party(PartyID, Context),
         {ok, {200, #{}, decode_contracts_map(Party#domain_Party.contracts, Party#domain_Party.contractors)}}
     end,
@@ -37,7 +37,7 @@ prepare(OperationID = 'GetContractByID', Req, Context) ->
         ],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         % Получение Party требуется для извлечения domain_Party.contractors
         {ok, Party} = capi_party:get_party(PartyID, Context),
         case genlib_map:get(ContractID, Party#domain_Party.contracts) of
@@ -57,7 +57,7 @@ prepare(OperationID = 'GetContractAdjustments', Req, Context) ->
         ],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         Contract = get_contract_or_fail(PartyID, ContractID, Context),
         Resp = [decode_contract_adjustment(A) || A <- Contract#domain_Contract.adjustments],
         {ok, {200, #{}, Resp}}
@@ -72,7 +72,7 @@ prepare(OperationID = 'GetContractAdjustmentByID', Req, Context) ->
         ],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         Contract = get_contract_or_fail(PartyID, ContractID, Context),
         AdjustmentID = maps:get('adjustmentID', Req),
         Adjustments = Contract#domain_Contract.adjustments,
@@ -92,7 +92,7 @@ prepare(OperationID = 'GetContractsForParty', Req, Context) ->
         ],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         case capi_party:get_party(PartyID, Context) of
             {ok, Party} ->
                 {ok, {200, #{}, decode_contracts_map(Party#domain_Party.contracts, Party#domain_Party.contractors)}};
@@ -110,7 +110,7 @@ prepare(OperationID = 'GetContractByIDForParty', Req, Context) ->
         ],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         Contract = get_contract_or_fail(PartyID, ContractID, Context),
         % Получение Party требуется для извлечения domain_Party.contractors
         {ok, Party} = capi_party:get_party(PartyID, Context),
@@ -126,7 +126,7 @@ prepare(OperationID = 'GetContractAdjustmentsForParty', Req, Context) ->
         ],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         Contract = get_contract_or_fail(PartyID, ContractID, Context),
         Resp = [decode_contract_adjustment(A) || A <- Contract#domain_Contract.adjustments],
         {ok, {200, #{}, Resp}}
@@ -141,7 +141,7 @@ prepare(OperationID = 'GetContractAdjustmentByIDForParty', Req, Context) ->
         ],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         Contract = get_contract_or_fail(PartyID, ContractID, Context),
         AdjustmentID = maps:get('adjustmentID', Req),
         Adjustments = Contract#domain_Contract.adjustments,

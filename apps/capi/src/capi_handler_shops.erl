@@ -21,7 +21,7 @@ prepare(OperationID = 'ActivateShop', Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         case capi_party:activate_shop(PartyID, ShopID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
@@ -39,7 +39,7 @@ prepare(OperationID = 'SuspendShop', Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         case capi_party:suspend_shop(PartyID, ShopID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
@@ -56,7 +56,7 @@ prepare(OperationID = 'GetShops', _Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         Party = capi_utils:unwrap(capi_party:get_party(PartyID, Context)),
         {ok, {200, #{}, decode_shops_map(Party#domain_Party.shops)}}
     end,
@@ -68,7 +68,7 @@ prepare(OperationID = 'GetShopByID', Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         case capi_party:get_shop(PartyID, ShopID, Context) of
             {ok, Shop} ->
                 {ok, {200, #{}, decode_shop(Shop)}};
@@ -85,7 +85,15 @@ prepare(OperationID = 'GetShopsForParty', Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(Restrictions) ->
+    Process = fun() ->
+        case capi_party:get_party(PartyID, Context) of
+            {ok, Party} ->
+                {ok, {200, #{}, decode_shops_map(Party#domain_Party.shops)}};
+            {error, #payproc_PartyNotFound{}} ->
+                {ok, general_error(404, <<"Party not found">>)}
+        end
+    end,
+    ProcessRestricted = fun(Restrictions) ->
         case capi_party:get_party(PartyID, Context) of
             {ok, Party} ->
                 Shops = restrict_shops(Party#domain_Party.shops, Restrictions),
@@ -94,7 +102,7 @@ prepare(OperationID = 'GetShopsForParty', Req, Context) ->
                 {ok, general_error(404, <<"Party not found">>)}
         end
     end,
-    {ok, #{authorize => Authorize, process => Process}};
+    {ok, #{authorize => Authorize, process => Process, process_restricted => ProcessRestricted}};
 prepare(OperationID = 'GetShopByIDForParty', Req, Context) ->
     PartyID = maps:get('partyID', Req),
     ShopID = maps:get('shopID', Req),
@@ -102,7 +110,7 @@ prepare(OperationID = 'GetShopByIDForParty', Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         case capi_party:get_shop(PartyID, ShopID, Context) of
             {ok, Shop} ->
                 {ok, {200, #{}, decode_shop(Shop)}};
@@ -120,7 +128,7 @@ prepare(OperationID = 'ActivateShopForParty', Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         case capi_party:activate_shop(PartyID, ShopID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};
@@ -140,7 +148,7 @@ prepare(OperationID = 'SuspendShopForParty', Req, Context) ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         case capi_party:suspend_shop(PartyID, ShopID, Context) of
             ok ->
                 {ok, {204, #{}, undefined}};

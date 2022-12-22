@@ -19,7 +19,7 @@ prepare(OperationID, Req, Context) when OperationID =:= 'GetCountries'; Operatio
         Prototypes = [{operation, #{id => OperationID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) -> process_request(OperationID, Req, Context) end,
+    Process = fun() -> process_request(OperationID, Req, Context) end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare(_OperationID, _Req, _Context) ->
     {error, noimpl}.

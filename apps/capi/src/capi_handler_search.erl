@@ -18,7 +18,7 @@
 prepare(OperationID, Req, Context) when OperationID =:= 'SearchInvoices' ->
     Prototypes = build_prototypes(OperationID, Context, Req),
     Authorize = fun() -> {ok, capi_auth:authorize_operation(Prototypes, Context)} end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         Query = make_invoices_search_query(Context, Req),
         process_search_request('SearchInvoices', Query, Req, Context)
     end,
@@ -26,7 +26,7 @@ prepare(OperationID, Req, Context) when OperationID =:= 'SearchInvoices' ->
 prepare(OperationID, Req, Context) when OperationID =:= 'SearchPayments' ->
     Prototypes = build_prototypes(OperationID, Context, Req),
     Authorize = fun() -> {ok, capi_auth:authorize_operation(Prototypes, Context)} end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         Query = make_payments_search_query(Context, Req),
         process_search_request('SearchPayments', Query, Req, Context)
     end,
@@ -34,7 +34,7 @@ prepare(OperationID, Req, Context) when OperationID =:= 'SearchPayments' ->
 prepare(OperationID, Req, Context) when OperationID =:= 'SearchRefunds' ->
     Prototypes = build_prototypes(OperationID, Context, Req),
     Authorize = fun() -> {ok, capi_auth:authorize_operation(Prototypes, Context)} end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         Query = make_refunds_search_query(Context, Req),
         process_search_request('SearchRefunds', Query, Req, Context)
     end,

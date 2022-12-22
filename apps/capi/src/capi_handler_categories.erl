@@ -18,7 +18,7 @@ prepare(OperationID = 'GetCategories', _Req, Context) ->
         Prototypes = [{operation, #{id => OperationID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         Categories = capi_utils:unwrap(capi_domain:get_objects_by_type(category, Context)),
         {ok, {200, #{}, [decode_category(C) || C <- Categories]}}
     end,
@@ -28,7 +28,7 @@ prepare(OperationID = 'GetCategoryByRef', Req, Context) ->
         Prototypes = [{operation, #{id => OperationID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         case get_category_by_id(genlib:to_int(maps:get('categoryID', Req)), Context) of
             {ok, Category} ->
                 {ok, {200, #{}, decode_category(Category)}};

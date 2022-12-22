@@ -31,7 +31,8 @@
 
 -type request_state() :: #{
     authorize := fun(() -> {ok, capi_auth:resolution()} | throw(response())),
-    process := fun((capi_auth:restrictions() | undefined) -> {ok, response()} | throw(response()))
+    process := fun((capi_auth:restrictions() | undefined) -> {ok, response()} | throw(response())),
+    process_restricted => fun((capi_auth:restrictions() | undefined) -> {ok, response()} | throw(response()))
 }.
 
 -type handler_opts() ::
@@ -146,9 +147,15 @@ handle_function_(OperationID, Req, SwagContext0, HandlerOpts) ->
         {ok, Resolution} = Authorize(),
         case Resolution of
             allowed ->
-                Process(undefined);
+                Process();
             {restricted, Restrictions} ->
-                Process(Restrictions);
+                case RequestState of
+                    #{process_restricted := ProcessRestricted} ->
+                        ProcessRestricted(Restrictions);
+                    _ ->
+                        _ = logger:error("Operation ~p failed due to missing restricted acess handler", [OperationID]),
+                        {error, {501, #{}, undefined}}
+                end;
             forbidden ->
                 {ok, {401, #{}, undefined}}
         end

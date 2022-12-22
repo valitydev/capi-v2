@@ -29,7 +29,7 @@ prepare('CreateInvoice' = OperationID, Req, Context) ->
         Resolution = capi_auth:authorize_operation(Prototypes, Context),
         {ok, Resolution}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         try
             Allocation = maps:get(<<"allocation">>, InvoiceParams, undefined),
             ok = validate_allocation(Allocation),
@@ -82,7 +82,7 @@ prepare('CreateInvoiceAccessToken' = OperationID, Req, Context) ->
         Resolution = capi_auth:authorize_operation(Prototypes, Context),
         {ok, Resolution}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         capi_handler:respond_if_undefined(ResultInvoice, general_error(404, <<"Invoice not found">>)),
         Invoice = ResultInvoice#payproc_Invoice.invoice,
         Response = capi_handler_utils:issue_access_token(Invoice, Context),
@@ -100,7 +100,7 @@ prepare('GetInvoiceByID' = OperationID, Req, Context) ->
         Resolution = mask_invoice_notfound(capi_auth:authorize_operation(Prototypes, Context)),
         {ok, Resolution}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         capi_handler:respond_if_undefined(ResultInvoice, general_error(404, <<"Invoice not found">>)),
         #'payproc_Invoice'{invoice = Invoice} = ResultInvoice,
         {ok, {200, #{}, capi_handler_decoder_invoicing:decode_invoice(Invoice)}}
@@ -125,7 +125,7 @@ prepare('GetInvoiceByExternalID' = OperationID, Req, Context) ->
         Resolution = mask_invoice_notfound(capi_auth:authorize_operation(Prototypes, Context)),
         {ok, Resolution}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         capi_handler:respond_if_undefined(ResultInvoice, general_error(404, <<"Invoice not found">>)),
         #'payproc_Invoice'{invoice = Invoice} = ResultInvoice,
         {ok, {200, #{}, capi_handler_decoder_invoicing:decode_invoice(Invoice)}}
@@ -141,7 +141,7 @@ prepare('FulfillInvoice' = OperationID, Req, Context) ->
         Resolution = capi_auth:authorize_operation(Prototypes, Context),
         {ok, Resolution}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         CallArgs = {InvoiceID, maps:get(<<"reason">>, maps:get('Reason', Req))},
         Call = {invoicing, 'Fulfill', CallArgs},
         case capi_handler_utils:service_call(Call, Context) of
@@ -168,7 +168,7 @@ prepare('RescindInvoice' = OperationID, Req, Context) ->
         Resolution = capi_auth:authorize_operation(Prototypes, Context),
         {ok, Resolution}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         CallArgs = {InvoiceID, maps:get(<<"reason">>, maps:get('Reason', Req))},
         Call = {invoicing, 'Rescind', CallArgs},
         case capi_handler_utils:service_call(Call, Context) of
@@ -197,7 +197,7 @@ prepare('GetInvoiceEvents' = OperationID, Req, Context) ->
         Resolution = mask_invoice_notfound(capi_auth:authorize_operation(Prototypes, Context)),
         {ok, Resolution}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         Result =
             capi_handler_utils:collect_events(
                 maps:get('limit', Req),
@@ -234,7 +234,7 @@ prepare('GetInvoicePaymentMethods' = OperationID, Req, Context) ->
         Resolution = mask_invoice_notfound(capi_auth:authorize_operation(Prototypes, Context)),
         {ok, Resolution}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         capi_handler:respond_if_undefined(ResultInvoice, general_error(404, <<"Invoice not found">>)),
         PartyID = ResultInvoice#payproc_Invoice.invoice#domain_Invoice.owner_id,
         % В данном контексте - Party не может не существовать

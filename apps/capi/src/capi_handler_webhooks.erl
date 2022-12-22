@@ -23,7 +23,7 @@ prepare('CreateWebhook' = OperationID, Req, Context) ->
         Resolution = capi_auth:authorize_operation(Prototypes, Context),
         {ok, Resolution}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         WebhookParams = encode_webhook_params(PartyID, Params),
         ShopID = validate_webhook_params(WebhookParams),
         case capi_party:get_shop(PartyID, ShopID, Context) of
@@ -47,7 +47,7 @@ prepare('GetWebhooks' = OperationID, _Req, Context) ->
         Resolution = capi_auth:authorize_operation(Prototypes, Context),
         {ok, Resolution}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         Webhooks = capi_utils:unwrap(
             capi_handler_utils:service_call({webhook_manager, 'GetList', {PartyID}}, Context)
         ),
@@ -76,7 +76,7 @@ prepare('GetWebhookByID' = OperationID, Req, Context) ->
         Resolution = capi_auth:authorize_operation(Prototypes, Context),
         {ok, Resolution}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         capi_handler:respond_if_undefined(Webhook, general_error(404, <<"Webhook not found">>)),
         {ok, {200, #{}, decode_webhook(Webhook)}}
     end,
@@ -103,7 +103,7 @@ prepare('DeleteWebhookByID' = OperationID, Req, Context) ->
         Resolution = capi_auth:authorize_operation(Prototypes, Context),
         {ok, Resolution}
     end,
-    Process = fun(undefined) ->
+    Process = fun() ->
         capi_handler:respond_if_undefined(EncodedWebhookID, general_error(404, <<"Webhook not found">>)),
         case delete_webhook(EncodedWebhookID, Context) of
             {ok, _} ->
