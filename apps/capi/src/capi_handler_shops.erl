@@ -166,11 +166,9 @@ prepare(_OperationID, _Req, _Context) ->
 
 %%
 
-restrict_shops(Shops, undefined) ->
-    Shops;
 restrict_shops(Shops, Restrictions) ->
     RestrictedShopIDs = capi_bouncer_restrictions:get_restricted_shop_ids(Restrictions),
-    maps:filter(fun(Key, _Value) -> lists:member(Key, Restrictions) end, Shops).
+    maps:filter(fun(Key, _Value) -> lists:member(Key, RestrictedShopIDs) end, Shops).
 
 decode_shops_map(Shops) ->
     capi_handler_decoder_utils:decode_map(Shops, fun decode_shop/1).
