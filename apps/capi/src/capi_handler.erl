@@ -31,8 +31,8 @@
 
 -type request_state() :: #{
     authorize := fun(() -> {ok, capi_auth:resolution()} | throw(response())),
-    process := fun((capi_auth:restrictions() | undefined) -> {ok, response()} | throw(response())),
-    process_restricted => fun((capi_auth:restrictions() | undefined) -> {ok, response()} | throw(response()))
+    process := fun(() -> {ok, response()} | throw(response())),
+    process_restricted => fun((capi_bouncer_restrictions:t()) -> {ok, response()} | throw(response()))
 }.
 
 -type handler_opts() ::

@@ -19,7 +19,7 @@
 -type token_type() :: bearer.
 -type preauth_context() :: {unauthorized, {token_type(), token_keeper_client:token()}}.
 -type auth_context() :: {authorized, token_keeper_client:auth_data()}.
--type restrictions() :: bouncer_restriction_thrift:'Restrictions'().
+-type restrictions() :: capi_bouncer_restrictions:t().
 -type resolution() ::
     allowed
     | {restricted, restrictions()}

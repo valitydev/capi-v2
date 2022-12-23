@@ -7,7 +7,11 @@
 %% API
 -export([get_restricted_shop_ids/1]).
 
--spec get_restricted_shop_ids(bouncer_restriction_thrift:'Restrictions'()) -> [binary()].
+-export_type([t/0]).
+
+-type t() :: bouncer_rstn_thrift:'Restrictions'().
+
+-spec get_restricted_shop_ids(t()) -> [binary()].
 get_restricted_shop_ids(Restrictions) ->
     #rstn_Restrictions{
         capi = #rstn_RestrictionsCommonAPI{
