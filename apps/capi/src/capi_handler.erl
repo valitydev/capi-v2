@@ -208,6 +208,8 @@ respond_if_undefined(_, _Response) ->
     Resolution :: capi_auth:resolution().
 respond_if_forbidden(forbidden, Response) ->
     respond(Response);
+respond_if_forbidden({restricted, Restrictions}, _Response) ->
+    {restricted, Restrictions};
 respond_if_forbidden(allowed, _Response) ->
     allowed.
 

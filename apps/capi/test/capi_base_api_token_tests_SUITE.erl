@@ -27,6 +27,7 @@
     create_invoice_ok_test/1,
     create_invoice_autorization_error_test/1,
     get_invoice_by_external_id/1,
+    get_invoice_by_external_id_not_impl_error/1,
     create_invoice_access_token_ok_test/1,
     create_invoice_template_ok_test/1,
     create_invoice_with_template_test/1,
@@ -159,6 +160,7 @@ groups() ->
             create_invoice_ok_test,
             create_invoice_autorization_error_test,
             get_invoice_by_external_id,
+            get_invoice_by_external_id_not_impl_error,
             check_no_invoice_by_external_id_test,
             create_invoice_access_token_ok_test,
             create_invoice_template_ok_test,
@@ -357,6 +359,25 @@ get_invoice_by_external_id(Config) ->
     ),
 
     {ok, _} = capi_client_invoices:get_invoice_by_external_id(?config(context, Config), ExternalID).
+
+-spec get_invoice_by_external_id_not_impl_error(config()) -> _.
+get_invoice_by_external_id_not_impl_error(Config) ->
+    ExternalID = <<"merch_id">>,
+    BenderContext = capi_msgp_marshalling:marshal(#{<<"context_data">> => #{}}),
+    InvoiceID = capi_utils:get_unique_id(),
+    _ = capi_ct_helper:mock_services(
+        [
+            {invoicing, fun('Get', _) -> {ok, ?PAYPROC_INVOICE_WITH_ID(InvoiceID, ExternalID)} end},
+            {bender, fun('GetInternalID', _) ->
+                {ok, capi_ct_helper_bender:get_internal_id_result(InvoiceID, BenderContext)}
+            end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_restricted_shops([?CTX_ENTITY(<<"Shop1">>)], Config),
+
+    {error, {invalid_response_code, 501}} =
+        capi_client_invoices:get_invoice_by_external_id(?config(context, Config), ExternalID).
 
 -spec create_invoice_access_token_ok_test(config()) -> _.
 create_invoice_access_token_ok_test(Config) ->
