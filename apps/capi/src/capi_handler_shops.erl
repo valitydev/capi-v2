@@ -93,7 +93,16 @@ prepare(OperationID = 'GetShopsForParty', Req, Context) ->
                 {ok, general_error(404, <<"Party not found">>)}
         end
     end,
-    {ok, #{authorize => Authorize, process => Process}};
+    ProcessRestricted = fun(Restrictions) ->
+        case capi_party:get_party(PartyID, Context) of
+            {ok, Party} ->
+                Shops = restrict_shops(Party#domain_Party.shops, Restrictions),
+                {ok, {200, #{}, decode_shops_map(Shops)}};
+            {error, #payproc_PartyNotFound{}} ->
+                {ok, general_error(404, <<"Party not found">>)}
+        end
+    end,
+    {ok, #{authorize => Authorize, process => Process, process_restricted => ProcessRestricted}};
 prepare(OperationID = 'GetShopByIDForParty', Req, Context) ->
     PartyID = maps:get('partyID', Req),
     ShopID = maps:get('shopID', Req),
@@ -156,6 +165,10 @@ prepare(_OperationID, _Req, _Context) ->
     {error, noimpl}.
 
 %%
+
+restrict_shops(Shops, Restrictions) ->
+    RestrictedShopIDs = capi_bouncer_restrictions:get_restricted_shop_ids(Restrictions),
+    maps:filter(fun(Key, _Value) -> lists:member(Key, RestrictedShopIDs) end, Shops).
 
 decode_shops_map(Shops) ->
     capi_handler_decoder_utils:decode_map(Shops, fun decode_shop/1).

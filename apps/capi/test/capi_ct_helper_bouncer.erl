@@ -17,6 +17,7 @@
 -export([mock_assert_payout_op_ctx/6]).
 -export([mock_assert_search_op_ctx/2]).
 -export([mock_assert_search_op_ctx/3]).
+-export([mock_restricted_shops/2]).
 
 -export([mock_client/1]).
 -export([mock_arbiter/2]).
@@ -201,6 +202,15 @@ mock_assert_search_op_ctx(SearchCtx, PayprocCtx, Config) ->
                 payment_processing = PayprocCtx
             }
         ),
+        Config
+    ).
+
+-spec mock_restricted_shops(_, _) -> _.
+mock_restricted_shops(Shops, Config) ->
+    mock_arbiter(
+        fun(_Context) ->
+            {ok, ?JUDGEMENT(?RESTRICTED(?CAPI_SHOP_RESTRICTIONS(Shops)))}
+        end,
         Config
     ).
 

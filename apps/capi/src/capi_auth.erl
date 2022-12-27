@@ -19,7 +19,11 @@
 -type token_type() :: bearer.
 -type preauth_context() :: {unauthorized, {token_type(), token_keeper_client:token()}}.
 -type auth_context() :: {authorized, token_keeper_client:auth_data()}.
--type resolution() :: allowed | forbidden.
+-type restrictions() :: capi_bouncer_restrictions:t().
+-type resolution() ::
+    allowed
+    | {restricted, restrictions()}
+    | forbidden.
 -type consumer() :: client | merchant | provider.
 -type token_spec() :: #{
     party := binary(),
@@ -34,6 +38,7 @@
 -export_type([resolution/0]).
 -export_type([consumer/0]).
 -export_type([token_spec/0]).
+-export_type([restrictions/0]).
 
 %% Internal types
 

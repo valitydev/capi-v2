@@ -13,7 +13,7 @@
   0},
  {<<"bouncer_proto">>,
   {git,"https://github.com/valitydev/bouncer-proto.git",
-       {ref,"de15d375ee77c5002c55a1ba9a20a67d2c222115"}},
+       {ref,"b23c905db51915737fdab80c2a3af4c546b32799"}},
   0},
  {<<"cache">>,{pkg,<<"cache">>,<<"2.3.3">>},1},
  {<<"certifi">>,{pkg,<<"certifi">>,<<"2.6.1">>},2},

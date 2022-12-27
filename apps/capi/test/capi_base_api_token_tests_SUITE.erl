@@ -27,6 +27,7 @@
     create_invoice_ok_test/1,
     create_invoice_autorization_error_test/1,
     get_invoice_by_external_id/1,
+    get_invoice_by_external_id_not_impl_error/1,
     create_invoice_access_token_ok_test/1,
     create_invoice_template_ok_test/1,
     create_invoice_with_template_test/1,
@@ -73,6 +74,7 @@
     suspend_shop_ok_test/1,
     get_shop_by_id_for_party_ok_test/1,
     get_shops_for_party_ok_test/1,
+    get_shops_for_party_restricted_ok_test/1,
     suspend_shop_for_party_ok_test/1,
     activate_shop_for_party_ok_test/1,
     get_shop_by_id_for_party_error_test/1,
@@ -158,6 +160,7 @@ groups() ->
             create_invoice_ok_test,
             create_invoice_autorization_error_test,
             get_invoice_by_external_id,
+            get_invoice_by_external_id_not_impl_error,
             check_no_invoice_by_external_id_test,
             create_invoice_access_token_ok_test,
             create_invoice_template_ok_test,
@@ -193,6 +196,7 @@ groups() ->
             get_shop_by_id_for_party_ok_test,
             get_shop_by_id_for_party_error_test,
             get_shops_for_party_ok_test,
+            get_shops_for_party_restricted_ok_test,
             get_shops_for_party_error_test,
             suspend_shop_for_party_ok_test,
             suspend_shop_for_party_error_test,
@@ -355,6 +359,25 @@ get_invoice_by_external_id(Config) ->
     ),
 
     {ok, _} = capi_client_invoices:get_invoice_by_external_id(?config(context, Config), ExternalID).
+
+-spec get_invoice_by_external_id_not_impl_error(config()) -> _.
+get_invoice_by_external_id_not_impl_error(Config) ->
+    ExternalID = <<"merch_id">>,
+    BenderContext = capi_msgp_marshalling:marshal(#{<<"context_data">> => #{}}),
+    InvoiceID = capi_utils:get_unique_id(),
+    _ = capi_ct_helper:mock_services(
+        [
+            {invoicing, fun('Get', _) -> {ok, ?PAYPROC_INVOICE_WITH_ID(InvoiceID, ExternalID)} end},
+            {bender, fun('GetInternalID', _) ->
+                {ok, capi_ct_helper_bender:get_internal_id_result(InvoiceID, BenderContext)}
+            end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_restricted_shops([?CTX_ENTITY(<<"Shop1">>)], Config),
+
+    {error, {invalid_response_code, 501}} =
+        capi_client_invoices:get_invoice_by_external_id(?config(context, Config), ExternalID).
 
 -spec create_invoice_access_token_ok_test(config()) -> _.
 create_invoice_access_token_ok_test(Config) ->
@@ -1287,6 +1310,21 @@ get_shops_for_party_ok_test(Config) ->
     ),
     _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetShopsForParty">>, ?STRING, Config),
     {ok, _} = capi_client_shops:get_shops_for_party(?config(context, Config), ?STRING).
+
+-spec get_shops_for_party_restricted_ok_test(config()) -> _.
+get_shops_for_party_restricted_ok_test(Config) ->
+    _ = capi_ct_helper:mock_services(
+        [
+            {party_management, fun
+                ('GetRevision', _) -> {ok, ?INTEGER};
+                ('Checkout', _) -> {ok, ?PARTY}
+            end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_restricted_shops([?CTX_ENTITY(?USD)], Config),
+    {ok, [#{<<"currency">> := ?USD}]} =
+        capi_client_shops:get_shops_for_party(?config(context, Config), ?STRING).
 
 -spec get_shops_for_party_error_test(config()) -> _.
 get_shops_for_party_error_test(Config) ->
