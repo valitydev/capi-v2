@@ -798,7 +798,8 @@
 
 -define(ADDITIONAL_TX_INFO, #domain_AdditionalTransactionInfo{
     rrn = <<"090909090909">>,
-    approval_code = <<"808080">>
+    approval_code = <<"808080">>,
+    extra_payment_info = #{<<"test_key">> => <<"test_value">>}
 }).
 
 -define(STAT_CUSTOMER_PAYER(PaymentTool),

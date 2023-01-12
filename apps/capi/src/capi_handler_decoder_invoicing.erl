@@ -182,7 +182,8 @@ decode_additional_tx_info(undefined) ->
 decode_additional_tx_info(AdditionalTransactionInfo) ->
     genlib_map:compact(#{
         <<"rrn">> => AdditionalTransactionInfo#domain_AdditionalTransactionInfo.rrn,
-        <<"approvalCode">> => AdditionalTransactionInfo#domain_AdditionalTransactionInfo.approval_code
+        <<"approvalCode">> => AdditionalTransactionInfo#domain_AdditionalTransactionInfo.approval_code,
+        <<"extra_payment_info">> => AdditionalTransactionInfo#domain_AdditionalTransactionInfo.extra_payment_info
     }).
 
 decode_payer(
