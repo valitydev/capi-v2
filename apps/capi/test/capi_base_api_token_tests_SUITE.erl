@@ -786,7 +786,8 @@ create_payment_ok_test(Config) ->
     PaymentTool = {bank_card, ?BANK_CARD(<<"visa">>, ?EXP_DATE(2, 2020), <<"Degus">>)},
     PaymentToolToken = capi_crypto:encode_token(#{payment_tool => PaymentTool, valid_until => undefined}),
     Req = ?PAYMENT_PARAMS(ExternalID, PaymentToolToken),
-    {ok, _} = capi_client_payments:create_payment(?config(context, Config), Req, ?STRING).
+    {ok, Payment} = capi_client_payments:create_payment(?config(context, Config), Req, ?STRING),
+    #{<<"transactionInfo">> := #{<<"extra_payment_info">> := _}} = Payment.
 
 -spec create_refund(config()) -> _.
 create_refund(Config) ->
