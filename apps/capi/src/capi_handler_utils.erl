@@ -111,15 +111,11 @@ get_subject_id(Context) ->
 
 -spec get_user_id(processing_context()) -> binary().
 get_user_id(Context) ->
-    %% TODO Replace when user ids finally stop being equal to party ids
-    %% capi_auth:get_user_id(get_auth_context(Context)).
-    get_subject_id(Context).
+    capi_auth:get_user_id(get_auth_context(Context)).
 
 -spec get_party_id(processing_context()) -> binary().
 get_party_id(Context) ->
-    %% TODO Replace when user ids finally stop being equal to party ids
-    %% capi_auth:get_party_id(get_auth_context(Context)).
-    get_subject_id(Context).
+    capi_auth:get_party_id(get_auth_context(Context)).
 
 %% Utils
 
