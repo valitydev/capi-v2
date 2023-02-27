@@ -173,15 +173,13 @@ combine_metadata(#{} = FullMetadata) ->
 
 user_session_metadata() ->
     genlib_map:compact(#{
-        ?TK_META_PARTY_ID => ?PARTY_ID,
         ?TK_META_USER_ID => ?USER_ID,
         ?TK_META_USER_EMAIL => ?USER_EMAIL
     }).
 
 api_key_metadata() ->
     genlib_map:compact(#{
-        ?TK_META_PARTY_ID => ?PARTY_ID,
-        ?TK_META_USER_ID => ?USER_ID
+        ?TK_META_PARTY_ID => ?PARTY_ID
     }).
 
 consumer_metadata(Consumer) ->
