@@ -106,10 +106,12 @@ prepare('GetInvoiceByID' = OperationID, Req, Context) ->
         {ok, {200, #{}, capi_handler_decoder_invoicing:decode_invoice(Invoice)}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare('GetInvoiceByExternalID' = OperationID, Req, Context) ->
-    ExternalID = maps:get('externalID', Req),
+prepare(OperationID, #{'partyID' := PartyID, 'externalID' := ExternalID}, Context) when
+    OperationID =:= 'GetInvoiceByExternalIDForParty';
+    OperationID =:= 'GetInvoiceByExternalID'
+->
     {InvoiceID, ResultInvoice} =
-        case get_invoice_by_external_id(ExternalID, Context) of
+        case get_invoice_by_external_id(PartyID, ExternalID, Context) of
             {ok, Result} ->
                 Result;
             {error, internal_id_not_found} ->
@@ -131,6 +133,10 @@ prepare('GetInvoiceByExternalID' = OperationID, Req, Context) ->
         {ok, {200, #{}, capi_handler_decoder_invoicing:decode_invoice(Invoice)}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
+prepare('GetInvoiceByExternalID' = OperationID, Req, Context) ->
+    PartyID = capi_handler_utils:get_party_id(Context),
+    Req1 = maps:put('partyID', PartyID, Req),
+    prepare(OperationID, Req1, Context);
 prepare('FulfillInvoice' = OperationID, Req, Context) ->
     InvoiceID = maps:get('invoiceID', Req),
     Authorize = fun() ->
@@ -454,8 +460,7 @@ decode_refund_for_event(#domain_InvoicePaymentRefund{cash = undefined} = Refund,
         capi_handler_utils:get_payment_by_id(InvoiceID, PaymentID, Context),
     capi_handler_decoder_invoicing:decode_refund(Refund#domain_InvoicePaymentRefund{cash = Cash}).
 
-get_invoice_by_external_id(ExternalID, #{woody_context := WoodyContext} = Context) ->
-    PartyID = capi_handler_utils:get_party_id(Context),
+get_invoice_by_external_id(PartyID, ExternalID, #{woody_context := WoodyContext} = Context) ->
     InvoiceKey = {'CreateInvoice', PartyID, ExternalID},
     case capi_bender:get_internal_id(InvoiceKey, WoodyContext) of
         {ok, InvoiceID, _CtxData} ->
