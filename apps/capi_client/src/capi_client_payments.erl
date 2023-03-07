@@ -2,6 +2,7 @@
 
 -export([get_payment_by_id/3]).
 -export([get_payment_by_external_id/2]).
+-export([get_payment_by_external_id_for_party/3]).
 -export([get_payments/2]).
 -export([create_payment/3]).
 -export([cancel_payment/4]).
@@ -9,6 +10,7 @@
 -export([get_refunds/3]).
 -export([get_refund_by_id/4]).
 -export([get_refund_by_external_id/2]).
+-export([get_refund_by_external_id_for_party/3]).
 -export([get_chargebacks/3]).
 -export([get_chargeback_by_id/4]).
 -export([create_refund/4]).
@@ -47,6 +49,16 @@ get_payment_by_external_id(Context, ExternalID) ->
     },
     {Url, PreparedParams, Opts} = capi_client_lib:make_request(Context, Params),
     Response = swag_client_payments_api:get_payment_by_external_id(Url, PreparedParams, Opts),
+    capi_client_lib:handle_response(Response).
+
+-spec get_payment_by_external_id_for_party(context(), binary(), binary()) -> {ok, term()} | {error, term()}.
+get_payment_by_external_id_for_party(Context, PartyID, ExternalID) ->
+    Params = #{
+        binding => #{<<"partyID">> => PartyID},
+        qs_val => #{<<"externalID">> => ExternalID}
+    },
+    {Url, PreparedParams, Opts} = capi_client_lib:make_request(Context, Params),
+    Response = swag_client_payments_api:get_payment_by_external_id_for_party(Url, PreparedParams, Opts),
     capi_client_lib:handle_response(Response).
 
 -spec create_payment(context(), map(), binary()) -> {ok, term()} | {error, term()}.
@@ -127,6 +139,16 @@ get_refund_by_external_id(Context, ExternalID) ->
     },
     {Url, PreparedParams, Opts} = capi_client_lib:make_request(Context, Params),
     Response = swag_client_payments_api:get_refund_by_external_id(Url, PreparedParams, Opts),
+    capi_client_lib:handle_response(Response).
+
+-spec get_refund_by_external_id_for_party(context(), binary(), binary()) -> {ok, term()} | {error, term()}.
+get_refund_by_external_id_for_party(Context, PartyID, ExternalID) ->
+    Params = #{
+        binding => #{<<"partyID">> => PartyID},
+        qs_val => #{<<"externalID">> => ExternalID}
+    },
+    {Url, PreparedParams, Opts} = capi_client_lib:make_request(Context, Params),
+    Response = swag_client_payments_api:get_refund_by_external_id_for_party(Url, PreparedParams, Opts),
     capi_client_lib:handle_response(Response).
 
 -spec create_refund(context(), map(), binary(), binary()) -> {ok, term()} | {error, term()}.

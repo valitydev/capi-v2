@@ -56,7 +56,10 @@ prepare(OperationID = 'GetPaymentInstitutionPaymentTerms', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetPaymentInstitutionPayoutMethods', Req, Context) ->
+prepare(OperationID, Req, Context) when
+    OperationID =:= 'GetPaymentInstitutionPayoutMethods';
+    OperationID =:= 'GetPaymentInstitutionPayoutMethodsForParty'
+->
     Authorize = mk_authorize_operation(OperationID, Context),
     Process = fun() ->
         PaymentInstitutionID = genlib:to_int(maps:get('paymentInstitutionID', Req)),
@@ -70,7 +73,10 @@ prepare(OperationID = 'GetPaymentInstitutionPayoutMethods', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetPaymentInstitutionPayoutSchedules', Req, Context) ->
+prepare(OperationID, Req, Context) when
+    OperationID =:= 'GetPaymentInstitutionPayoutSchedules';
+    OperationID =:= 'GetPaymentInstitutionPayoutSchedulesForParty'
+->
     Authorize = mk_authorize_operation(OperationID, Context),
     Process = fun() ->
         PaymentInstitutionID = genlib:to_int(maps:get('paymentInstitutionID', Req)),
@@ -145,12 +151,16 @@ compute_payment_institution_terms(PaymentInstitutionID, VS, Context) ->
     Ref = ?PAYMENT_INSTITUTION_REF(PaymentInstitutionID),
     capi_party:compute_payment_institution_terms(Ref, VS, Context).
 
-prepare_request_varset(Req, Context) ->
+prepare_request_varset(#{'partyID' := PartyID} = Req, _Context) ->
     #payproc_Varset{
         currency = encode_optional_currency(genlib_map:get('currency', Req)),
         payout_method = encode_optional_payout_method(genlib_map:get('payoutMethod', Req)),
-        party_id = capi_handler_utils:get_party_id(Context)
-    }.
+        party_id = PartyID
+    };
+prepare_request_varset(Req, Context) ->
+    PartyID = capi_handler_utils:get_party_id(Context),
+    Req1 = maps:put('partyID', PartyID, Req),
+    prepare_request_varset(Req1, Context).
 
 %
 
