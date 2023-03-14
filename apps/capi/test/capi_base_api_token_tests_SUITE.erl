@@ -100,6 +100,7 @@
     create_webhook_ok_test/1,
     create_webhook_limit_exceeded_test/1,
     get_webhooks/1,
+    get_webhooks_for_party/1,
     get_webhook_by_id/1,
     delete_webhook_by_id/1,
     get_categories_ok_test/1,
@@ -255,6 +256,7 @@ groups() ->
             create_webhook_ok_test,
             create_webhook_limit_exceeded_test,
             get_webhooks,
+            get_webhooks_for_party,
             get_webhook_by_id,
             delete_webhook_by_id,
 
@@ -1766,6 +1768,13 @@ get_webhooks(Config) ->
     _ = capi_ct_helper:mock_services([{webhook_manager, fun('GetList', _) -> {ok, [?WEBHOOK]} end}], Config),
     _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetWebhooks">>, ?STRING, Config),
     {ok, _} = capi_client_webhooks:get_webhooks(?config(context, Config)).
+
+-spec get_webhooks_for_party(config()) -> _.
+get_webhooks_for_party(Config) ->
+    PartyID = ?STRING,
+    _ = capi_ct_helper:mock_services([{webhook_manager, fun('GetList', _) -> {ok, [?WEBHOOK]} end}], Config),
+    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetWebhooksForParty">>, ?STRING, Config),
+    {ok, _} = capi_client_webhooks:get_webhooks_for_party(?config(context, Config), PartyID).
 
 -spec get_webhook_by_id(config()) -> _.
 get_webhook_by_id(Config) ->
