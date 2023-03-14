@@ -17,6 +17,10 @@
 ) -> {ok, capi_handler:request_state()} | {error, noimpl}.
 prepare(OperationID = 'GetPayout', Req, Context) ->
     PayoutID = maps:get('payoutID', Req),
+    OperationContext = #{
+        id => OperationID,
+        payout => PayoutID
+    },
     Payout =
         case capi_handler_utils:service_call({payouts, 'GetPayout', {PayoutID}}, Context) of
             {ok, Result} ->
@@ -24,11 +28,6 @@ prepare(OperationID = 'GetPayout', Req, Context) ->
             {exception, #payouts_NotFound{}} ->
                 undefined
         end,
-    OperationContext = #{
-        id => OperationID,
-        party => capi_utils:maybe(Payout, fun(_Payout) -> Payout#payouts_Payout.party_id end),
-        payout => PayoutID
-    },
     ContractID = capi_utils:maybe(Payout, fun(_Payout) ->
         get_payout_contract_id(Payout, Context)
     end),
