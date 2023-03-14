@@ -93,10 +93,9 @@
     webhook = ?CTX_ENTITY(WebhookID)
 }).
 
--define(CTX_PAYOUT_OP(ID, PayoutID, PartyID), #ctx_v1_CommonAPIOperation{
+-define(CTX_PAYOUT_OP(ID, PayoutID), #ctx_v1_CommonAPIOperation{
     id = ID,
-    payout = ?CTX_ENTITY(PayoutID),
-    party = ?CTX_ENTITY(PartyID)
+    payout = ?CTX_ENTITY(PayoutID)
 }).
 
 -define(CTX_SEARCH_OP(ID, PartyID, ShopID, InvoiceID, PaymentID),
