@@ -104,10 +104,11 @@ authorize_api_key(?UNAUTHORIZED({TokenType, Token}), TokenContext, WoodyContext)
 authorize_operation(Prototypes, ProcessingContext) ->
     AuthContext = extract_auth_context(ProcessingContext),
     #{swagger_context := SwagContext, woody_context := WoodyContext} = ProcessingContext,
+    IPAddress = get_ip_address(SwagContext),
     Fragments = capi_bouncer:gather_context_fragments(
         get_token_keeper_fragment(AuthContext),
         get_user_id(AuthContext),
-        SwagContext,
+        IPAddress,
         WoodyContext
     ),
     Fragments1 = capi_bouncer_context:build(Prototypes, Fragments, WoodyContext),
@@ -238,3 +239,41 @@ get_metadata_mapped_key(Key) ->
 get_meta_mappings() ->
     AuthConfig = genlib_app:env(capi, auth_config),
     maps:get(metadata_mappings, AuthConfig).
+
+get_ip_address(SwagContext) ->
+    Request = maps:get(req, SwagContext, #{}),
+    case get_ip_address_from_request(Request) of
+        {ok, IPAddress} ->
+            IPAddress;
+        {error, _Error} ->
+            %% Ignore error, add logging if needed
+            undefined
+    end.
+
+get_ip_address_from_request(Request) ->
+    IPAddressHeader = genlib_app:env(capi, ip_address_header, <<"x-forwarded-for">>),
+    case Request of
+        #{headers := #{IPAddressHeader := IPAddress}} ->
+            parse_header_ip_address(IPAddress);
+        #{peer := {IPAddress, _Port}} ->
+            {ok, IPAddress};
+        _ ->
+            {error, no_req_in_swag_context}
+    end.
+
+parse_header_ip_address(IPAddress) ->
+    ClientPeer = string:strip(binary_to_list(IPAddress)),
+    case string:tokens(ClientPeer, ", ") of
+        [ClientIP | _Proxies] ->
+            case inet:parse_strict_address(ClientIP) of
+                {ok, IP} ->
+                    % ok
+                    {ok, IP};
+                {error, Error} ->
+                    % unparseable ip address
+                    {error, Error}
+            end;
+        _ ->
+            % empty or malformed value
+            {error, malformed}
+    end.

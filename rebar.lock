@@ -123,7 +123,7 @@
   0},
  {<<"swag_server">>,
   {git,"https://github.com/valitydev/swag-payments",
-       {ref,"aaa932d06ccafb7c25f80f433557836e80d6d2ac"}},
+       {ref,"635ad2163c622535586affba01e9553d1eaba8a2"}},
   0},
  {<<"thrift">>,
   {git,"https://github.com/valitydev/thrift_erlang.git",

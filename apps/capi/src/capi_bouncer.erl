@@ -10,13 +10,13 @@
 -spec gather_context_fragments(
     TokenContextFragment :: token_keeper_client:context_fragment(),
     UserID :: binary() | undefined,
-    RequestContext :: swag_server:request_context(),
+    IPAddress :: inet:ip_address(),
     WoodyContext :: woody_context:ctx()
 ) -> capi_bouncer_context:fragments().
-gather_context_fragments(TokenContextFragment, UserID, ReqCtx, WoodyCtx) ->
+gather_context_fragments(TokenContextFragment, UserID, IPAddress, WoodyCtx) ->
     {Base, External0} = capi_bouncer_context:new(),
     External1 = External0#{<<"token-keeper">> => {encoded_fragment, TokenContextFragment}},
-    {add_requester_context(ReqCtx, Base), maybe_add_userorg(UserID, External1, WoodyCtx)}.
+    {add_requester_context(IPAddress, Base), maybe_add_userorg(UserID, External1, WoodyCtx)}.
 
 -spec judge(capi_bouncer_context:fragments(), woody_context:ctx()) -> capi_auth:resolution().
 judge({Acc, External}, WoodyCtx) ->
@@ -37,10 +37,9 @@ maybe_add_userorg(UserID, External, WoodyCtx) ->
             External
     end.
 
--spec add_requester_context(swag_server:request_context(), capi_bouncer_context:acc()) -> capi_bouncer_context:acc().
-add_requester_context(ReqCtx, FragmentAcc) ->
-    ClientPeer = maps:get(peer, ReqCtx, #{}),
+-spec add_requester_context(inet:ip_address(), capi_bouncer_context:acc()) -> capi_bouncer_context:acc().
+add_requester_context(IPAddress, FragmentAcc) ->
     bouncer_context_helpers:add_requester(
-        #{ip => maps:get(ip_address, ClientPeer, undefined)},
+        #{ip => IPAddress},
         FragmentAcc
     ).
