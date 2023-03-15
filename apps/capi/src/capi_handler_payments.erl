@@ -144,8 +144,8 @@ prepare(OperationID = 'GetPaymentByExternalID', Req, Context) ->
 prepare(OperationID = 'CapturePayment', Req, Context) ->
     InvoiceID = maps:get('invoiceID', Req),
     PaymentID = maps:get('paymentID', Req),
-    PartyID = capi_handler_utils:get_party_id(Context),
     Invoice = get_invoice_by_id(InvoiceID, Context),
+    PartyID = Invoice#payproc_Invoice.invoice#domain_Invoice.owner_id,
     Authorize = fun() ->
         Prototypes = [
             {operation, #{id => OperationID, invoice => InvoiceID, payment => PaymentID}},
@@ -253,6 +253,8 @@ prepare(OperationID = 'CreateRefund', Req, Context) ->
     InvoiceID = maps:get('invoiceID', Req),
     PaymentID = maps:get('paymentID', Req),
     RefundParams = maps:get('RefundParams', Req),
+    Invoice = get_invoice_by_id(InvoiceID, Context),
+    PartyID = Invoice#payproc_Invoice.invoice#domain_Invoice.owner_id,
     Authorize = fun() ->
         Prototypes = [
             {operation, #{id => OperationID, invoice => InvoiceID, payment => PaymentID}},
@@ -263,7 +265,7 @@ prepare(OperationID = 'CreateRefund', Req, Context) ->
     Process = fun() ->
         try
             ok = validate_refund(RefundParams),
-            create_refund(InvoiceID, PaymentID, RefundParams, Context, OperationID)
+            create_refund(PartyID, InvoiceID, PaymentID, RefundParams, Context, OperationID)
         of
             {ok, Refund} ->
                 {ok, {201, #{}, capi_handler_decoder_invoicing:decode_refund(Refund)}};
@@ -702,10 +704,8 @@ encode_processing_deadline(Deadline) ->
 default_processing_deadline() ->
     genlib_app:env(capi, default_processing_deadline, ?DEFAULT_PROCESSING_DEADLINE).
 
-create_refund(InvoiceID, PaymentID, RefundParams0, Context, BenderPrefix) ->
-    PartyID = capi_handler_utils:get_party_id(Context),
+create_refund(PartyID, InvoiceID, PaymentID, RefundParams0, Context, BenderPrefix) ->
     RefundParams = RefundParams0#{<<"invoiceID">> => InvoiceID, <<"paymentID">> => PaymentID},
-
     ExternalID = maps:get(<<"externalID">>, RefundParams, undefined),
     IdempotentKey = {BenderPrefix, PartyID, ExternalID},
     Identity = capi_bender:make_identity(capi_feature_schemas:refund(), RefundParams),
@@ -715,9 +715,9 @@ create_refund(InvoiceID, PaymentID, RefundParams0, Context, BenderPrefix) ->
     %% We put `invoice_id` and `payment_id` in a context here because `get_refund_by_external_id/3` needs it to work
     CtxData = #{<<"invoice_id">> => InvoiceID, <<"payment_id">> => PaymentID},
     RefundID = capi_bender:gen_sequence(IdempotentKey, Identity, SequenceID, SequenceParams, WoodyCtx, CtxData),
-    refund_payment(RefundID, InvoiceID, PaymentID, RefundParams, Context).
+    refund_payment(PartyID, RefundID, InvoiceID, PaymentID, RefundParams, Context).
 
-refund_payment(RefundID, InvoiceID, PaymentID, RefundParams, Context) ->
+refund_payment(PartyID, RefundID, InvoiceID, PaymentID, RefundParams, Context) ->
     ExternalID = maps:get(<<"externalID">>, RefundParams, undefined),
     Allocation = maps:get(<<"allocation">>, RefundParams, undefined),
     PartyID = capi_handler_utils:get_party_id(Context),

@@ -1,10 +1,12 @@
 -module(capi_client_webhooks).
 
 -export([get_webhooks/1]).
+-export([get_webhooks_for_party/2]).
 -export([create_webhook/2]).
 -export([get_webhook_by_id/2]).
 -export([delete_webhook_by_id/2]).
 
+-type party_id() :: dmsl_domain_thrift:'PartyID'().
 -type webhook_id() :: binary().
 -type webhook_params() :: map().
 -type webhook() :: map().
@@ -14,6 +16,13 @@
 get_webhooks(Context) ->
     {Url, PreparedParams, Opts} = capi_client_lib:make_request(Context, #{}),
     Response = swag_client_webhooks_api:get_webhooks(Url, PreparedParams, Opts),
+    capi_client_lib:handle_response(Response).
+
+-spec get_webhooks_for_party(context(), party_id()) -> {ok, [webhook()]} | {error, term()}.
+get_webhooks_for_party(Context, PartyID) ->
+    Params = #{binding => #{<<"partyID">> => PartyID}},
+    {Url, PreparedParams, Opts} = capi_client_lib:make_request(Context, Params),
+    Response = swag_client_webhooks_api:get_webhooks_for_party(Url, PreparedParams, Opts),
     capi_client_lib:handle_response(Response).
 
 -spec create_webhook(context(), webhook_params()) -> {ok, webhook()} | {error, term()}.
