@@ -15,23 +15,16 @@
     Req :: capi_handler:request_data(),
     Context :: capi_handler:processing_context()
 ) -> {ok, capi_handler:request_state()} | {error, noimpl}.
-prepare(OperationID, Req, Context) when OperationID =:= 'GetPayout' ->
+prepare(OperationID = 'GetPayout', Req, Context) ->
     PayoutID = maps:get('payoutID', Req),
-    PartyID = capi_handler_utils:get_party_id(Context),
     OperationContext = #{
         id => OperationID,
-        party => PartyID,
         payout => PayoutID
     },
     Payout =
         case capi_handler_utils:service_call({payouts, 'GetPayout', {PayoutID}}, Context) of
             {ok, Result} ->
-                case check_party_in_payout(PartyID, Result) of
-                    true ->
-                        Result;
-                    false ->
-                        undefined
-                end;
+                Result;
             {exception, #payouts_NotFound{}} ->
                 undefined
         end,
@@ -51,7 +44,7 @@ prepare(OperationID, Req, Context) when OperationID =:= 'GetPayout' ->
         {ok, {200, #{}, decode_payout(Payout, PayoutTool)}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID, Req, Context) when OperationID =:= 'CreatePayout' ->
+prepare(OperationID = 'CreatePayout', Req, Context) ->
     PayoutParams = maps:get('PayoutParams', Req),
     UserID = capi_handler_utils:get_user_id(Context),
     PartyID = maps:get(<<"partyID">>, PayoutParams, UserID),
@@ -81,7 +74,7 @@ prepare(OperationID, Req, Context) when OperationID =:= 'CreatePayout' ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID, Req, Context) when OperationID =:= 'GetPayoutTools' ->
+prepare(OperationID = 'GetPayoutTools', Req, Context) ->
     PartyID = capi_handler_utils:get_party_id(Context),
     OperationContext = #{
         id => OperationID,
@@ -99,7 +92,7 @@ prepare(OperationID, Req, Context) when OperationID =:= 'GetPayoutTools' ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID, Req, Context) when OperationID =:= 'GetPayoutToolByID' ->
+prepare(OperationID = 'GetPayoutToolByID', Req, Context) ->
     PartyID = capi_handler_utils:get_party_id(Context),
     OperationContext = #{
         id => OperationID,
@@ -121,7 +114,7 @@ prepare(OperationID, Req, Context) when OperationID =:= 'GetPayoutToolByID' ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID, Req, Context) when OperationID =:= 'GetPayoutToolsForParty' ->
+prepare(OperationID = 'GetPayoutToolsForParty', Req, Context) ->
     PartyID = maps:get('partyID', Req),
     OperationContext = #{
         id => OperationID,
@@ -140,7 +133,7 @@ prepare(OperationID, Req, Context) when OperationID =:= 'GetPayoutToolsForParty'
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID, Req, Context) when OperationID =:= 'GetPayoutToolByIDForParty' ->
+prepare(OperationID = 'GetPayoutToolByIDForParty', Req, Context) ->
     PartyID = maps:get('partyID', Req),
     OperationContext = #{
         id => OperationID,
@@ -162,7 +155,7 @@ prepare(OperationID, Req, Context) when OperationID =:= 'GetPayoutToolByIDForPar
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID, Req, Context) when OperationID =:= 'GetScheduleByRef' ->
+prepare(OperationID = 'GetScheduleByRef', Req, Context) ->
     OperationContext = #{
         id => OperationID
     },
@@ -182,11 +175,6 @@ prepare(_OperationID, _Req, _Context) ->
     {error, noimpl}.
 
 %%
-
-check_party_in_payout(PartyID, #payouts_Payout{party_id = PartyID}) ->
-    true;
-check_party_in_payout(_PartyID, _) ->
-    false.
 
 get_schedule_by_id(ScheduleID, Context) ->
     Ref = {business_schedule, #domain_BusinessScheduleRef{id = ScheduleID}},

@@ -97,10 +97,10 @@
     create_payout/1,
     get_payout/1,
     create_payout_autorization_error/1,
-    get_payout_fail/1,
     create_webhook_ok_test/1,
     create_webhook_limit_exceeded_test/1,
     get_webhooks/1,
+    get_webhooks_for_party/1,
     get_webhook_by_id/1,
     delete_webhook_by_id/1,
     get_categories_ok_test/1,
@@ -257,6 +257,7 @@ groups() ->
             create_webhook_ok_test,
             create_webhook_limit_exceeded_test,
             get_webhooks,
+            get_webhooks_for_party,
             get_webhook_by_id,
             delete_webhook_by_id,
 
@@ -267,7 +268,6 @@ groups() ->
             create_payout,
             create_payout_autorization_error,
             get_payout,
-            get_payout_fail,
 
             different_ip_header
         ]}
@@ -1697,24 +1697,6 @@ get_payout(Config) ->
     ),
     {ok, _} = capi_client_payouts:get_payout(?config(context, Config), ?STRING).
 
--spec get_payout_fail(config()) -> _.
-get_payout_fail(Config) ->
-    PartyID = <<"Wrong party id">>,
-    Payout = ?PAYOUT(?WALLET_TOOL, PartyID),
-    _ = capi_ct_helper:mock_services([{payouts, fun('GetPayout', _) -> {ok, Payout} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_arbiter(
-        ?assertContextMatches(
-            #ctx_v1_ContextFragment{
-                capi = ?CTX_CAPI(?CTX_PAYOUT_OP(<<"GetPayout">>, ?STRING, ?STRING)),
-                payouts = #ctx_v1_ContextPayouts{
-                    payout = undefined
-                }
-            }
-        ),
-        Config
-    ),
-    {error, {404, _}} = capi_client_payouts:get_payout(?config(context, Config), ?STRING).
-
 -spec create_webhook_ok_test(config()) -> _.
 create_webhook_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
@@ -1789,6 +1771,13 @@ get_webhooks(Config) ->
     _ = capi_ct_helper:mock_services([{webhook_manager, fun('GetList', _) -> {ok, [?WEBHOOK]} end}], Config),
     _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetWebhooks">>, ?STRING, Config),
     {ok, _} = capi_client_webhooks:get_webhooks(?config(context, Config)).
+
+-spec get_webhooks_for_party(config()) -> _.
+get_webhooks_for_party(Config) ->
+    PartyID = ?STRING,
+    _ = capi_ct_helper:mock_services([{webhook_manager, fun('GetList', _) -> {ok, [?WEBHOOK]} end}], Config),
+    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetWebhooksForParty">>, ?STRING, Config),
+    {ok, _} = capi_client_webhooks:get_webhooks_for_party(?config(context, Config), PartyID).
 
 -spec get_webhook_by_id(config()) -> _.
 get_webhook_by_id(Config) ->

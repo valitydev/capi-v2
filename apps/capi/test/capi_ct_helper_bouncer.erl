@@ -174,7 +174,7 @@ mock_assert_payout_op_ctx(Op, PayoutID, PartyID, ContractID, ShopID, Config) ->
     mock_arbiter(
         ?assertContextMatches(
             #ctx_v1_ContextFragment{
-                capi = ?CTX_CAPI(?CTX_PAYOUT_OP(Op, PayoutID, PartyID)),
+                capi = ?CTX_CAPI(?CTX_PAYOUT_OP(Op, PayoutID)),
                 payouts = #ctx_v1_ContextPayouts{
                     payout = ?CTX_PAYOUT(PayoutID, PartyID, ContractID, ShopID)
                 }

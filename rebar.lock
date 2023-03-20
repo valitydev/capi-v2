@@ -119,7 +119,7 @@
  {<<"ssl_verify_fun">>,{pkg,<<"ssl_verify_fun">>,<<"1.1.6">>},2},
  {<<"swag_client">>,
   {git,"https://github.com/valitydev/swag-payments",
-       {ref,"ba5219fab460373881178c98b85addb16829d383"}},
+       {ref,"1f1327d6a09af117f45fae21165153654bc218bf"}},
   0},
  {<<"swag_server">>,
   {git,"https://github.com/valitydev/swag-payments",
