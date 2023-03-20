@@ -17,6 +17,7 @@
 -export([mock_assert_payout_op_ctx/6]).
 -export([mock_assert_search_op_ctx/2]).
 -export([mock_assert_search_op_ctx/3]).
+-export([mock_assert_requester_ctx/2]).
 -export([mock_restricted_shops/2]).
 
 -export([mock_client/1]).
@@ -200,6 +201,19 @@ mock_assert_search_op_ctx(SearchCtx, PayprocCtx, Config) ->
             #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(SearchCtx),
                 payment_processing = PayprocCtx
+            }
+        ),
+        Config
+    ).
+
+-spec mock_assert_requester_ctx(_, _) -> _.
+mock_assert_requester_ctx(IPAddress, Config) ->
+    mock_arbiter(
+        ?assertContextMatches(
+            #ctx_v1_ContextFragment{
+                requester = #ctx_v1_Requester{
+                    ip = IPAddress
+                }
             }
         ),
         Config

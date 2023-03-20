@@ -241,7 +241,7 @@ get_meta_mappings() ->
     maps:get(metadata_mappings, AuthConfig).
 
 get_ip_address(SwagContext) ->
-    Request = maps:get(req, SwagContext, #{}),
+    Request = maps:get(cowboy_req, SwagContext, #{}),
     case get_ip_address_from_request(Request) of
         {ok, IPAddress} ->
             IPAddress;
