@@ -19,7 +19,7 @@
     event_handler := event_handler(),
     protocol := protocol(),
     deadline := deadline(),
-    ip_address => string()
+    ip_address => binary()
 }.
 
 -export_type([deadline/0]).

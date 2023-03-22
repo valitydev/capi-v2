@@ -261,19 +261,59 @@ get_ip_address_from_request(Request) ->
             {error, no_req_in_swag_context}
     end.
 
-parse_header_ip_address(IPAddress) ->
-    ClientPeer = string:strip(binary_to_list(IPAddress)),
-    case string:tokens(ClientPeer, ", ") of
-        [ClientIP | _Proxies] ->
-            case inet:parse_strict_address(ClientIP) of
-                {ok, IP} ->
-                    % ok
-                    {ok, IP};
-                {error, Error} ->
-                    % unparseable ip address
-                    {error, Error}
-            end;
+parse_header_ip_address(IPAddress0) ->
+    IPAddress1 = erlang:binary_to_list(IPAddress0),
+    IPs = [L || L <- string:lexemes(IPAddress1, ", ")],
+    Valid = lists:all(fun check_ip/1, IPs),
+    case IPs of
+        [ClientIP | _Proxies] when Valid ->
+            inet:parse_strict_address(ClientIP);
         _ ->
             % empty or malformed value
             {error, malformed}
     end.
+
+check_ip(IP) ->
+    case inet:parse_strict_address(IP) of
+        {ok, _} ->
+            true;
+        _Error ->
+            % unparseable ip address
+            false
+    end.
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+-spec test() -> _.
+
+-spec determine_peer_test_() -> [_TestGen].
+determine_peer_test_() ->
+    [
+        ?_assertEqual(
+            {ok, {10, 10, 10, 10}},
+            parse_header_ip_address(<<"10.10.10.10">>)
+        ),
+        ?_assertEqual(
+            {ok, {17, 71, 0, 1}},
+            parse_header_ip_address(<<"17.71.0.1">>)
+        ),
+        ?_assertEqual(
+            {ok, {17, 71, 0, 1}},
+            parse_header_ip_address(<<" 17.71.0.1,123.123.123.123 ">>)
+        ),
+        ?_assertEqual(
+            {error, malformed},
+            parse_header_ip_address(<<",,,,">>)
+        ),
+        ?_assertEqual(
+            {ok, {1, 1, 1, 1}},
+            parse_header_ip_address(<<"1.1.1.1,,, ,,,">>)
+        ),
+        ?_assertEqual(
+            {error, malformed},
+            parse_header_ip_address(<<"1.,1.,1.1,">>)
+        )
+    ].
+
+-endif.
