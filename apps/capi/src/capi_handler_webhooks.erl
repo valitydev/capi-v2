@@ -40,8 +40,10 @@ prepare('CreateWebhook' = OperationID, Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare('GetWebhooks' = OperationID, _Req, Context) ->
-    PartyID = capi_handler_utils:get_party_id(Context),
+prepare(OperationID, #{'partyID' := PartyID}, Context) when
+    OperationID =:= 'GetWebhooksForParty';
+    OperationID =:= 'GetWebhooks'
+->
     Authorize = fun() ->
         Prototypes = [{operation, #{party => PartyID, id => OperationID}}],
         Resolution = capi_auth:authorize_operation(Prototypes, Context),
@@ -54,6 +56,10 @@ prepare('GetWebhooks' = OperationID, _Req, Context) ->
         {ok, {200, #{}, [decode_webhook(V) || V <- Webhooks]}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
+prepare('GetWebhooks' = OperationID, Req, Context) ->
+    PartyID = capi_handler_utils:get_party_id(Context),
+    Req1 = maps:put('partyID', PartyID, Req),
+    prepare(OperationID, Req1, Context);
 prepare('GetWebhookByID' = OperationID, Req, Context) ->
     WebhookID = maps:get('webhookID', Req),
     Webhook =
@@ -138,12 +144,9 @@ encode_webhook_id(WebhookID) ->
     end.
 
 get_webhook(WebhookID, Context) ->
-    PartyID = capi_handler_utils:get_party_id(Context),
     case capi_handler_utils:service_call({webhook_manager, 'Get', {WebhookID}}, Context) of
-        {ok, Webhook = #webhooker_Webhook{party_id = PartyID}} ->
+        {ok, Webhook} ->
             {ok, Webhook};
-        {ok, _Webhook} ->
-            {exception, #webhooker_WebhookNotFound{}};
         {exception, Exception} ->
             {exception, Exception}
     end.

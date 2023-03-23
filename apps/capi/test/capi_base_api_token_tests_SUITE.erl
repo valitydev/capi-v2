@@ -27,6 +27,7 @@
     create_invoice_ok_test/1,
     create_invoice_autorization_error_test/1,
     get_invoice_by_external_id/1,
+    get_invoice_by_external_id_for_party/1,
     get_invoice_by_external_id_not_impl_error/1,
     create_invoice_access_token_ok_test/1,
     create_invoice_template_ok_test/1,
@@ -96,10 +97,10 @@
     create_payout/1,
     get_payout/1,
     create_payout_autorization_error/1,
-    get_payout_fail/1,
     create_webhook_ok_test/1,
     create_webhook_limit_exceeded_test/1,
     get_webhooks/1,
+    get_webhooks_for_party/1,
     get_webhook_by_id/1,
     delete_webhook_by_id/1,
     get_categories_ok_test/1,
@@ -109,12 +110,17 @@
     get_payment_institution_by_ref/1,
     get_payment_institution_payment_terms/1,
     get_payment_institution_payout_terms/1,
+    get_payment_institution_payout_terms_for_party/1,
     get_payment_institution_payout_schedules/1,
+    get_payment_institution_payout_schedules_for_party/1,
     get_service_provider_by_id/1,
     check_no_payment_by_external_id_test/1,
     check_no_internal_id_for_external_id_test/1,
     retrieve_payment_by_external_id_test/1,
+    retrieve_payment_by_external_id_for_party_test/1,
     check_no_invoice_by_external_id_test/1,
+    retrieve_refund_by_external_id_test/1,
+    retrieve_refund_by_external_id_for_party_test/1,
     get_country_by_id_test/1,
     get_country_by_id_not_found_test/1,
     get_countries_test/1,
@@ -160,6 +166,7 @@ groups() ->
             create_invoice_ok_test,
             create_invoice_autorization_error_test,
             get_invoice_by_external_id,
+            get_invoice_by_external_id_for_party,
             get_invoice_by_external_id_not_impl_error,
             check_no_invoice_by_external_id_test,
             create_invoice_access_token_ok_test,
@@ -205,7 +212,10 @@ groups() ->
 
             create_payment_ok_test,
             retrieve_payment_by_external_id_test,
+            retrieve_payment_by_external_id_for_party_test,
             check_no_payment_by_external_id_test,
+            retrieve_refund_by_external_id_test,
+            retrieve_refund_by_external_id_for_party_test,
             create_refund,
             create_refund_blocked_error,
             create_refund_expired_error,
@@ -229,7 +239,9 @@ groups() ->
             get_payment_institution_by_ref,
             get_payment_institution_payment_terms,
             get_payment_institution_payout_terms,
+            get_payment_institution_payout_terms_for_party,
             get_payment_institution_payout_schedules,
+            get_payment_institution_payout_schedules_for_party,
             get_service_provider_by_id,
 
             get_category_by_ref_ok_test,
@@ -244,6 +256,7 @@ groups() ->
             create_webhook_ok_test,
             create_webhook_limit_exceeded_test,
             get_webhooks,
+            get_webhooks_for_party,
             get_webhook_by_id,
             delete_webhook_by_id,
 
@@ -253,8 +266,7 @@ groups() ->
             get_payout_tool_by_id_for_party,
             create_payout,
             create_payout_autorization_error,
-            get_payout,
-            get_payout_fail
+            get_payout
         ]}
     ].
 
@@ -359,6 +371,31 @@ get_invoice_by_external_id(Config) ->
     ),
 
     {ok, _} = capi_client_invoices:get_invoice_by_external_id(?config(context, Config), ExternalID).
+
+-spec get_invoice_by_external_id_for_party(config()) -> _.
+get_invoice_by_external_id_for_party(Config) ->
+    PartyID = capi_utils:get_unique_id(),
+    ExternalID = <<"merch_id">>,
+    BenderContext = capi_msgp_marshalling:marshal(#{<<"context_data">> => #{}}),
+    InvoiceID = capi_utils:get_unique_id(),
+    _ = capi_ct_helper:mock_services(
+        [
+            {invoicing, fun('Get', _) -> {ok, ?PAYPROC_INVOICE_WITH_ID(InvoiceID, ExternalID, PartyID)} end},
+            {bender, fun('GetInternalID', _) ->
+                {ok, capi_ct_helper_bender:get_internal_id_result(InvoiceID, BenderContext)}
+            end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_invoice_op_ctx(
+        <<"GetInvoiceByExternalIDForParty">>,
+        InvoiceID,
+        PartyID,
+        ?STRING,
+        Config
+    ),
+
+    {ok, _} = capi_client_invoices:get_invoice_by_external_id_for_party(?config(context, Config), PartyID, ExternalID).
 
 -spec get_invoice_by_external_id_not_impl_error(config()) -> _.
 get_invoice_by_external_id_not_impl_error(Config) ->
@@ -1657,24 +1694,6 @@ get_payout(Config) ->
     ),
     {ok, _} = capi_client_payouts:get_payout(?config(context, Config), ?STRING).
 
--spec get_payout_fail(config()) -> _.
-get_payout_fail(Config) ->
-    PartyID = <<"Wrong party id">>,
-    Payout = ?PAYOUT(?WALLET_TOOL, PartyID),
-    _ = capi_ct_helper:mock_services([{payouts, fun('GetPayout', _) -> {ok, Payout} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_arbiter(
-        ?assertContextMatches(
-            #ctx_v1_ContextFragment{
-                capi = ?CTX_CAPI(?CTX_PAYOUT_OP(<<"GetPayout">>, ?STRING, ?STRING)),
-                payouts = #ctx_v1_ContextPayouts{
-                    payout = undefined
-                }
-            }
-        ),
-        Config
-    ),
-    {error, {404, _}} = capi_client_payouts:get_payout(?config(context, Config), ?STRING).
-
 -spec create_webhook_ok_test(config()) -> _.
 create_webhook_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
@@ -1749,6 +1768,13 @@ get_webhooks(Config) ->
     _ = capi_ct_helper:mock_services([{webhook_manager, fun('GetList', _) -> {ok, [?WEBHOOK]} end}], Config),
     _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetWebhooks">>, ?STRING, Config),
     {ok, _} = capi_client_webhooks:get_webhooks(?config(context, Config)).
+
+-spec get_webhooks_for_party(config()) -> _.
+get_webhooks_for_party(Config) ->
+    PartyID = ?STRING,
+    _ = capi_ct_helper:mock_services([{webhook_manager, fun('GetList', _) -> {ok, [?WEBHOOK]} end}], Config),
+    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetWebhooksForParty">>, ?STRING, Config),
+    {ok, _} = capi_client_webhooks:get_webhooks_for_party(?config(context, Config), PartyID).
 
 -spec get_webhook_by_id(config()) -> _.
 get_webhook_by_id(Config) ->
@@ -1879,6 +1905,100 @@ retrieve_payment_by_external_id_test(Config) ->
     }} =
         capi_client_payments:get_payment_by_external_id(?config(context, Config), ExternalID).
 
+-spec retrieve_payment_by_external_id_for_party_test(config()) -> _.
+retrieve_payment_by_external_id_for_party_test(Config) ->
+    PartyID = capi_utils:get_unique_id(),
+    PaymentID = capi_utils:get_unique_id(),
+    ExternalID = capi_utils:get_unique_id(),
+    BenderContext = capi_msgp_marshalling:marshal(#{<<"context_data">> => #{<<"invoice_id">> => ?STRING}}),
+    _ = capi_ct_helper:mock_services(
+        [
+            {invoicing, fun('Get', _) ->
+                Payment = ?PAYPROC_PAYMENT(?PAYMENT_W_EXTERNAL_ID(PaymentID, ExternalID)),
+                {ok, ?PAYPROC_INVOICE(?INVOICE(?STRING, undefined, PartyID), [Payment])}
+            end},
+            {bender, fun('GetInternalID', _) ->
+                {ok, capi_ct_helper_bender:get_internal_id_result(PaymentID, BenderContext)}
+            end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_payment_op_ctx(
+        <<"GetPaymentByExternalIDForParty">>,
+        ?STRING,
+        PaymentID,
+        PartyID,
+        ?STRING,
+        Config
+    ),
+    {ok, #{<<"externalID">> := ExternalID}} =
+        capi_client_payments:get_payment_by_external_id_for_party(?config(context, Config), PartyID, ExternalID).
+
+-spec retrieve_refund_by_external_id_test(config()) -> _.
+retrieve_refund_by_external_id_test(Config) ->
+    RefundID = capi_utils:get_unique_id(),
+    PaymentID = capi_utils:get_unique_id(),
+    ExternalID = capi_utils:get_unique_id(),
+    BenderContext = capi_msgp_marshalling:marshal(#{
+        <<"context_data">> => #{<<"payment_id">> => PaymentID, <<"invoice_id">> => ?STRING}
+    }),
+    _ = capi_ct_helper:mock_services(
+        [
+            {invoicing, fun('Get', _) ->
+                P = ?PAYPROC_PAYMENT(?PAYMENT_W_EXTERNAL_ID(PaymentID, ?STRING)),
+                Payment = P#payproc_InvoicePayment{refunds = [?PAYPROC_REFUND(RefundID, ExternalID)]},
+                {ok, ?PAYPROC_INVOICE([Payment])}
+            end},
+            {bender, fun('GetInternalID', _) ->
+                {ok, capi_ct_helper_bender:get_internal_id_result(RefundID, BenderContext)}
+            end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_payment_op_ctx(
+        <<"GetRefundByExternalID">>,
+        ?STRING,
+        PaymentID,
+        ?STRING,
+        ?STRING,
+        Config
+    ),
+    {ok, #{<<"externalID">> := ExternalID}} =
+        capi_client_payments:get_refund_by_external_id(?config(context, Config), ExternalID).
+
+-spec retrieve_refund_by_external_id_for_party_test(config()) -> _.
+retrieve_refund_by_external_id_for_party_test(Config) ->
+    PartyID = capi_utils:get_unique_id(),
+    RefundID = capi_utils:get_unique_id(),
+    PaymentID = capi_utils:get_unique_id(),
+    ExternalID = capi_utils:get_unique_id(),
+    BenderContext = capi_msgp_marshalling:marshal(#{
+        <<"context_data">> => #{<<"payment_id">> => PaymentID, <<"invoice_id">> => ?STRING}
+    }),
+    _ = capi_ct_helper:mock_services(
+        [
+            {invoicing, fun('Get', _) ->
+                P = ?PAYPROC_PAYMENT(?PAYMENT_W_EXTERNAL_ID(PaymentID, ?STRING)),
+                Payment = P#payproc_InvoicePayment{refunds = [?PAYPROC_REFUND(RefundID, ExternalID)]},
+                {ok, ?PAYPROC_INVOICE(?INVOICE(?STRING, undefined, PartyID), [Payment])}
+            end},
+            {bender, fun('GetInternalID', _) ->
+                {ok, capi_ct_helper_bender:get_internal_id_result(RefundID, BenderContext)}
+            end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_payment_op_ctx(
+        <<"GetRefundByExternalIDForParty">>,
+        ?STRING,
+        PaymentID,
+        PartyID,
+        ?STRING,
+        Config
+    ),
+    {ok, #{<<"externalID">> := ExternalID}} =
+        capi_client_payments:get_refund_by_external_id_for_party(?config(context, Config), PartyID, ExternalID).
+
 -spec get_payment_institutions(config()) -> _.
 get_payment_institutions(Config) ->
     _ = capi_ct_helper_bouncer:mock_assert_op_ctx(<<"GetPaymentInstitutions">>, Config),
@@ -1920,6 +2040,23 @@ get_payment_institution_payout_terms(Config) ->
         <<"RUB">>
     ).
 
+-spec get_payment_institution_payout_terms_for_party(config()) -> _.
+get_payment_institution_payout_terms_for_party(Config) ->
+    PartyID = capi_utils:get_unique_id(),
+    _ = capi_ct_helper:mock_services(
+        [
+            {party_management, fun('ComputePaymentInstitutionTerms', _) -> {ok, ?TERM_SET} end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_op_ctx(<<"GetPaymentInstitutionPayoutMethodsForParty">>, Config),
+    {ok, _} = capi_client_payment_institutions:get_payment_institution_payout_methods_for_party(
+        ?config(context, Config),
+        PartyID,
+        ?INTEGER,
+        <<"RUB">>
+    ).
+
 -spec get_payment_institution_payout_schedules(config()) -> _.
 get_payment_institution_payout_schedules(Config) ->
     _ = capi_ct_helper:mock_services(
@@ -1932,6 +2069,25 @@ get_payment_institution_payout_schedules(Config) ->
 
     {ok, _} = capi_client_payment_institutions:get_payment_institution_payout_schedules(
         ?config(context, Config),
+        ?INTEGER,
+        <<"USD">>,
+        <<"BankAccount">>
+    ).
+
+-spec get_payment_institution_payout_schedules_for_party(config()) -> _.
+get_payment_institution_payout_schedules_for_party(Config) ->
+    PartyID = capi_utils:get_unique_id(),
+    _ = capi_ct_helper:mock_services(
+        [
+            {party_management, fun('ComputePaymentInstitutionTerms', _) -> {ok, ?TERM_SET} end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_op_ctx(<<"GetPaymentInstitutionPayoutSchedulesForParty">>, Config),
+
+    {ok, _} = capi_client_payment_institutions:get_payment_institution_payout_schedules_for_party(
+        ?config(context, Config),
+        PartyID,
         ?INTEGER,
         <<"USD">>,
         <<"BankAccount">>

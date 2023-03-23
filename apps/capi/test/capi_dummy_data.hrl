@@ -77,7 +77,9 @@
 
 -define(INVOICE, ?INVOICE(?STRING, undefined)).
 
--define(INVOICE(ID, EID), #domain_Invoice{
+-define(INVOICE(ID, EID), ?INVOICE(ID, EID, ?STRING)).
+
+-define(INVOICE(ID, EID, OwnerID), #domain_Invoice{
     id = ID,
     created_at = ?TIMESTAMP,
     status = ?INVOICE_STATUS(unpaid),
@@ -86,7 +88,7 @@
     cost = ?CASH,
     context = ?CONTENT,
     shop_id = ?STRING,
-    owner_id = ?STRING,
+    owner_id = OwnerID,
     template_id = ?STRING,
     external_id = EID
 }).
@@ -110,20 +112,21 @@
     }}
 ).
 
--define(PAYPROC_INVOICE(Payments), #payproc_Invoice{
-    invoice = ?INVOICE,
+-define(PAYPROC_INVOICE(Payments), ?PAYPROC_INVOICE(?INVOICE, Payments)).
+
+-define(PAYPROC_INVOICE(Invoice, Payments), #payproc_Invoice{
+    invoice = Invoice,
     payments = Payments
 }).
 
 -define(PAYPROC_INVOICE, ?PAYPROC_INVOICE([])).
 
--define(PAYPROC_INVOICE_WITH_ID(ID), #payproc_Invoice{
-    invoice = ?INVOICE(ID, undefined),
-    payments = []
-}).
+-define(PAYPROC_INVOICE_WITH_ID(ID), ?PAYPROC_INVOICE_WITH_ID(ID, undefined, ?STRING)).
 
--define(PAYPROC_INVOICE_WITH_ID(ID, EID), #payproc_Invoice{
-    invoice = ?INVOICE(ID, EID),
+-define(PAYPROC_INVOICE_WITH_ID(ID, EID), ?PAYPROC_INVOICE_WITH_ID(ID, EID, ?STRING)).
+
+-define(PAYPROC_INVOICE_WITH_ID(ID, EID, OwnerID), #payproc_Invoice{
+    invoice = ?INVOICE(ID, EID, OwnerID),
     payments = []
 }).
 
