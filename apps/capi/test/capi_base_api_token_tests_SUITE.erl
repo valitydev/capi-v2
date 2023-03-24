@@ -126,7 +126,8 @@
     get_countries_test/1,
     get_trade_bloc_by_id_test/1,
     get_trade_bloc_by_id_not_found_test/1,
-    get_trade_blocs_test/1
+    get_trade_blocs_test/1,
+    different_ip_header/1
 ]).
 
 -type test_case_name() :: atom().
@@ -266,7 +267,9 @@ groups() ->
             get_payout_tool_by_id_for_party,
             create_payout,
             create_payout_autorization_error,
-            get_payout
+            get_payout,
+
+            different_ip_header
         ]}
     ].
 
@@ -2186,3 +2189,15 @@ get_trade_blocs_test(Config) ->
         ]},
         capi_client_trade_blocs:get_trade_blocs(?config(context, Config))
     ).
+
+-spec different_ip_header(config()) -> _.
+different_ip_header(Config) ->
+    _ = capi_ct_helper:mock_services([{party_management, fun('GetShop', _) -> {ok, ?SHOP} end}], Config),
+    IPAddress = <<"192.168.4.2">>,
+    _ = capi_ct_helper_bouncer:mock_assert_requester_ctx(
+        IPAddress,
+        Config
+    ),
+    Context0 = ?config(context, Config),
+    Context1 = Context0#{ip_address => IPAddress},
+    {ok, _} = capi_client_shops:get_shop_by_id(Context1, ?STRING).
