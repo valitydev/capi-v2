@@ -720,7 +720,6 @@ create_refund(PartyID, InvoiceID, PaymentID, RefundParams0, Context, BenderPrefi
 refund_payment(PartyID, RefundID, InvoiceID, PaymentID, RefundParams, Context) ->
     ExternalID = maps:get(<<"externalID">>, RefundParams, undefined),
     Allocation = maps:get(<<"allocation">>, RefundParams, undefined),
-    PartyID = capi_handler_utils:get_party_id(Context),
     Params = #payproc_InvoicePaymentRefundParams{
         external_id = ExternalID,
         reason = genlib_map:get(<<"reason">>, RefundParams),
