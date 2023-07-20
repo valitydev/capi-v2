@@ -18,7 +18,8 @@
     timeout := integer(),
     event_handler := event_handler(),
     protocol := protocol(),
-    deadline := deadline()
+    deadline := deadline(),
+    ip_address => binary()
 }.
 
 -export_type([deadline/0]).
@@ -152,11 +153,12 @@ get_hackney_opts(Context) ->
 -spec headers(context()) -> list(header()).
 headers(#{deadline := Deadline} = Context) ->
     RequiredHeaders = x_request_deadline_header(Deadline, [x_request_id_header() | json_accept_headers()]),
+    OptionalIPHeader = ip_address_header(Context, RequiredHeaders),
     case maps:get(token, Context) of
         <<>> ->
-            RequiredHeaders;
+            OptionalIPHeader;
         Token ->
-            [auth_header(Token) | RequiredHeaders]
+            [auth_header(Token) | OptionalIPHeader]
     end.
 
 -spec x_request_id_header() -> header().
@@ -170,6 +172,12 @@ x_request_deadline_header(WoodyDeadline = {_, _}, Headers) ->
     [{<<"X-Request-Deadline">>, woody_deadline:to_binary(WoodyDeadline)} | Headers];
 x_request_deadline_header(Time, Headers) ->
     [{<<"X-Request-Deadline">>, Time} | Headers].
+
+-spec ip_address_header(context(), list()) -> list().
+ip_address_header(#{ip_address := IPAddress}, Headers) ->
+    [{<<"x-forwarded-for">>, IPAddress} | Headers];
+ip_address_header(_Context, Headers) ->
+    Headers.
 
 -spec auth_header(term()) -> header().
 auth_header(Token) ->
