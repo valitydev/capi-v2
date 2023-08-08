@@ -253,7 +253,7 @@ create_woody_context(RpcID) ->
     woody_context:new(RpcID).
 
 put_user_identity(WoodyContext, AuthContext) ->
-    logger:info("trace_auth: put_user_identity", [AuthContext]),
+    logger:info("trace_auth: put_user_identity ~p", [AuthContext]),
     woody_user_identity:put(collect_user_identity(AuthContext), WoodyContext).
 
 collect_user_identity(AuthContext) ->
