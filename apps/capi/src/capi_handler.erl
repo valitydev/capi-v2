@@ -221,7 +221,6 @@ get_auth_context(#{auth_context := AuthContext}) ->
 do_authorize_api_key(SwagContext = #{auth_context := PreAuthContext}, WoodyContext) ->
     case capi_auth:authorize_api_key(PreAuthContext, make_token_context(SwagContext), WoodyContext) of
         {ok, AuthContext} ->
-            logger:info("trace_auth: do_authorize_api_key AuthContext: ~p", [AuthContext]),
             SwagContext#{auth_context => AuthContext};
         {error, Error} ->
             throw({token_auth_failed, Error})
@@ -253,7 +252,6 @@ create_woody_context(RpcID) ->
     woody_context:new(RpcID).
 
 put_user_identity(WoodyContext, AuthContext) ->
-    logger:info("trace_auth: put_user_identity ~p", [AuthContext]),
     woody_user_identity:put(collect_user_identity(AuthContext), WoodyContext).
 
 collect_user_identity(AuthContext) ->

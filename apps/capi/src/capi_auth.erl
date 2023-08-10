@@ -212,10 +212,8 @@ get_token_keeper_fragment(?AUTHORIZED(#{context := Context})) ->
 
 authorize_token_by_type(bearer, Token, TokenContext, WoodyContext) ->
     Authenticator = token_keeper_client:authenticator(WoodyContext),
-    logger:info("trace_auth: authorize_token_by_type TokenContext: ~p", [TokenContext]),
     case token_keeper_authenticator:authenticate(Token, TokenContext, Authenticator) of
         {ok, AuthData} ->
-            logger:info("trace_auth: authorize_token_by_type AuthData: ~p", [AuthData]),
             {ok, ?AUTHORIZED(AuthData)};
         {error, TokenKeeperError} ->
             _ = logger:warning("Token keeper authorization failed: ~p", [TokenKeeperError]),
@@ -230,7 +228,6 @@ parse_api_key(_) ->
 %%
 
 get_metadata(Key, Metadata) ->
-    logger:info("trace_auth: get_metadata ~p/~p", [Key, Metadata]),
     maps:get(Key, Metadata, undefined).
 
 put_metadata(Key, Value, Metadata) ->
