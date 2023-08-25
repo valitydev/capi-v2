@@ -23,8 +23,7 @@
 ) -> {ok, capi_handler:request_state()} | {error, noimpl}.
 prepare('CreateCustomer' = OperationID, Req, Context) ->
     CustomerParams = maps:get('CustomerParams', Req),
-    UserID = capi_handler_utils:get_user_id(Context),
-    PartyID = maps:get(<<"partyID">>, CustomerParams, UserID),
+    PartyID = maps:get(<<"partyID">>, CustomerParams, capi_handler_utils:get_party_id(Context)),
     ShopID = maps:get(<<"shopID">>, CustomerParams),
     Authorize = fun() ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
@@ -305,7 +304,7 @@ encode_customer_metadata(Meta) ->
 
 generate_binding_ids(OperationID, CustomerBindingParams, Context = #{woody_context := WoodyContext}) ->
     ExternalID = maps:get(<<"externalID">>, CustomerBindingParams, undefined),
-    UserID = capi_handler_utils:get_user_id(Context),
+    PartyID = capi_handler_utils:get_party_id(Context),
 
     PaymentResource = maps:get(<<"paymentResource">>, CustomerBindingParams),
     PaymentToolToken = maps:get(<<"paymentToolToken">>, PaymentResource),
@@ -328,12 +327,12 @@ generate_binding_ids(OperationID, CustomerBindingParams, Context = #{woody_conte
 
     OperationIDBin = erlang:atom_to_binary(OperationID),
     CustomerBindingID = capi_bender:gen_snowflake(
-        {<<OperationIDBin/binary, "+CustomerBindingID">>, UserID, ExternalID},
+        {<<OperationIDBin/binary, "+CustomerBindingID">>, PartyID, ExternalID},
         Identity,
         WoodyContext
     ),
     RecPaymentToolID = capi_bender:gen_snowflake(
-        {<<OperationIDBin/binary, "+RecPaymentToolID">>, UserID, ExternalID},
+        {<<OperationIDBin/binary, "+RecPaymentToolID">>, PartyID, ExternalID},
         Identity,
         WoodyContext
     ),

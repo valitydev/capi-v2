@@ -17,10 +17,7 @@
 ) -> {ok, capi_handler:request_state()} | {error, noimpl}.
 prepare('CreateInvoice' = OperationID, Req, Context) ->
     InvoiceParams = maps:get('InvoiceParams', Req),
-    UserID = capi_handler_utils:get_user_id(Context),
-    %% Now hellgate checks user's possibility use party.
-    %% After integration with bouncer, we have to remove validation in hellgate.
-    PartyID = maps:get(<<"partyID">>, InvoiceParams, UserID),
+    PartyID = maps:get(<<"partyID">>, InvoiceParams, capi_handler_utils:get_party_id(Context)),
     Authorize = fun() ->
         ShopID = maps:get(<<"shopID">>, InvoiceParams),
         Prototypes = [

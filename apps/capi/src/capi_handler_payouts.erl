@@ -46,8 +46,7 @@ prepare(OperationID = 'GetPayout', Req, Context) ->
     {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'CreatePayout', Req, Context) ->
     PayoutParams = maps:get('PayoutParams', Req),
-    UserID = capi_handler_utils:get_user_id(Context),
-    PartyID = maps:get(<<"partyID">>, PayoutParams, UserID),
+    PartyID = maps:get(<<"partyID">>, PayoutParams, capi_handler_utils:get_party_id(Context)),
     OperationContext = #{
         id => OperationID,
         party => PartyID,
