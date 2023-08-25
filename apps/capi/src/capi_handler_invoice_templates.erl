@@ -17,8 +17,7 @@
 ) -> {ok, capi_handler:request_state()} | {error, noimpl}.
 prepare('CreateInvoiceTemplate' = OperationID, Req, Context) ->
     InvoiceTemplateParams = maps:get('InvoiceTemplateCreateParams', Req),
-    UserID = capi_handler_utils:get_user_id(Context),
-    PartyID = maps:get(<<"partyID">>, InvoiceTemplateParams, UserID),
+    PartyID = maps:get(<<"partyID">>, InvoiceTemplateParams, capi_handler_utils:get_party_id(Context)),
     Authorize = fun() ->
         ShopID = maps:get(<<"shopID">>, InvoiceTemplateParams),
         Prototypes = [{operation, #{party => PartyID, shop => ShopID, id => OperationID}}],

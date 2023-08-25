@@ -16,8 +16,7 @@
 ) -> {ok, capi_handler:request_state()} | {error, noimpl}.
 prepare('CreateWebhook' = OperationID, Req, Context) ->
     Params = maps:get('Webhook', Req),
-    UserID = capi_handler_utils:get_user_id(Context),
-    PartyID = maps:get(<<"partyID">>, Params, UserID),
+    PartyID = maps:get(<<"partyID">>, Params, capi_handler_utils:get_party_id(Context)),
     Authorize = fun() ->
         Prototypes = [{operation, #{party => PartyID, id => OperationID}}],
         Resolution = capi_auth:authorize_operation(Prototypes, Context),
