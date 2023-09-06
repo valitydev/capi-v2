@@ -643,7 +643,14 @@ compare_customer_features_test() ->
         <<"shopID">> => hash(<<"Another shop">>),
         <<"contactInfo">> => #{
             <<"email">> => hash(<<"bla@example.com">>),
-            <<"phoneNumber">> => <<"8-800-555-35-35">>
+            <<"phoneNumber">> => <<"8-800-555-35-35">>,
+            <<"firstName">> => <<"firstName">>,
+            <<"lastName">> => <<"lastName">>,
+            <<"country">> => <<"country">>,
+            <<"state">> => <<"state">>,
+            <<"city">> => <<"city">>,
+            <<"address">> => <<"address">>,
+            <<"zipCode">> => <<"zipCode">>
         }
     },
     common_compare_tests(
