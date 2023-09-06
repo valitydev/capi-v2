@@ -68,6 +68,13 @@
 -define(vat, 62).
 -define(unlimited, 63).
 -define(shop, 64).
+-define(first_name, 65).
+-define(last_name, 66).
+-define(country, 67).
+-define(state, 68).
+-define(city, 69).
+-define(address, 70).
+-define(zip_code, 71).
 
 -export([payment/0]).
 -export([invoice/0]).
@@ -326,7 +333,14 @@ lifetime_schema() ->
 contact_info_schema() ->
     #{
         ?email => <<"email">>,
-        ?phone_number => <<"phoneNumber">>
+        ?phone_number => <<"phoneNumber">>,
+        ?first_name => <<"firstName">>,
+        ?last_name => <<"lastName">>,
+        ?country => <<"country">>,
+        ?state => <<"state">>,
+        ?city => <<"city">>,
+        ?address => <<"address">>,
+        ?zip_code => <<"zipCode">>
     }.
 
 -ifdef(TEST).
@@ -602,7 +616,14 @@ read_customer_features_test() ->
         ?shop_id => hash(?STRING),
         ?contact_info => #{
             ?email => hash(<<"bla@bla.ru">>),
-            ?phone_number => undefined
+            ?phone_number => undefined,
+            ?first_name => undefined,
+            ?last_name => undefined,
+            ?country => undefined,
+            ?state => undefined,
+            ?city => undefined,
+            ?address => undefined,
+            ?zip_code => undefined
         }
     },
     ?assertEqual(

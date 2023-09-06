@@ -32,10 +32,27 @@ decode_shop_details(#domain_ShopDetails{name = Name, description = Description})
     }).
 
 -spec decode_contact_info(capi_handler_encoder:encode_data()) -> capi_handler_decoder_utils:decode_data().
-decode_contact_info(#domain_ContactInfo{phone_number = PhoneNumber, email = Email}) ->
+decode_contact_info(#domain_ContactInfo{
+    phone_number = PhoneNumber,
+    email = Email,
+    first_name = FirstName,
+    last_name = LastName,
+    country = Country,
+    state = State,
+    city = City,
+    address = Address,
+    zip_code = ZipCode
+}) ->
     genlib_map:compact(#{
         <<"phoneNumber">> => PhoneNumber,
-        <<"email">> => Email
+        <<"email">> => Email,
+        <<"firstName">> => FirstName,
+        <<"lastName">> => LastName,
+        <<"country">> => Country,
+        <<"state">> => State,
+        <<"city">> => City,
+        <<"address">> => Address,
+        <<"zipCode">> => ZipCode
     }).
 
 -spec decode_party(capi_handler_encoder:encode_data()) -> capi_handler_decoder_utils:decode_data().

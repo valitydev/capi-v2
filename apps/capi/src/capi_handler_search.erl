@@ -288,7 +288,14 @@ decode_stat_payer(
         recurrent_parent = RecurrentParent,
         contact_info = #domain_ContactInfo{
             phone_number = PhoneNumber,
-            email = Email
+            email = Email,
+            first_name = FirstName,
+            last_name = LastName,
+            country = Country,
+            state = State,
+            city = City,
+            address = Address,
+            zip_code = ZipCode
         }
     }}
 ) ->
@@ -297,7 +304,14 @@ decode_stat_payer(
         <<"paymentToolDetails">> => decode_stat_payment_tool_details(PaymentTool),
         <<"contactInfo">> => genlib_map:compact(#{
             <<"phoneNumber">> => PhoneNumber,
-            <<"email">> => Email
+            <<"email">> => Email,
+            <<"firstName">> => FirstName,
+            <<"lastName">> => LastName,
+            <<"country">> => Country,
+            <<"state">> => State,
+            <<"city">> => City,
+            <<"address">> => Address,
+            <<"zipCode">> => ZipCode
         }),
         <<"recurrentParentPayment">> => capi_handler_decoder_invoicing:decode_recurrent_parent(RecurrentParent)
     };
@@ -313,7 +327,14 @@ decode_stat_payer(
         },
         contact_info = #domain_ContactInfo{
             phone_number = PhoneNumber,
-            email = Email
+            email = Email,
+            first_name = FirstName,
+            last_name = LastName,
+            country = Country,
+            state = State,
+            city = City,
+            address = Address,
+            zip_code = ZipCode
         }
     }}
 ) ->
@@ -327,7 +348,14 @@ decode_stat_payer(
         }),
         <<"contactInfo">> => genlib_map:compact(#{
             <<"phoneNumber">> => PhoneNumber,
-            <<"email">> => Email
+            <<"email">> => Email,
+            <<"firstName">> => FirstName,
+            <<"lastName">> => LastName,
+            <<"country">> => Country,
+            <<"state">> => State,
+            <<"city">> => City,
+            <<"address">> => Address,
+            <<"zipCode">> => ZipCode
         })
     }).
 
