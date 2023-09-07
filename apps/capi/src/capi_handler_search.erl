@@ -295,7 +295,7 @@ decode_stat_payer(
             state = State,
             city = City,
             address = Address,
-            zip_code = ZipCode
+            postal_code = PostalCode
         }
     }}
 ) ->
@@ -311,7 +311,7 @@ decode_stat_payer(
             <<"state">> => State,
             <<"city">> => City,
             <<"address">> => Address,
-            <<"zipCode">> => ZipCode
+            <<"postalCode">> => PostalCode
         }),
         <<"recurrentParentPayment">> => capi_handler_decoder_invoicing:decode_recurrent_parent(RecurrentParent)
     };
@@ -334,7 +334,7 @@ decode_stat_payer(
             state = State,
             city = City,
             address = Address,
-            zip_code = ZipCode
+            postal_code = PostalCode
         }
     }}
 ) ->
@@ -355,7 +355,7 @@ decode_stat_payer(
             <<"state">> => State,
             <<"city">> => City,
             <<"address">> => Address,
-            <<"zipCode">> => ZipCode
+            <<"postalCode">> => PostalCode
         })
     }).
 

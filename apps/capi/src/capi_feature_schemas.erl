@@ -74,7 +74,7 @@
 -define(state, 68).
 -define(city, 69).
 -define(address, 70).
--define(zip_code, 71).
+-define(postal_code, 71).
 
 -export([payment/0]).
 -export([invoice/0]).
@@ -340,7 +340,7 @@ contact_info_schema() ->
         ?state => <<"state">>,
         ?city => <<"city">>,
         ?address => <<"address">>,
-        ?zip_code => <<"zipCode">>
+        ?postal_code => <<"postalCode">>
     }.
 
 -ifdef(TEST).
@@ -623,7 +623,7 @@ read_customer_features_test() ->
             ?state => undefined,
             ?city => undefined,
             ?address => undefined,
-            ?zip_code => undefined
+            ?postal_code => undefined
         }
     },
     ?assertEqual(
@@ -650,7 +650,7 @@ compare_customer_features_test() ->
             <<"state">> => <<"state">>,
             <<"city">> => <<"city">>,
             <<"address">> => <<"address">>,
-            <<"zipCode">> => <<"zipCode">>
+            <<"postalCode">> => <<"postalCode">>
         }
     },
     common_compare_tests(

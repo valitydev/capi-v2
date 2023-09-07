@@ -33,7 +33,7 @@ encode_contact_info(ContactInfo) ->
         state = genlib_map:get(<<"state">>, ContactInfo),
         city = genlib_map:get(<<"city">>, ContactInfo),
         address = genlib_map:get(<<"address">>, ContactInfo),
-        zip_code = genlib_map:get(<<"zipCode">>, ContactInfo)
+        postal_code = genlib_map:get(<<"postalCode">>, ContactInfo)
     }.
 
 -spec encode_client_info(request_data()) -> encode_data().

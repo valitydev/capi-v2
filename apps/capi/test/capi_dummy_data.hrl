@@ -251,7 +251,7 @@
     state = <<"State">>,
     city = <<"City">>,
     address = <<"Address">>,
-    zip_code = <<"ZipCode">>
+    postal_code = <<"PostalCode">>
 }).
 
 -define(EXP_DATE(Month, Year), #domain_BankCardExpDate{
