@@ -247,7 +247,7 @@
     email = ?EMAIL,
     first_name = <<"FirstName">>,
     last_name = <<"LastName">>,
-    country = <<"Country">>,
+    country = <<"RUS">>,
     state = <<"State">>,
     city = <<"City">>,
     address = <<"Address">>,
