@@ -244,7 +244,14 @@
 
 -define(CONTACT_INFO, #domain_ContactInfo{
     phone_number = ?STRING,
-    email = ?EMAIL
+    email = ?EMAIL,
+    first_name = <<"FirstName">>,
+    last_name = <<"LastName">>,
+    country = <<"RUS">>,
+    state = <<"State">>,
+    city = <<"City">>,
+    address = <<"Address">>,
+    postal_code = <<"PostalCode">>
 }).
 
 -define(EXP_DATE(Month, Year), #domain_BankCardExpDate{
@@ -493,7 +500,7 @@
                 first_name = ?STRING,
                 second_name = ?STRING,
                 middle_name = ?STRING,
-                contact_info = #domain_ContactInfo{}
+                contact_info = ?CONTACT_INFO
             }}},
     status = none,
     identity_documents = []
