@@ -29,7 +29,12 @@
         token_keeper_client,
         party_client,
         payout_manager_proto,
-        magista_proto
+        magista_proto,
+        % OTEL deps
+        opentelemetry_api,
+        % Exporter must start _before_ main OTel app
+        opentelemetry_exporter,
+        opentelemetry
     ]},
     {env, []}
 ]}.
