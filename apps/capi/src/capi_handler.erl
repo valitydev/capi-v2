@@ -1,5 +1,7 @@
 -module(capi_handler).
 
+-include_lib("opentelemetry_api/include/otel_tracer.hrl").
+
 -behaviour(swag_server_logic_handler).
 
 -type error_type() :: swag_server_logic_handler:error_type().
@@ -121,8 +123,10 @@ get_handlers() ->
     HandlerOpts :: handler_opts()
 ) -> {ok | error, response()}.
 handle_request(OperationID, Req, SwagContext, HandlerOpts) ->
-    scoper:scope(swagger, fun() ->
-        handle_function_(OperationID, Req, SwagContext, HandlerOpts)
+    ?with_span(<<"handling operation ", (atom_to_binary(OperationID))/binary>>, fun(_SpanCtx) ->
+        scoper:scope(swagger, fun() ->
+            handle_function_(OperationID, Req, SwagContext, HandlerOpts)
+        end)
     end).
 
 -spec handle_function_(
