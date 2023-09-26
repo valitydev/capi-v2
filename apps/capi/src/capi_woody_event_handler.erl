@@ -43,68 +43,31 @@ handle_event(Event, RpcID, Meta, Opts) ->
 
 %%
 
+-define(SPANS_STACK, 'spans_ctx_stack').
+
 proc_span_start(SpanKey, SpanName, Opts) ->
     Tracer = opentelemetry:get_application_tracer(?MODULE),
-    SpanCtx = otel_tracer:start_span(Tracer, SpanName, Opts),
-    spans_push(SpanKey, SpanCtx).
+    Ctx = otel_ctx:get_current(),
+    SpanCtx = otel_tracer:start_span(Ctx, Tracer, SpanName, Opts),
+    Ctx1 = record_current_span_ctx(SpanKey, SpanCtx, Ctx),
+    Ctx2 = otel_tracer:set_current_span(Ctx1, SpanCtx),
+    _ = otel_ctx:attach(Ctx2),
+    ok.
+
+record_current_span_ctx(Key, SpanCtx, Ctx) ->
+    Stack = otel_ctx:get_value(Ctx, ?SPANS_STACK, []),
+    otel_ctx:set_value(Ctx, ?SPANS_STACK, [{Key, SpanCtx, otel_tracer:current_span_ctx(Ctx)} | Stack]).
 
 proc_span_end(SpanKey) ->
-    case spans_pop(SpanKey) of
-        undefined ->
+    Ctx = otel_ctx:get_current(),
+    Stack = otel_ctx:get_value(Ctx, ?SPANS_STACK, []),
+    case lists:keytake(SpanKey, 1, Stack) of
+        false ->
             ok;
-        SpanCtx ->
+        {value, {_Key, SpanCtx, ParentSpanCtx}, Stack1} ->
             _ = otel_span:end_span(SpanCtx, undefined),
+            Ctx1 = otel_ctx:set_value(Ctx, ?SPANS_STACK, Stack1),
+            Ctx2 = otel_tracer:set_current_span(Ctx1, ParentSpanCtx),
+            _ = otel_ctx:attach(Ctx2),
             ok
     end.
-
-%% Otel Spans helpers
-
--define(SPAN_STACK, otel_span_stack).
-
-spans_pop(DiscriminatorKey) ->
-    case spans_get() of
-        %% Spans stack is empty; its only membery is original span with which it has been initialized
-        [{_, RootSpanCtx}] ->
-            _ = otel_tracer:set_current_span(RootSpanCtx),
-            undefined;
-        %% Normal scenario case when spans are being popped in orderly fashion
-        [{Key, SpanCtx} | Stack] when DiscriminatorKey =:= Key orelse DiscriminatorKey =:= undefined ->
-            do_pop(SpanCtx, Stack);
-        %% Somehow in-process spans are in misorder;
-        %% try to fix via popping other spans if given key exists in stack
-        Stack ->
-            case find_and_split(DiscriminatorKey, [], Stack) of
-                {error, notfound} ->
-                    %% Do nothing
-                    undefined;
-                {ok, SpanCtx, SpanCtxsToEnd, FixedStack} ->
-                    %% End wrong spans
-                    _EndedSpans = [otel_span:end_span(SC, undefined) || {_, SC} <- SpanCtxsToEnd],
-                    do_pop(SpanCtx, FixedStack)
-            end
-    end.
-
-find_and_split(_Key, _WrongSpanCtxs, []) ->
-    {error, notfound};
-find_and_split(Key, WrongSpanCtxs, [{Key, SpanCtx} | FixedStack]) ->
-    {ok, SpanCtx, lists:reverse(WrongSpanCtxs), FixedStack};
-find_and_split(Key, WrongSpanCtxs, [{_OtherKey, SpanCtx} | Stack]) ->
-    find_and_split(Key, [SpanCtx | WrongSpanCtxs], Stack).
-
-do_pop(SpanCtx, Stack) ->
-    {_, ParentSpanCtx} = hd(Stack),
-    _ = otel_tracer:set_current_span(ParentSpanCtx),
-    ok = spans_put(Stack),
-    SpanCtx.
-
-spans_push(DiscriminatorKey, SpanCtx) ->
-    ok = spans_put([{DiscriminatorKey, SpanCtx} | spans_get()]),
-    _ = otel_tracer:set_current_span(SpanCtx),
-    ok.
-
-spans_get() ->
-    genlib:define(erlang:get(?SPAN_STACK), [{undefined, otel_tracer:current_span_ctx()}]).
-
-spans_put(Stack) ->
-    _ = erlang:put(?SPAN_STACK, Stack),
-    ok.
