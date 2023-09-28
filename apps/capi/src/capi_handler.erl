@@ -124,7 +124,7 @@ get_handlers() ->
     HandlerOpts :: handler_opts()
 ) -> {ok | error, response()}.
 handle_request(OperationID, Req, SwagContext, HandlerOpts) ->
-    SpanName = <<"handling operation ", (atom_to_binary(OperationID))/binary>>,
+    SpanName = <<"server ", (atom_to_binary(OperationID))/binary>>,
     ?with_span(SpanName, #{kind => ?SPAN_KIND_SERVER}, fun(_SpanCtx) ->
         scoper:scope(swagger, fun() ->
             handle_function_(OperationID, Req, SwagContext, HandlerOpts)
@@ -148,6 +148,7 @@ handle_function_(OperationID, Req, SwagContext0, HandlerOpts) ->
         WoodyContext = put_user_identity(WoodyContext0, get_auth_context(SwagContext)),
         Context = create_processing_context(OperationID, SwagContext, WoodyContext, HandlerOpts),
         ok = set_context_meta(Context),
+        ok = sync_scoper_otel_meta(),
         {ok, RequestState} = prepare(OperationID, Req, Context, get_handlers()),
         #{authorize := Authorize, process := Process} = RequestState,
         {ok, Resolution} = Authorize(),
@@ -339,3 +340,59 @@ clear_rpc_meta() ->
         Metadata ->
             logger:set_process_metadata(maps:without([trace_id, parent_id, span_id], Metadata))
     end.
+
+sync_scoper_otel_meta() ->
+    _ = otel_span:set_attributes(otel_tracer:current_span_ctx(), flatten_keys_with($., scoper:collect())),
+    ok.
+
+flatten_keys_with(Delimiter, Map) when is_map(Map) ->
+    {Result, _} = flatten_keys_with(Delimiter, Map, #{}, []),
+    Result.
+
+flatten_keys_with(Delimiter, Map, IntoMap, Prefixes) when is_map(Map) ->
+    Folder = fun
+        (K, V, {Acc, Prefix}) when is_map(V) ->
+            {Acc1, _} = flatten_keys_with(Delimiter, V, Acc, [K | Prefix]),
+            {Acc1, Prefix};
+        (K, V, {Acc, Prefix}) ->
+            {maps:put(join_key(Delimiter, [K | Prefix]), V, Acc), Prefix}
+    end,
+    maps:fold(Folder, {IntoMap, Prefixes}, Map).
+
+join_key(Delimiter, Parts) ->
+    iolist_to_binary(
+        lists:join(
+            Delimiter,
+            lists:map(
+                fun
+                    (V) when is_atom(V) -> atom_to_binary(V);
+                    (V) when is_list(V) -> list_to_binary(V);
+                    (V) -> V
+                end,
+                lists:reverse(Parts)
+            )
+        )
+    ).
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+-spec test() -> _.
+
+-spec flatten_keys_with_test() -> _.
+flatten_keys_with_test() ->
+    ?assertEqual(
+        #{<<"a.b.c">> => "test", <<"a.d">> => <<"test">>, <<"a.b.e">> => 42, <<"f">> => 42},
+        flatten_keys_with($., #{
+            a => #{
+                b => #{
+                    "c" => "test",
+                    "e" => 42
+                },
+                d => <<"test">>
+            },
+            f => 42
+        })
+    ).
+
+-endif.
