@@ -10,5 +10,5 @@
     Meta :: woody_event_handler:event_meta(),
     Opts :: woody:options().
 handle_event(Event, RpcID, Meta, Opts) ->
-    ok = woody_event_handler_otel:handle_event(Event, RpcID, Meta, Opts),
-    scoper_woody_event_handler:handle_event(Event, RpcID, Meta, Opts).
+    _ = scoper_woody_event_handler:handle_event(Event, RpcID, Meta, Opts),
+    woody_event_handler_otel:handle_event(Event, RpcID, Meta, Opts).
