@@ -342,57 +342,5 @@ clear_rpc_meta() ->
     end.
 
 sync_scoper_otel_meta() ->
-    _ = otel_span:set_attributes(otel_tracer:current_span_ctx(), flatten_keys_with($., scoper:collect())),
+    _ = otel_span:set_attributes(otel_tracer:current_span_ctx(), genlib_map:flatten_join($., scoper:collect())),
     ok.
-
-flatten_keys_with(Delimiter, Map) when is_map(Map) ->
-    {Result, _} = flatten_keys_with(Delimiter, Map, #{}, []),
-    Result.
-
-flatten_keys_with(Delimiter, Map, IntoMap, Prefixes) when is_map(Map) ->
-    Folder = fun
-        (K, V, {Acc, Prefix}) when is_map(V) ->
-            {Acc1, _} = flatten_keys_with(Delimiter, V, Acc, [K | Prefix]),
-            {Acc1, Prefix};
-        (K, V, {Acc, Prefix}) ->
-            {maps:put(join_key(Delimiter, [K | Prefix]), V, Acc), Prefix}
-    end,
-    maps:fold(Folder, {IntoMap, Prefixes}, Map).
-
-join_key(Delimiter, Parts) ->
-    iolist_to_binary(
-        lists:join(
-            Delimiter,
-            lists:map(
-                fun
-                    (V) when is_atom(V) -> atom_to_binary(V);
-                    (V) when is_list(V) -> list_to_binary(V);
-                    (V) -> V
-                end,
-                lists:reverse(Parts)
-            )
-        )
-    ).
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
--spec test() -> _.
-
--spec flatten_keys_with_test() -> _.
-flatten_keys_with_test() ->
-    ?assertEqual(
-        #{<<"a.b.c">> => "test", <<"a.d">> => <<"test">>, <<"a.b.e">> => 42, <<"f">> => 42},
-        flatten_keys_with($., #{
-            a => #{
-                b => #{
-                    "c" => "test",
-                    "e" => 42
-                },
-                d => <<"test">>
-            },
-            f => 42
-        })
-    ).
-
--endif.
