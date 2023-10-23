@@ -148,7 +148,6 @@ handle_function_(OperationID, Req, SwagContext0, HandlerOpts) ->
         WoodyContext = put_user_identity(WoodyContext0, get_auth_context(SwagContext)),
         Context = create_processing_context(OperationID, SwagContext, WoodyContext, HandlerOpts),
         ok = set_context_meta(Context),
-        ok = sync_scoper_otel_meta(),
         {ok, RequestState} = prepare(OperationID, Req, Context, get_handlers()),
         #{authorize := Authorize, process := Process} = RequestState,
         {ok, Resolution} = Authorize(),
@@ -340,7 +339,3 @@ clear_rpc_meta() ->
         Metadata ->
             logger:set_process_metadata(maps:without([trace_id, parent_id, span_id], Metadata))
     end.
-
-sync_scoper_otel_meta() ->
-    _ = otel_span:set_attributes(otel_tracer:current_span_ctx(), genlib_map:flatten_join($., scoper:collect())),
-    ok.
