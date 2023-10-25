@@ -66,7 +66,8 @@
 
 -spec authorize_api_key(operation_id(), swag_server:api_key(), request_context(), handler_opts()) ->
     Result :: false | {true, capi_auth:preauth_context()}.
-authorize_api_key(OperationID, ApiKey, _Context, _HandlerOpts) ->
+authorize_api_key(OperationID, ApiKey, Context, _HandlerOpts) ->
+    ok = set_otel_context(Context),
     %% Since we require the request id field to create a woody context for our trip to token_keeper
     %% it seems it is no longer possible to perform any authorization in this method.
     %% To gain this ability back be would need to rewrite the swagger generator to perform its
@@ -74,8 +75,8 @@ authorize_api_key(OperationID, ApiKey, _Context, _HandlerOpts) ->
     %% But since a decent chunk of authorization logic is already defined in the handler function
     %% it is probably easier to move it there in its entirety.
     case capi_auth:preauthorize_api_key(ApiKey) of
-        {ok, Context} ->
-            {true, Context};
+        {ok, Context1} ->
+            {true, Context1};
         {error, Error} ->
             _ = logger:info("API Key preauthorization failed for ~p due to ~p", [OperationID, Error]),
             false
@@ -298,6 +299,14 @@ process_general_error(Class, Reason, Stacktrace, Req, SwagContext) ->
         }
     ),
     {error, server_error(500)}.
+
+set_otel_context(#{cowboy_req := Req}) ->
+    Headers = cowboy_req:headers(Req),
+    %% Implicitly puts OTEL context into process dictionary.
+    %% Since cowboy does not reuse process for other requests, we don't care
+    %% about cleaning it up.
+    _OtelCtx = otel_propagator_text_map:extract(maps:to_list(Headers)),
+    ok.
 
 -spec set_context_meta(processing_context()) -> ok.
 set_context_meta(Context) ->
