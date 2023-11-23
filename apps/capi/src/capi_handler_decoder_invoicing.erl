@@ -49,6 +49,11 @@ decode_user_interaction({qr_code_display_request, QrCodeDisplayRequest}) ->
         <<"interactionType">> => <<"QrCodeDisplayRequest">>,
         <<"qrCode">> => decode_qr_code(QrCodeDisplayRequest)
     };
+decode_user_interaction({api_extension_request, ApiExtensionRequest}) ->
+    #{
+        <<"interactionType">> => <<"ApiExtensionRequest">>,
+        <<"apiType">> => decode_api_type(ApiExtensionRequest)
+    };
 decode_user_interaction({crypto_currency_transfer_request, CryptoCurrencyTransferRequest}) ->
     #{
         <<"interactionType">> => <<"CryptoCurrencyTransferRequest">>,
@@ -71,6 +76,9 @@ decode_browser_request(
         <<"uriTemplate">> => UriTemplate,
         <<"form">> => decode_user_interaction_form(UserInteractionForm)
     }.
+
+decode_api_type(#'user_interaction_ApiExtensionRequest'{api_type = ApiType}) ->
+    ApiType.
 
 decode_qr_code(#'user_interaction_QrCodeDisplayRequest'{qr_code = QrCode}) ->
     QrCode#'user_interaction_QrCode'.payload.
