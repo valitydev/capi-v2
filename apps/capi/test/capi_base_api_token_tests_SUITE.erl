@@ -49,6 +49,7 @@
     get_payment_status_insufficient_funds_test/1,
 
     create_payment_ok_test/1,
+    create_payment_with_changed_cost_ok_test/1,
     create_refund/1,
     create_refund_blocked_error/1,
     create_refund_expired_error/1,
@@ -212,6 +213,7 @@ groups() ->
             activate_shop_for_party_error_test,
 
             create_payment_ok_test,
+            create_payment_with_changed_cost_ok_test,
             retrieve_payment_by_external_id_test,
             retrieve_payment_by_external_id_for_party_test,
             check_no_payment_by_external_id_test,
@@ -828,6 +830,48 @@ create_payment_ok_test(Config) ->
     Req = ?PAYMENT_PARAMS(ExternalID, PaymentToolToken),
     {ok, Payment} = capi_client_payments:create_payment(?config(context, Config), Req, ?STRING),
     #{<<"transactionInfo">> := #{<<"extra_payment_info">> := _}} = Payment.
+
+-spec create_payment_with_changed_cost_ok_test(config()) -> _.
+create_payment_with_changed_cost_ok_test(Config) ->
+    BenderKey = <<"bender_key">>,
+    ExternalID = <<"merch_id">>,
+    ChangedCost = 1000,
+    _ = capi_ct_helper:mock_services(
+        [
+            {invoicing, fun
+                ('Get', _) ->
+                    {ok, ?PAYPROC_INVOICE};
+                ('StartPayment', {_, PaymentParams}) ->
+                    #payproc_InvoicePaymentParams{
+                        id = ID,
+                        payer = {payment_resource, _},
+                        payer_session_info = ?PAYER_SESSION_INFO,
+                        context = ?CONTENT
+                    } =
+                        PaymentParams,
+                    {ok, ?PAYPROC_PAYMENT(?PAYMENT_W_CHANGED_COST(ID, ChangedCost))}
+            end},
+            {party_management, fun('GetShop', _) ->
+                {ok, ?SHOP}
+            end},
+            {bender, fun('GenerateID', _) ->
+                {ok, capi_ct_helper_bender:get_result(BenderKey)}
+            end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_payment_op_ctx(
+        <<"CreatePayment">>,
+        ?STRING,
+        ?STRING,
+        ?STRING,
+        Config
+    ),
+    PaymentTool = {bank_card, ?BANK_CARD(<<"visa">>, ?EXP_DATE(2, 2020), <<"Degus">>)},
+    PaymentToolToken = capi_crypto:encode_token(#{payment_tool => PaymentTool, valid_until => undefined}),
+    Req = ?PAYMENT_PARAMS(ExternalID, PaymentToolToken),
+    {ok, Payment} = capi_client_payments:create_payment(?config(context, Config), Req, ?STRING),
+    #{<<"amount">> := ChangedCost} = Payment.
 
 -spec create_refund(config()) -> _.
 create_refund(Config) ->

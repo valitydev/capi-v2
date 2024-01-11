@@ -39,12 +39,14 @@
     bank_account = ?INVOICE_BANK_ACCOUNT
 }).
 
--define(CASH, #domain_Cash{
-    amount = ?INTEGER,
+-define(CASH(Amount), #domain_Cash{
+    amount = Amount,
     currency = #domain_CurrencyRef{
         symbolic_code = ?RUB
     }
 }).
+
+-define(CASH, ?CASH(?INTEGER)).
 
 -define(CONTENT, #base_Content{
     type = <<"application/json">>,
@@ -307,7 +309,7 @@
 -define(PAYMENT_STATUS_PENDING, {pending, #domain_InvoicePaymentPending{}}).
 -define(PAYMENT_STATUS_FAILED(F), {failed, #domain_InvoicePaymentFailed{failure = F}}).
 
--define(PAYMENT(ID, Status, Payer, ExternalID), #domain_InvoicePayment{
+-define(PAYMENT(ID, Status, Payer, ExternalID, ChangedCost), #domain_InvoicePayment{
     id = ID,
     created_at = ?TIMESTAMP,
     domain_revision = ?INTEGER,
@@ -315,19 +317,22 @@
     payer = Payer,
     payer_session_info = ?PAYER_SESSION_INFO,
     cost = ?CASH,
+    changed_cost = ChangedCost,
     flow = {instant, #domain_InvoicePaymentFlowInstant{}},
     context = ?CONTENT,
     make_recurrent = false,
     external_id = ExternalID
 }).
 
--define(PAYMENT(ID, Status, Payer), ?PAYMENT(ID, Status, Payer, undefined)).
+-define(PAYMENT(ID, Status, Payer), ?PAYMENT(ID, Status, Payer, undefined, undefined)).
 -define(PAYMENT, ?PAYMENT(?STRING, ?PAYMENT_STATUS_PENDING, ?PAYER)).
 
 -define(PAYMENT_WITH_RECURRENT_PAYER, ?PAYMENT(?STRING, ?PAYMENT_STATUS_PENDING, ?RECURRENT_PAYER)).
 -define(PAYMENT_WITH_CUSTOMER_PAYER, ?PAYMENT(?STRING, ?PAYMENT_STATUS_PENDING, ?CUSTOMER_PAYER)).
 
--define(PAYMENT_W_EXTERNAL_ID(ID, ExternalID), ?PAYMENT(ID, ?PAYMENT_STATUS_PENDING, ?PAYER, ExternalID)).
+-define(PAYMENT_W_EXTERNAL_ID(ID, ExternalID), ?PAYMENT(ID, ?PAYMENT_STATUS_PENDING, ?PAYER, ExternalID, undefined)).
+
+-define(PAYMENT_W_CHANGED_COST(ID, Amount), ?PAYMENT(ID, ?PAYMENT_STATUS_PENDING, ?PAYER, undefined, ?CASH(Amount))).
 
 -define(RECURRENT_PAYMENT(Status), #domain_InvoicePayment{
     id = ?STRING,

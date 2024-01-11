@@ -149,7 +149,13 @@ decode_payment(InvoiceID, Payment, Context) ->
     #domain_Cash{
         amount = Amount,
         currency = Currency
-    } = Payment#domain_InvoicePayment.cost,
+    } =
+        case Payment#domain_InvoicePayment.changed_cost of
+            undefined ->
+                Payment#domain_InvoicePayment.cost;
+            Cost ->
+                Cost
+        end,
     capi_handler_utils:merge_and_compact(
         #{
             <<"id">> => Payment#domain_InvoicePayment.id,
