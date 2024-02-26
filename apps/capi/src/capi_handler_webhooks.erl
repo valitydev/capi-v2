@@ -199,6 +199,11 @@ encode_webhook_scope(#{<<"topic">> := <<"CustomersTopic">>, <<"shopID">> := Shop
 -define(PMTRFNDFAILED(), {failed, #webhooker_InvoicePaymentRefundFailed{}}).
 -define(PMTRFNDSUCCEEDED(), {succeeded, #webhooker_InvoicePaymentRefundSucceeded{}}).
 
+-define(PMTUI(Value), #webhooker_InvoicePaymentUserInteractionChange{status = Value}).
+
+-define(PMTUISTATUSREQUESTED(), {requested, #webhooker_UserInteractionStatusRequested{}}).
+-define(PMTUISTATUSCOMPLETED(), {completed, #webhooker_UserInteractionStatusCompleted{}}).
+
 encode_invoice_event_type(<<"InvoiceCreated">>) ->
     {created, #webhooker_InvoiceCreated{}};
 encode_invoice_event_type(<<"InvoicePaid">>) ->
@@ -224,7 +229,11 @@ encode_invoice_event_type(<<"PaymentRefundCreated">>) ->
 encode_invoice_event_type(<<"PaymentRefundFailed">>) ->
     {payment, {invoice_payment_refund_change, ?PMTRFNDSTATUS(?PMTRFNDFAILED())}};
 encode_invoice_event_type(<<"PaymentRefundSucceeded">>) ->
-    {payment, {invoice_payment_refund_change, ?PMTRFNDSTATUS(?PMTRFNDSUCCEEDED())}}.
+    {payment, {invoice_payment_refund_change, ?PMTRFNDSTATUS(?PMTRFNDSUCCEEDED())}};
+encode_invoice_event_type(<<"PaymentUserInteractionRequested">>) ->
+    {payment, {user_interaction, ?PMTUI(?PMTUISTATUSREQUESTED())}};
+encode_invoice_event_type(<<"PaymentUserInteractionCompleted">>) ->
+    {payment, {user_interaction, ?PMTUI(?PMTUISTATUSCOMPLETED())}}.
 
 encode_customer_event_type(<<"CustomerCreated">>) ->
     {created, #webhooker_CustomerCreated{}};
