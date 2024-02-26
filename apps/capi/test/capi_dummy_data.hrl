@@ -732,6 +732,20 @@
                                 }
                             }
                         }
+                    }},
+                {payment,
+                    {
+                        user_interaction,
+                        #webhooker_InvoicePaymentUserInteractionChange{
+                            status = {requested, #webhooker_UserInteractionStatusRequested{}}
+                        }
+                    }},
+                {payment,
+                    {
+                        user_interaction,
+                        #webhooker_InvoicePaymentUserInteractionChange{
+                            status = {completed, #webhooker_UserInteractionStatusCompleted{}}
+                        }
                     }}
             ])
         }},

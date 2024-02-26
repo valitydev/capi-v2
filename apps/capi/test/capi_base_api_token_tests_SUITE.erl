@@ -1769,7 +1769,9 @@ create_webhook_ok_test(Config) ->
                 <<"PaymentFailed">>,
                 <<"PaymentRefundCreated">>,
                 <<"PaymentRefundFailed">>,
-                <<"PaymentRefundSucceeded">>
+                <<"PaymentRefundSucceeded">>,
+                <<"PaymentUserInteractionRequested">>,
+                <<"PaymentUserInteractionCompleted">>
             ]
         }
     },
