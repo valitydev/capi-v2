@@ -199,6 +199,11 @@ encode_webhook_scope(#{<<"topic">> := <<"CustomersTopic">>, <<"shopID">> := Shop
 -define(PMTRFNDFAILED(), {failed, #webhooker_InvoicePaymentRefundFailed{}}).
 -define(PMTRFNDSUCCEEDED(), {succeeded, #webhooker_InvoicePaymentRefundSucceeded{}}).
 
+-define(PMTUI(Value), #webhooker_InvoicePaymentUserInteractionChange{status = Value}).
+
+-define(PMTUISTATUSREQUESTED(), {requested, #webhooker_UserInteractionStatusRequested{}}).
+-define(PMTUISTATUSCOMPLETED(), {completed, #webhooker_UserInteractionStatusCompleted{}}).
+
 encode_invoice_event_type(<<"InvoiceCreated">>) ->
     {created, #webhooker_InvoiceCreated{}};
 encode_invoice_event_type(<<"InvoicePaid">>) ->
@@ -224,7 +229,11 @@ encode_invoice_event_type(<<"PaymentRefundCreated">>) ->
 encode_invoice_event_type(<<"PaymentRefundFailed">>) ->
     {payment, {invoice_payment_refund_change, ?PMTRFNDSTATUS(?PMTRFNDFAILED())}};
 encode_invoice_event_type(<<"PaymentRefundSucceeded">>) ->
-    {payment, {invoice_payment_refund_change, ?PMTRFNDSTATUS(?PMTRFNDSUCCEEDED())}}.
+    {payment, {invoice_payment_refund_change, ?PMTRFNDSTATUS(?PMTRFNDSUCCEEDED())}};
+encode_invoice_event_type(<<"PaymentUserInteractionRequested">>) ->
+    {payment, {user_interaction, ?PMTUI(?PMTUISTATUSREQUESTED())}};
+encode_invoice_event_type(<<"PaymentUserInteractionCompleted">>) ->
+    {payment, {user_interaction, ?PMTUI(?PMTUISTATUSCOMPLETED())}}.
 
 encode_customer_event_type(<<"CustomerCreated">>) ->
     {created, #webhooker_CustomerCreated{}};
@@ -274,7 +283,9 @@ decode_invoice_event_type({payment, {status_changed, #webhooker_InvoicePaymentSt
 decode_invoice_event_type({payment, {invoice_payment_refund_change, ?PMTRFNDCREATED()}}) ->
     [<<"PaymentRefundCreated">>];
 decode_invoice_event_type({payment, {invoice_payment_refund_change, ?PMTRFNDSTATUS(Value)}}) ->
-    [decode_payment_refund_status_event_type(Value)].
+    [decode_payment_refund_status_event_type(Value)];
+decode_invoice_event_type({payment, {user_interaction, ?PMTUI(Value)}}) ->
+    [decode_payment_user_interaction_status_event_type(Value)].
 
 decode_invoice_status_event_type(?INVPAID()) -> <<"InvoicePaid">>;
 decode_invoice_status_event_type(?INVCANCELLED()) -> <<"InvoiceCancelled">>;
@@ -288,6 +299,9 @@ decode_payment_status_event_type(?PMTFAILED()) -> <<"PaymentFailed">>.
 
 decode_payment_refund_status_event_type(?PMTRFNDFAILED()) -> <<"PaymentRefundFailed">>;
 decode_payment_refund_status_event_type(?PMTRFNDSUCCEEDED()) -> <<"PaymentRefundSucceeded">>.
+
+decode_payment_user_interaction_status_event_type(?PMTUISTATUSREQUESTED()) -> <<"PaymentUserInteractionRequested">>;
+decode_payment_user_interaction_status_event_type(?PMTUISTATUSCOMPLETED()) -> <<"PaymentUserInteractionCompleted">>.
 
 decode_customer_event_type({created, #webhooker_CustomerCreated{}}) ->
     <<"CustomerCreated">>;
