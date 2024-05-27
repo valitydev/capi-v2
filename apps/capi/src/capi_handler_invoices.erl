@@ -55,9 +55,9 @@ prepare('CreateInvoice' = OperationID, Req, Context) ->
                     {ok, logic_error('invalidAllocation', Message)}
             end
         catch
-            throw:cartNotSupported ->
+            throw:invoice_cart_not_supported ->
                 ErrMsg = <<"Cart parameter is not supported with amount randomization. Path to item: cart">>,
-                {ok, logic_error('invalidInvoiceCart', ErrMsg)};
+                {ok, logic_error('cartNotSupported', ErrMsg)};
             throw:invoice_cart_empty ->
                 {ok, logic_error('invalidInvoiceCart', <<"Wrong size. Path to item: cart">>)};
             throw:invalid_invoice_cost ->
@@ -287,7 +287,7 @@ maybe_randomize_amount(InvoiceParams) ->
     InvoiceParams.
 
 validate_cart_absence(#{<<"cart">> := Cart}) when is_list(Cart) ->
-    throw(cartNotSupported);
+    throw(invoice_cart_not_supported);
 validate_cart_absence(_) ->
     ok.
 
