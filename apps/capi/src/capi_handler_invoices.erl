@@ -301,11 +301,7 @@ randomize_amount(Amount, #{<<"deviation">> := MaxDeviation} = Opts) ->
         end,
     Deviation0 = rand:uniform(MaxDeviation + 1) - 1,
     Deviation1 = RoundingFun(Deviation0 / Precision) * Precision,
-    Sign =
-        case rand:uniform(2) of
-            1 -> 1;
-            2 -> -1
-        end,
+    Sign = trunc(math:pow(-1, rand:uniform(2))),
     Amount + Sign * Deviation1.
 
 encode_invoice_params(ID, PartyID, InvoiceParams) ->
