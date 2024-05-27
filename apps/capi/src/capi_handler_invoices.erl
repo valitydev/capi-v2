@@ -303,10 +303,10 @@ randomize_amount(Amount, #{<<"deviation">> := MaxDeviation} = Opts) ->
     Deviation1 = RoundingFun(Deviation0 / Precision) * Precision,
     Sign =
         case rand:uniform(2) of
-            1 -> -1;
-            2 -> 1
+            1 -> 1;
+            2 -> -1
         end,
-    Amount - Sign * Deviation1.
+    Amount + Sign * Deviation1.
 
 encode_invoice_params(ID, PartyID, InvoiceParams) ->
     Amount = genlib_map:get(<<"amount">>, InvoiceParams),
