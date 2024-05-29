@@ -33,6 +33,7 @@
 -export([create_invoice_template_fail_test/1]).
 -export([create_invoice_with_template_ok_test/1]).
 -export([create_invoice_with_template_fail_test/1]).
+-export([create_invoice_random_amount_ok_test/1]).
 -export([create_refund_idemp_ok_test/1]).
 -export([create_refund_idemp_fail_test/1]).
 -export([create_customer_ok_test/1]).
@@ -78,7 +79,8 @@ groups() ->
             create_invoice_fail_test,
             create_invoice_idemp_cart_fail_test,
             create_invoice_idemp_cart_ok_test,
-            create_invoice_idemp_bank_account_fail_test
+            create_invoice_idemp_bank_account_fail_test,
+            create_invoice_random_amount_ok_test
         ]},
         {invoice_template_creation, [], [
             create_invoice_template_ok_test,
@@ -546,6 +548,36 @@ create_invoice_with_template_fail_test(Config) ->
         ActualCreateResult2
     ).
 
+-spec create_invoice_random_amount_ok_test(config()) -> _.
+create_invoice_random_amount_ok_test(Config) ->
+    %% Repeats `create_invoice_ok_test' but with `randomizeAmount' request param
+    BenderKey = <<"bender_key">>,
+    ExternalID = <<"merch_id">>,
+    _ = capi_ct_helper:mock_services(
+        [
+            {invoicing, fun('Create', {#payproc_InvoiceParams{id = ID, external_id = EID}}) ->
+                {ok, ?PAYPROC_INVOICE_WITH_ID(ID, EID)}
+            end},
+            {bender, fun('GenerateID', _) -> {ok, capi_ct_helper_bender:get_result(BenderKey)} end}
+        ],
+        Config
+    ),
+    Req = invoice_params(ExternalID, ?SMALLER_INTEGER),
+    Unused = [
+        [<<"description">>],
+        [<<"externalID">>],
+        [<<"metadata">>, <<"invoice_dummy_metadata">>],
+        [<<"randomizeAmount">>, <<"deviation">>]
+    ],
+    {{ok, #{<<"invoice">> := Invoice1}}, Unused1} = create_invoice_(Req, Config),
+    {{ok, #{<<"invoice">> := Invoice2}}, Unused2} = create_invoice_(Req, Config),
+
+    ?assertEqual(Unused, Unused2),
+    ?assertEqual(Unused, Unused1),
+    ?assertEqual(BenderKey, maps:get(<<"id">>, Invoice1)),
+    ?assertEqual(ExternalID, maps:get(<<"externalID">>, Invoice1)),
+    ?assertEqual(Invoice1, Invoice2).
+
 -spec create_refund_idemp_ok_test(config()) -> _.
 create_refund_idemp_ok_test(Config) ->
     BenderKey = <<"bender_key">>,
@@ -792,6 +824,9 @@ invoice_params(EID) ->
         <<"currency">> => ?RUB,
         <<"product">> => <<"test_product">>
     }.
+
+invoice_params(EID, RandomizeAmount) when is_integer(RandomizeAmount) ->
+    (invoice_params(EID))#{<<"randomizeAmount">> => #{<<"deviation">> => RandomizeAmount}}.
 
 get_encrypted_token(PS, ExpDate) ->
     get_encrypted_token(PS, ExpDate, undefined).

@@ -20,6 +20,7 @@
 -define(JSON, #{<<"bla">> => [42]}).
 -define(JSON_SERIAL, <<"{\"bla\":[42]}">>).
 -define(INTEGER, 10000).
+-define(SMALLER_INTEGER, 1000).
 -define(INTEGER_BINARY, <<"10000">>).
 -define(TIMESTAMP, <<"2016-03-22T06:12:27Z">>).
 -define(URL, <<"https://url.io/1337">>).

@@ -37,3 +37,4 @@ jobs:
       use-thrift: true
       thrift-version: ${{ needs.setup.outputs.thrift-version }}
       cache-version: v2
+      upload-coverage: false
