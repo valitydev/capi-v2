@@ -502,7 +502,8 @@ decode_invoice(Invoice) ->
             <<"cart">> => decode_invoice_cart(Details#domain_InvoiceDetails.cart),
             <<"bankAccount">> => decode_invoice_bank_account(Details#domain_InvoiceDetails.bank_account),
             <<"invoiceTemplateID">> => Invoice#domain_Invoice.template_id,
-            <<"allocation">> => capi_allocation:decode(Invoice#domain_Invoice.allocation)
+            <<"allocation">> => capi_allocation:decode(Invoice#domain_Invoice.allocation),
+            <<"amountRandomized">> => capi_mutation:decode_invoice_amount_mutation(Invoice#domain_Invoice.mutations)
         },
         decode_invoice_status(Invoice#domain_Invoice.status)
     ).

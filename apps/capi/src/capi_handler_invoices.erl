@@ -269,40 +269,22 @@ validate_allocation(Allocation) ->
         Error -> throw(Error)
     end.
 
-create_invoice(PartyID, InvoiceParams0, Context, BenderPrefix) ->
+create_invoice(PartyID, InvoiceParams, Context, BenderPrefix) ->
     #{woody_context := WoodyCtx} = Context,
-    ExternalID = maps:get(<<"externalID">>, InvoiceParams0, undefined),
+    ExternalID = maps:get(<<"externalID">>, InvoiceParams, undefined),
     IdempotentKey = {BenderPrefix, PartyID, ExternalID},
-    InvoiceParams1 = maybe_randomize_amount(InvoiceParams0),
-    Identity = capi_bender:make_identity(capi_feature_schemas:invoice(), InvoiceParams1),
+    ok = validate_randomize_amount_opts(InvoiceParams),
+    Identity = capi_bender:make_identity(capi_feature_schemas:invoice(), InvoiceParams),
     InvoiceID = capi_bender:gen_snowflake(IdempotentKey, Identity, WoodyCtx),
-    Call = {invoicing, 'Create', {encode_invoice_params(InvoiceID, PartyID, InvoiceParams1)}},
+    Call = {invoicing, 'Create', {encode_invoice_params(InvoiceID, PartyID, InvoiceParams)}},
     capi_handler_utils:service_call(Call, Context).
 
-maybe_randomize_amount(#{<<"randomizeAmount">> := RandomizationOpts} = InvoiceParams) ->
-    ok = validate_cart_absence(InvoiceParams),
-    Amount = genlib_map:get(<<"amount">>, InvoiceParams),
-    InvoiceParams#{<<"amount">> := randomize_amount(Amount, RandomizationOpts)};
-maybe_randomize_amount(InvoiceParams) ->
-    InvoiceParams.
-
-validate_cart_absence(#{<<"cart">> := Cart}) when is_list(Cart) ->
+validate_randomize_amount_opts(#{<<"randomizeAmount">> := Opts, <<"cart">> := Cart}) when
+    is_map(Opts) andalso is_list(Cart)
+->
     throw(invoice_cart_not_supported);
-validate_cart_absence(_) ->
+validate_randomize_amount_opts(_InvoiceParams) ->
     ok.
-
-randomize_amount(Amount, #{<<"deviation">> := MaxDeviation} = Opts) ->
-    Precision = trunc(math:pow(10, genlib_map:get(<<"precision">>, Opts, 2))),
-    RoundingFun =
-        case genlib_map:get(<<"rounding">>, Opts, <<"round">>) of
-            <<"round">> -> fun round/1;
-            <<"ceil">> -> fun ceil/1;
-            <<"floor">> -> fun floor/1
-        end,
-    Deviation0 = rand:uniform(MaxDeviation + 1) - 1,
-    Deviation1 = RoundingFun(Deviation0 / Precision) * Precision,
-    Sign = trunc(math:pow(-1, rand:uniform(2))),
-    Amount + Sign * Deviation1.
 
 encode_invoice_params(ID, PartyID, InvoiceParams) ->
     Amount = genlib_map:get(<<"amount">>, InvoiceParams),
@@ -320,7 +302,10 @@ encode_invoice_params(ID, PartyID, InvoiceParams) ->
         shop_id = genlib_map:get(<<"shopID">>, InvoiceParams),
         external_id = genlib_map:get(<<"externalID">>, InvoiceParams, undefined),
         client_info = encode_client_info(ClientInfo),
-        allocation = capi_allocation:encode(Allocation, PartyID)
+        allocation = capi_allocation:encode(Allocation, PartyID),
+        mutations = capi_mutation:encode_amount_randomization_params(
+            maps:get(<<"randomizeAmount">>, InvoiceParams, undefined)
+        )
     }.
 
 encode_client_info(undefined) ->
@@ -508,32 +493,3 @@ mask_invoice_notfound(Resolution) ->
     % is not great, so we have to mask specific instances of missing authorization as if specified
     % invoice is nonexistent.
     capi_handler:respond_if_forbidden(Resolution, general_error(404, <<"Invoice not found">>)).
-
--ifdef(TEST).
--include_lib("eunit/include/eunit.hrl").
-
--spec test() -> _.
-
--spec randomize_amount_test_() -> [_TestGen].
-randomize_amount_test_() ->
-    lists:flatten([
-        %% No deviation
-        ?_assertEqual(100_00, randomize_amount(100_00, randomization_opts(0, 2, <<"round">>))),
-        %% Deviate only with 2 other possible values
-        [
-            ?_assertMatch(A when A =:= 0 orelse A =:= 100_00 orelse A =:= 200_00, randomize_amount(100_00, Opts))
-         || Opts <- lists:duplicate(10, randomization_opts(100_00, 4, <<"round">>))
-        ],
-        %% Deviate in segment [900_00, 1100_00] without minor units
-        [
-            ?_assertMatch(
-                A when A >= 900_00 andalso A =< 1100_00 andalso A rem 100 =:= 0, randomize_amount(1000_00, Opts)
-            )
-         || Opts <- lists:duplicate(10, randomization_opts(100_00, 2, <<"round">>))
-        ]
-    ]).
-
-randomization_opts(D, P, R) ->
-    #{<<"deviation">> => D, <<"precision">> => P, <<"rounding">> => R}.
-
--endif.

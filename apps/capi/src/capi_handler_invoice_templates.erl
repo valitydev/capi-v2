@@ -263,7 +263,8 @@ encode_invoice_tpl_create_params(InvoiceTemplateID, PartyID, Params) ->
         name = genlib_map:get(<<"name">>, Params),
         description = genlib_map:get(<<"description">>, Params),
         details = Details,
-        context = capi_handler_encoder:encode_invoice_context(Params)
+        context = capi_handler_encoder:encode_invoice_context(Params),
+        mutations = capi_mutation:encode_amount_randomization_params(genlib_map:get(<<"randomizeAmount">>, Params))
     }.
 
 encode_invoice_tpl_update_params(Params) ->
@@ -275,7 +276,8 @@ encode_invoice_tpl_update_params(Params) ->
         name = genlib_map:get(<<"name">>, Params),
         description = genlib_map:get(<<"description">>, Params),
         details = Details,
-        context = encode_optional_context(Params)
+        context = encode_optional_context(Params),
+        mutations = capi_mutation:encode_amount_randomization_params(genlib_map:get(<<"randomizeAmount">>, Params))
     }.
 
 make_invoice_tpl_and_token(InvoiceTpl, ProcessingContext) ->
@@ -385,7 +387,10 @@ decode_invoice_tpl(InvoiceTpl) ->
             <<"years">> => undef_to_zero(YY)
         },
         <<"details">> => decode_invoice_tpl_details(InvoiceTpl#domain_InvoiceTemplate.details),
-        <<"metadata">> => capi_handler_decoder_utils:decode_context(InvoiceTpl#domain_InvoiceTemplate.context)
+        <<"metadata">> => capi_handler_decoder_utils:decode_context(InvoiceTpl#domain_InvoiceTemplate.context),
+        <<"randomizeAmount">> => capi_mutation:decode_amount_randomization_params(
+            InvoiceTpl#domain_InvoiceTemplate.mutations
+        )
     }).
 
 undef_to_zero(undefined) -> 0;

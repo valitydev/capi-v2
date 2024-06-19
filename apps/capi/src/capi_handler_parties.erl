@@ -142,7 +142,7 @@ get_or_create_party(PartyID, Context) ->
 create_party(PartyID, Email, Context) ->
     PartyParams = #payproc_PartyParams{
         contact_info = #domain_PartyContactInfo{
-            email = Email
+            registration_email = Email
         }
     },
     case capi_party:create_party(PartyID, PartyParams, Context) of
