@@ -445,7 +445,8 @@ create_invoice_template_ok_test(Config) ->
         <<"description">> => <<"Sample text">>,
         <<"metadata">> => #{
             <<"key">> => <<"value">>
-        }
+        },
+        <<"randomizeAmount">> => #{<<"deviation">> => ?SMALLER_INTEGER}
     },
     Req2 = Req1#{<<"description">> => <<"whatever">>},
 
@@ -463,7 +464,8 @@ create_invoice_template_ok_test(Config) ->
             [<<"description">>],
             [<<"externalID">>],
             [<<"metadata">>, <<"key">>],
-            [<<"partyID">>]
+            [<<"partyID">>],
+            [<<"randomizeAmount">>, <<"deviation">>]
         ],
         UnusedParams1
     ).
