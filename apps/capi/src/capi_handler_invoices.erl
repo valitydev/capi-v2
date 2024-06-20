@@ -55,9 +55,6 @@ prepare('CreateInvoice' = OperationID, Req, Context) ->
                     {ok, logic_error('invalidAllocation', Message)}
             end
         catch
-            throw:invoice_cart_not_supported ->
-                ErrMsg = <<"Cart parameter is not supported with amount randomization. Path to item: cart">>,
-                {ok, logic_error('cartNotSupported', ErrMsg)};
             throw:invoice_cart_empty ->
                 {ok, logic_error('invalidInvoiceCart', <<"Wrong size. Path to item: cart">>)};
             throw:invalid_invoice_cost ->
@@ -273,18 +270,10 @@ create_invoice(PartyID, InvoiceParams, Context, BenderPrefix) ->
     #{woody_context := WoodyCtx} = Context,
     ExternalID = maps:get(<<"externalID">>, InvoiceParams, undefined),
     IdempotentKey = {BenderPrefix, PartyID, ExternalID},
-    ok = validate_randomize_amount_opts(InvoiceParams),
     Identity = capi_bender:make_identity(capi_feature_schemas:invoice(), InvoiceParams),
     InvoiceID = capi_bender:gen_snowflake(IdempotentKey, Identity, WoodyCtx),
     Call = {invoicing, 'Create', {encode_invoice_params(InvoiceID, PartyID, InvoiceParams)}},
     capi_handler_utils:service_call(Call, Context).
-
-validate_randomize_amount_opts(#{<<"randomizeAmount">> := Opts, <<"cart">> := Cart}) when
-    is_map(Opts) andalso is_list(Cart)
-->
-    throw(invoice_cart_not_supported);
-validate_randomize_amount_opts(_InvoiceParams) ->
-    ok.
 
 encode_invoice_params(ID, PartyID, InvoiceParams) ->
     Amount = genlib_map:get(<<"amount">>, InvoiceParams),
