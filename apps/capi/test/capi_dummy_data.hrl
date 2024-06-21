@@ -537,7 +537,7 @@
 
 -define(PARTY, #domain_Party{
     id = ?STRING,
-    contact_info = #domain_PartyContactInfo{email = ?STRING},
+    contact_info = #domain_PartyContactInfo{registration_email = ?STRING},
     created_at = ?TIMESTAMP,
     blocking = ?BLOCKING,
     suspension = ?SUSPENTION,
