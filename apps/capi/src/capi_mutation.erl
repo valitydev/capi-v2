@@ -18,6 +18,7 @@ encode_amount_randomization_params(Opts) when is_map(Opts) ->
             {randomization, #domain_RandomizationMutationParams{
                 deviation = maps:get(<<"deviation">>, Opts),
                 precision = maps:get(<<"precision">>, Opts, 2),
+                direction = binary_to_existing_atom(maps:get(<<"direction">>, Opts, <<"both">>)),
                 min_amount_condition = maps:get(<<"minAmountCondition">>, Opts, undefined),
                 max_amount_condition = maps:get(<<"maxAmountCondition">>, Opts, 2),
                 amount_multiplicity_condition = maps:get(<<"amountMultiplicityCondition">>, Opts, undefined)
@@ -35,6 +36,7 @@ decode_amount_randomization_params(Mutations) when is_list(Mutations) ->
                     {randomization, #domain_RandomizationMutationParams{
                         deviation = Deviation,
                         precision = Precision,
+                        direction = Direction,
                         min_amount_condition = MinAmountCondition,
                         max_amount_condition = MaxAmountCondition,
                         amount_multiplicity_condition = AmountMultiplicityCondition
@@ -44,6 +46,7 @@ decode_amount_randomization_params(Mutations) when is_list(Mutations) ->
                 #{
                     <<"deviation">> => Deviation,
                     <<"precision">> => Precision,
+                    <<"direction">> => atom_to_binary(Direction),
                     <<"minAmountCondition">> => MinAmountCondition,
                     <<"maxAmountCondition">> => MaxAmountCondition,
                     <<"amountMultiplicityCondition">> => AmountMultiplicityCondition
