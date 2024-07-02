@@ -56,40 +56,6 @@ prepare(OperationID = 'GetPaymentInstitutionPaymentTerms', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID, Req, Context) when
-    OperationID =:= 'GetPaymentInstitutionPayoutMethods';
-    OperationID =:= 'GetPaymentInstitutionPayoutMethodsForParty'
-->
-    Authorize = mk_authorize_operation(OperationID, Context),
-    Process = fun() ->
-        PaymentInstitutionID = genlib:to_int(maps:get('paymentInstitutionID', Req)),
-        case compute_payment_institution_terms(PaymentInstitutionID, prepare_request_varset(Req, Context), Context) of
-            {ok, #domain_TermSet{payouts = #domain_PayoutsServiceTerms{payout_methods = PayoutMethods}}} ->
-                {ok, {200, #{}, decode_payout_methods_selector(PayoutMethods)}};
-            {ok, #domain_TermSet{payouts = undefined}} ->
-                {ok, general_error(404, <<"Automatic payouts not allowed">>)};
-            {error, #payproc_PaymentInstitutionNotFound{}} ->
-                {ok, general_error(404, <<"Payment institution not found">>)}
-        end
-    end,
-    {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID, Req, Context) when
-    OperationID =:= 'GetPaymentInstitutionPayoutSchedules';
-    OperationID =:= 'GetPaymentInstitutionPayoutSchedulesForParty'
-->
-    Authorize = mk_authorize_operation(OperationID, Context),
-    Process = fun() ->
-        PaymentInstitutionID = genlib:to_int(maps:get('paymentInstitutionID', Req)),
-        case compute_payment_institution_terms(PaymentInstitutionID, prepare_request_varset(Req, Context), Context) of
-            {ok, #domain_TermSet{payouts = #domain_PayoutsServiceTerms{payout_schedules = Schedules}}} ->
-                {ok, {200, #{}, decode_business_schedules_selector(Schedules)}};
-            {ok, #domain_TermSet{payouts = undefined}} ->
-                {ok, general_error(404, <<"Automatic payouts not allowed">>)};
-            {error, #payproc_PaymentInstitutionNotFound{}} ->
-                {ok, general_error(404, <<"Payment institution not found">>)}
-        end
-    end,
-    {ok, #{authorize => Authorize, process => Process}};
 prepare(OperationID = 'GetServiceProviderByID', Req, Context) ->
     Authorize = mk_authorize_operation(OperationID, Context),
     Process = fun() ->
@@ -151,33 +117,6 @@ compute_payment_institution_terms(PaymentInstitutionID, VS, Context) ->
     Ref = ?PAYMENT_INSTITUTION_REF(PaymentInstitutionID),
     capi_party:compute_payment_institution_terms(Ref, VS, Context).
 
-prepare_request_varset(#{'partyID' := PartyID} = Req, _Context) ->
-    #payproc_Varset{
-        currency = encode_optional_currency(genlib_map:get('currency', Req)),
-        payout_method = encode_optional_payout_method(genlib_map:get('payoutMethod', Req)),
-        party_id = PartyID
-    };
-prepare_request_varset(Req, Context) ->
-    PartyID = capi_handler_utils:get_party_id(Context),
-    Req1 = maps:put('partyID', PartyID, Req),
-    prepare_request_varset(Req1, Context).
-
-%
-
-encode_optional_payout_method('BankAccount') ->
-    #domain_PayoutMethodRef{id = russian_bank_account};
-encode_optional_payout_method('InternationalBankAccount') ->
-    #domain_PayoutMethodRef{id = international_bank_account};
-encode_optional_payout_method('Wallet') ->
-    #domain_PayoutMethodRef{id = wallet_info};
-encode_optional_payout_method('PaymentInstitutionAccount') ->
-    #domain_PayoutMethodRef{id = payment_institution_account};
-encode_optional_payout_method(undefined) ->
-    undefined.
-
-encode_optional_currency(undefined) -> undefined;
-encode_optional_currency(SymbolicCode) -> capi_handler_encoder:encode_currency(SymbolicCode).
-
 %
 
 decode_payment_institution(#domain_PaymentInstitutionObject{ref = Ref, data = Data}) ->
@@ -204,25 +143,6 @@ decode_payment_terms(Fun, {value, Val}) when is_list(Val) ->
     [Fun(V) || V <- Val];
 decode_payment_terms(_, _) ->
     undefined.
-
-decode_payout_method(#domain_PayoutMethodRef{id = russian_bank_account}) ->
-    <<"BankAccount">>;
-decode_payout_method(#domain_PayoutMethodRef{id = international_bank_account}) ->
-    <<"InternationalBankAccount">>;
-decode_payout_method(#domain_PayoutMethodRef{id = wallet_info}) ->
-    <<"Wallet">>;
-decode_payout_method(#domain_PayoutMethodRef{id = payment_institution_account}) ->
-    <<"PaymentInstitutionAccount">>.
-
-decode_payout_methods_selector({value, Val}) when is_list(Val) ->
-    lists:map(fun decode_payout_method/1, Val);
-decode_payout_methods_selector(_) ->
-    [].
-
-decode_business_schedules_selector({value, Val}) when is_list(Val) ->
-    lists:map(fun capi_handler_decoder_utils:decode_business_schedule_ref/1, Val);
-decode_business_schedules_selector(_) ->
-    [].
 
 %%
 

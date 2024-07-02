@@ -189,7 +189,5 @@ decode_shop(Shop) ->
         <<"categoryID">> => capi_handler_decoder_utils:decode_category_ref(Shop#domain_Shop.category),
         <<"details">> => capi_handler_decoder_party:decode_shop_details(Shop#domain_Shop.details),
         <<"location">> => capi_handler_decoder_party:decode_shop_location(Shop#domain_Shop.location),
-        <<"contractID">> => Shop#domain_Shop.contract_id,
-        <<"payoutToolID">> => Shop#domain_Shop.payout_tool_id,
-        <<"scheduleID">> => capi_handler_decoder_utils:decode_business_schedule_ref(Shop#domain_Shop.payout_schedule)
+        <<"contractID">> => Shop#domain_Shop.contract_id
     }).

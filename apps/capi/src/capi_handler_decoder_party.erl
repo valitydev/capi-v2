@@ -13,7 +13,6 @@
 -export([decode_reporting_preferences/1]).
 -export([decode_residence/1]).
 -export([decode_payment_institution_ref/1]).
--export([decode_payout_tool_details/1]).
 
 %%
 
@@ -176,21 +175,6 @@ decode_residence(Residence) when is_atom(Residence) ->
 decode_payment_institution_ref(#domain_PaymentInstitutionRef{id = Ref}) ->
     Ref.
 
--spec decode_payout_tool_details({atom(), _}) -> capi_handler_decoder_utils:decode_data().
-decode_payout_tool_details({russian_bank_account, V}) ->
-    decode_russian_bank_account(V, #{<<"detailsType">> => <<"PayoutToolDetailsBankAccount">>});
-decode_payout_tool_details({international_bank_account, V}) ->
-    decode_international_bank_account(V, #{<<"detailsType">> => <<"PayoutToolDetailsInternationalBankAccount">>});
-decode_payout_tool_details({wallet_info, V}) ->
-    #{
-        <<"detailsType">> => <<"PayoutToolDetailsWalletInfo">>,
-        <<"walletID">> => V#domain_WalletInfo.wallet_id
-    };
-decode_payout_tool_details({payment_institution_account, _V}) ->
-    #{
-        <<"detailsType">> => <<"PayoutToolDetailsPaymentInstitutionAccount">>
-    }.
-
 decode_russian_bank_account(BankAccount, V) ->
     V#{
         <<"account">> => BankAccount#domain_RussianBankAccount.account,
@@ -198,29 +182,3 @@ decode_russian_bank_account(BankAccount, V) ->
         <<"bankPostAccount">> => BankAccount#domain_RussianBankAccount.bank_post_account,
         <<"bankBik">> => BankAccount#domain_RussianBankAccount.bank_bik
     }.
-
-decode_international_bank_account(undefined, _) ->
-    undefined;
-decode_international_bank_account(BankAccount, V) ->
-    genlib_map:compact(V#{
-        <<"number">> => BankAccount#domain_InternationalBankAccount.number,
-        <<"iban">> => BankAccount#domain_InternationalBankAccount.iban,
-        <<"bankDetails">> => decode_international_bank_details(
-            BankAccount#domain_InternationalBankAccount.bank
-        ),
-        <<"correspondentBankAccount">> => decode_international_bank_account(
-            BankAccount#domain_InternationalBankAccount.correspondent_account,
-            #{}
-        )
-    }).
-
-decode_international_bank_details(undefined) ->
-    undefined;
-decode_international_bank_details(Bank) ->
-    genlib_map:compact(#{
-        <<"bic">> => Bank#domain_InternationalBankDetails.bic,
-        <<"abartn">> => Bank#domain_InternationalBankDetails.aba_rtn,
-        <<"name">> => Bank#domain_InternationalBankDetails.name,
-        <<"countryCode">> => decode_residence(Bank#domain_InternationalBankDetails.country),
-        <<"address">> => Bank#domain_InternationalBankDetails.address
-    }).
