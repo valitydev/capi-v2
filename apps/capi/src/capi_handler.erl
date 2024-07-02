@@ -111,7 +111,6 @@ get_handlers() ->
         capi_handler_parties,
         capi_handler_payment_institutions,
         capi_handler_payments,
-        capi_handler_payouts,
         capi_handler_search,
         capi_handler_shops,
         capi_handler_trade_blocs,

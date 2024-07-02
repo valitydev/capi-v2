@@ -6,7 +6,6 @@
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
--include_lib("payout_manager_proto/include/payouts_payout_manager_thrift.hrl").
 
 -type fragment() :: bouncer_client:context_fragment().
 -type acc() :: bouncer_context_helpers:context_fragment().
@@ -20,7 +19,6 @@
 -type prototypes() :: [
     {operation, prototype_operation()}
     | {payproc, prototype_payproc()}
-    | {payouts, prototype_payouts()}
     | {webhooks, prototype_webhooks()}
 ].
 
@@ -36,19 +34,13 @@
     customer => entity_id(),
     binding => entity_id(),
     file => entity_id(),
-    webhook => entity_id(),
-    payout => entity_id()
+    webhook => entity_id()
 }.
 
 -type prototype_payproc() :: #{
     invoice => invoice_id() | invoice() | undefined,
     invoice_template => invoice_template_id() | invoice_template() | undefined,
     customer => customer_id() | customer() | undefined
-}.
-
--type prototype_payouts() :: #{
-    payout => payout_id() | payout() | undefined,
-    contract => entity_id()
 }.
 
 -type prototype_webhooks() :: #{
@@ -67,15 +59,11 @@
 -type webhook_id() :: dmsl_webhooker_thrift:'WebhookID'().
 -type webhook() :: dmsl_webhooker_thrift:'Webhook'().
 
--type payout_id() :: payouts_payout_manager_thrift:'PayoutID'().
--type payout() :: payouts_payout_manager_thrift:'Payout'().
-
 -type entity_id() :: binary().
 
 -export_type([prototypes/0]).
 -export_type([prototype_operation/0]).
 -export_type([prototype_payproc/0]).
--export_type([prototype_payouts/0]).
 -export_type([prototype_webhooks/0]).
 
 -export([new/0]).
@@ -113,8 +101,7 @@ build(operation, Params = #{id := OperationID}, Acc, _WoodyCtx) ->
                 customer = maybe_entity(customer, Params),
                 binding = maybe_entity(binding, Params),
                 file = maybe_entity(file, Params),
-                webhook = maybe_entity(webhook, Params),
-                payout = maybe_entity(payout, Params)
+                webhook = maybe_entity(webhook, Params)
             }
         }
     };
@@ -146,20 +133,6 @@ build(webhooks, Params = #{}, Acc, WoodyCtx) ->
                 Params,
                 fun(V) -> build_webhook_ctx(V, WoodyCtx) end
             )
-        }
-    };
-build(payouts, Params = #{}, Acc, WoodyCtx) ->
-    Payout0 = maybe_with(payout, Params, fun(V) ->
-        build_payout_ctx(V, WoodyCtx)
-    end),
-    Payout = maybe(Payout0, fun(_Payout0) ->
-        Payout0#ctx_v1_Payout{
-            contract = maybe_entity(contract, Params)
-        }
-    end),
-    Acc#ctx_v1_ContextFragment{
-        payouts = #ctx_v1_ContextPayouts{
-            payout = Payout
         }
     }.
 
@@ -232,24 +205,6 @@ build_customer_ctx(#payproc_Customer{id = ID, owner_id = OwnerID, shop_id = Shop
 
 build_binding_ctx(#payproc_CustomerBinding{id = ID}) ->
     build_entity(ID).
-
-%%
-
-build_payout_ctx(ID, WoodyCtx) when is_binary(ID) ->
-    maybe_with_woody_result(payouts, 'GetPayout', {ID}, WoodyCtx, fun build_payout_ctx/1);
-build_payout_ctx(Payout, _WoodyCtx) ->
-    build_payout_ctx(Payout).
-
-build_payout_ctx(#payouts_Payout{
-    payout_id = ID,
-    party_id = PartyID,
-    shop_id = ShopID
-}) ->
-    #ctx_v1_Payout{
-        id = ID,
-        party = build_entity(PartyID),
-        shop = build_entity(ShopID)
-    }.
 
 %%
 

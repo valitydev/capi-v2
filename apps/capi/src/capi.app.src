@@ -28,7 +28,6 @@
         bouncer_client,
         token_keeper_client,
         party_client,
-        payout_manager_proto,
         magista_proto,
         opentelemetry_api,
         opentelemetry_exporter,
