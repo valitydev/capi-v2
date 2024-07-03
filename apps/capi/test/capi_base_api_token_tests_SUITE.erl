@@ -8,7 +8,6 @@
 -include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
 -include_lib("damsel/include/dmsl_base_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
--include_lib("payout_manager_proto/include/payouts_payout_manager_thrift.hrl").
 -include_lib("capi_dummy_data.hrl").
 -include_lib("capi_bouncer_data.hrl").
 
@@ -91,13 +90,6 @@
     get_contract_adjustments_for_party_ok_test/1,
     get_contract_adjustment_by_id_ok_test/1,
     get_contract_adjustment_by_id_for_party_ok_test/1,
-    get_payout_tools_ok_test/1,
-    get_payout_tools_for_party_ok_test/1,
-    get_payout_tool_by_id/1,
-    get_payout_tool_by_id_for_party/1,
-    create_payout/1,
-    get_payout/1,
-    create_payout_autorization_error/1,
     create_webhook_ok_test/1,
     create_webhook_limit_exceeded_test/1,
     get_webhooks/1,
@@ -106,14 +98,9 @@
     delete_webhook_by_id/1,
     get_categories_ok_test/1,
     get_category_by_ref_ok_test/1,
-    get_schedule_by_ref_ok_test/1,
     get_payment_institutions/1,
     get_payment_institution_by_ref/1,
     get_payment_institution_payment_terms/1,
-    get_payment_institution_payout_terms/1,
-    get_payment_institution_payout_terms_for_party/1,
-    get_payment_institution_payout_schedules/1,
-    get_payment_institution_payout_schedules_for_party/1,
     get_service_provider_by_id/1,
     check_no_payment_by_external_id_test/1,
     check_no_internal_id_for_external_id_test/1,
@@ -241,14 +228,9 @@ groups() ->
             get_payment_institutions,
             get_payment_institution_by_ref,
             get_payment_institution_payment_terms,
-            get_payment_institution_payout_terms,
-            get_payment_institution_payout_terms_for_party,
-            get_payment_institution_payout_schedules,
-            get_payment_institution_payout_schedules_for_party,
             get_service_provider_by_id,
 
             get_category_by_ref_ok_test,
-            get_schedule_by_ref_ok_test,
             get_country_by_id_test,
             get_country_by_id_not_found_test,
             get_countries_test,
@@ -262,14 +244,6 @@ groups() ->
             get_webhooks_for_party,
             get_webhook_by_id,
             delete_webhook_by_id,
-
-            get_payout_tools_ok_test,
-            get_payout_tools_for_party_ok_test,
-            get_payout_tool_by_id,
-            get_payout_tool_by_id_for_party,
-            create_payout,
-            create_payout_autorization_error,
-            get_payout,
 
             different_ip_header
         ]}
@@ -1641,106 +1615,6 @@ get_contract_adjustment_by_id_for_party_ok_test(Config) ->
         ?STRING
     ).
 
--spec get_payout_tools_ok_test(config()) -> _.
-get_payout_tools_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services([{party_management, fun('GetContract', _) -> {ok, ?CONTRACT} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetPayoutTools">>, ?STRING, Config),
-    {ok, _} = capi_client_payouts:get_payout_tools(?config(context, Config), ?STRING).
-
--spec get_payout_tools_for_party_ok_test(config()) -> _.
-get_payout_tools_for_party_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services([{party_management, fun('GetContract', _) -> {ok, ?CONTRACT} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetPayoutToolsForParty">>, ?STRING, Config),
-    {ok, _} = capi_client_payouts:get_payout_tools_for_party(?config(context, Config), ?STRING, ?STRING).
-
--spec get_payout_tool_by_id(config()) -> _.
-get_payout_tool_by_id(Config) ->
-    _ = capi_ct_helper:mock_services([{party_management, fun('GetContract', _) -> {ok, ?CONTRACT} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetPayoutToolByID">>, ?STRING, Config),
-    {ok, _} = capi_client_payouts:get_payout_tool_by_id(?config(context, Config), ?STRING, ?BANKID_RU),
-    {ok, _} = capi_client_payouts:get_payout_tool_by_id(?config(context, Config), ?STRING, ?BANKID_US),
-    {ok, _} = capi_client_payouts:get_payout_tool_by_id(?config(context, Config), ?STRING, ?WALLET_TOOL),
-    {ok, _} = capi_client_payouts:get_payout_tool_by_id(?config(context, Config), ?STRING, ?PI_ACCOUNT_TOOL).
-
--spec get_payout_tool_by_id_for_party(config()) -> _.
-get_payout_tool_by_id_for_party(Config) ->
-    _ = capi_ct_helper:mock_services([{party_management, fun('GetContract', _) -> {ok, ?CONTRACT} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetPayoutToolByIDForParty">>, ?STRING, Config),
-    {ok, _} = capi_client_payouts:get_payout_tool_by_id_for_party(
-        ?config(context, Config),
-        ?STRING,
-        ?STRING,
-        ?WALLET_TOOL
-    ),
-    {ok, _} = capi_client_payouts:get_payout_tool_by_id_for_party(
-        ?config(context, Config),
-        ?STRING,
-        ?STRING,
-        ?PI_ACCOUNT_TOOL
-    ).
-
--spec create_payout(config()) -> _.
-create_payout(Config) ->
-    Payout = ?PAYOUT(?WALLET_TOOL),
-    _ = capi_ct_helper:mock_services(
-        [
-            {payouts, fun('CreatePayout', _) -> {ok, Payout} end},
-            {party_management, fun
-                ('GetShop', _) -> {ok, ?SHOP};
-                ('GetContract', _) -> {ok, ?CONTRACT}
-            end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"CreatePayout">>, ?STRING, ?STRING, Config),
-    {ok, _} = capi_client_payouts:create_payout(?config(context, Config), ?PAYOUT_PARAMS, ?STRING).
-
--spec create_payout_autorization_error(config()) -> _.
-create_payout_autorization_error(Config) ->
-    Payout = ?PAYOUT(?WALLET_TOOL),
-    _ = capi_ct_helper:mock_services(
-        [
-            {payouts, fun('CreatePayout', _) -> {ok, Payout} end},
-            {party_management, fun
-                ('GetShop', _) -> {ok, ?SHOP};
-                ('GetContract', _) -> {ok, ?CONTRACT}
-            end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_forbidden(), Config),
-    ?assertMatch(
-        {error, {401, _}},
-        capi_client_payouts:create_payout(
-            ?config(context, Config),
-            ?PAYOUT_PARAMS#{<<"partyID">> => <<"WrongPartyID">>},
-            ?STRING
-        )
-    ).
-
--spec get_payout(config()) -> _.
-get_payout(Config) ->
-    Payout = ?PAYOUT(?WALLET_TOOL),
-    _ = capi_ct_helper:mock_services(
-        [
-            {payouts, fun('GetPayout', _) -> {ok, Payout} end},
-            {party_management, fun
-                ('GetShop', _) -> {ok, ?SHOP};
-                ('GetContract', _) -> {ok, ?CONTRACT}
-            end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_payout_op_ctx(
-        <<"GetPayout">>,
-        ?STRING,
-        ?STRING,
-        ?STRING,
-        ?STRING,
-        Config
-    ),
-    {ok, _} = capi_client_payouts:get_payout(?config(context, Config), ?STRING).
-
 -spec create_webhook_ok_test(config()) -> _.
 create_webhook_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
@@ -1864,11 +1738,6 @@ get_categories_ok_test(Config) ->
 get_category_by_ref_ok_test(Config) ->
     _ = capi_ct_helper_bouncer:mock_assert_op_ctx(<<"GetCategoryByRef">>, Config),
     {ok, _} = capi_client_categories:get_category_by_ref(?config(context, Config), ?INTEGER).
-
--spec get_schedule_by_ref_ok_test(config()) -> _.
-get_schedule_by_ref_ok_test(Config) ->
-    _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_allowed(), Config),
-    {ok, _} = capi_client_payouts:get_schedule_by_ref(?config(context, Config), ?INTEGER).
 
 -spec check_no_payment_by_external_id_test(config()) -> _.
 check_no_payment_by_external_id_test(Config) ->
@@ -2073,74 +1942,6 @@ get_payment_institution_payment_terms(Config) ->
     _ = capi_ct_helper_bouncer:mock_assert_op_ctx(<<"GetPaymentInstitutionPaymentTerms">>, Config),
     {ok, _} =
         capi_client_payment_institutions:get_payment_institution_payment_terms(?config(context, Config), ?INTEGER).
-
--spec get_payment_institution_payout_terms(config()) -> _.
-get_payment_institution_payout_terms(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {party_management, fun('ComputePaymentInstitutionTerms', _) -> {ok, ?TERM_SET} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_op_ctx(<<"GetPaymentInstitutionPayoutMethods">>, Config),
-    {ok, _} = capi_client_payment_institutions:get_payment_institution_payout_methods(
-        ?config(context, Config),
-        ?INTEGER,
-        <<"RUB">>
-    ).
-
--spec get_payment_institution_payout_terms_for_party(config()) -> _.
-get_payment_institution_payout_terms_for_party(Config) ->
-    PartyID = capi_utils:get_unique_id(),
-    _ = capi_ct_helper:mock_services(
-        [
-            {party_management, fun('ComputePaymentInstitutionTerms', _) -> {ok, ?TERM_SET} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_op_ctx(<<"GetPaymentInstitutionPayoutMethodsForParty">>, Config),
-    {ok, _} = capi_client_payment_institutions:get_payment_institution_payout_methods_for_party(
-        ?config(context, Config),
-        PartyID,
-        ?INTEGER,
-        <<"RUB">>
-    ).
-
--spec get_payment_institution_payout_schedules(config()) -> _.
-get_payment_institution_payout_schedules(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {party_management, fun('ComputePaymentInstitutionTerms', _) -> {ok, ?TERM_SET} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_op_ctx(<<"GetPaymentInstitutionPayoutSchedules">>, Config),
-
-    {ok, _} = capi_client_payment_institutions:get_payment_institution_payout_schedules(
-        ?config(context, Config),
-        ?INTEGER,
-        <<"USD">>,
-        <<"BankAccount">>
-    ).
-
--spec get_payment_institution_payout_schedules_for_party(config()) -> _.
-get_payment_institution_payout_schedules_for_party(Config) ->
-    PartyID = capi_utils:get_unique_id(),
-    _ = capi_ct_helper:mock_services(
-        [
-            {party_management, fun('ComputePaymentInstitutionTerms', _) -> {ok, ?TERM_SET} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_op_ctx(<<"GetPaymentInstitutionPayoutSchedulesForParty">>, Config),
-
-    {ok, _} = capi_client_payment_institutions:get_payment_institution_payout_schedules_for_party(
-        ?config(context, Config),
-        PartyID,
-        ?INTEGER,
-        <<"USD">>,
-        <<"BankAccount">>
-    ).
 
 -spec get_service_provider_by_id(config()) -> _.
 get_service_provider_by_id(Config) ->

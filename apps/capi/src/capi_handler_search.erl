@@ -459,7 +459,6 @@ build_prototypes(OperationID, Context, Req) ->
             invoice => InvoiceID,
             payment => genlib_map:get('paymentID', Req),
             customer => CustomerID,
-            payout => genlib_map:get('payoutID', Req),
             refund => genlib_map:get('refundID', Req)
         }},
         {payproc, #{
