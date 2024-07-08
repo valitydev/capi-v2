@@ -24,6 +24,7 @@
 
 -export([
     create_invoice_ok_test/1,
+    create_invoice_rand_amount_ok_test/1,
     create_invoice_autorization_error_test/1,
     get_invoice_by_external_id/1,
     get_invoice_by_external_id_for_party/1,
@@ -153,6 +154,7 @@ groups() ->
             create_customer_access_token_ok_test,
 
             create_invoice_ok_test,
+            create_invoice_rand_amount_ok_test,
             create_invoice_autorization_error_test,
             get_invoice_by_external_id,
             get_invoice_by_external_id_for_party,
@@ -306,6 +308,27 @@ create_invoice_ok_test(Config) ->
     ),
     _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"CreateInvoice">>, ?STRING, ?STRING, Config),
     {ok, _} = capi_client_invoices:create_invoice(?config(context, Config), ?INVOICE_PARAMS).
+
+-spec create_invoice_rand_amount_ok_test(config()) -> _.
+create_invoice_rand_amount_ok_test(Config) ->
+    RandomizedAmount = ?INTEGER + ?SMALLER_INTEGER,
+    ExpectedInvoice = ?INVOICE#domain_Invoice{
+        cost = ?CASH(RandomizedAmount),
+        mutations = [{amount, #domain_InvoiceAmountMutation{original = ?INTEGER, mutated = RandomizedAmount}}]
+    },
+    _ = capi_ct_helper:mock_services(
+        [
+            {invoicing, fun('Create', _) -> {ok, ?PAYPROC_INVOICE(ExpectedInvoice, [])} end},
+            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"CreateInvoice">>, ?STRING, ?STRING, Config),
+    {ok, _} = capi_client_invoices:create_invoice(?config(context, Config), ?INVOICE_PARAMS#{
+        <<"randomizeAmount">> => #{
+            <<"deviation">> => ?SMALLER_INTEGER
+        }
+    }).
 
 -spec create_invoice_autorization_error_test(config()) -> _.
 create_invoice_autorization_error_test(Config) ->

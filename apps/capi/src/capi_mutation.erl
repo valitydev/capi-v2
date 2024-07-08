@@ -67,7 +67,7 @@ decode_invoice_amount_mutation(Mutations) when is_list(Mutations) ->
             ({amount, #domain_InvoiceAmountMutation{original = Original, mutated = Mutated}}, _) ->
                 #{
                     <<"original">> => Original,
-                    <<"mutated">> => Mutated
+                    <<"randomized">> => Mutated
                 };
             (_, AmountRandomized) ->
                 AmountRandomized
