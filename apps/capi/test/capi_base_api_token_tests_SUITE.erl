@@ -324,11 +324,23 @@ create_invoice_rand_amount_ok_test(Config) ->
         Config
     ),
     _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"CreateInvoice">>, ?STRING, ?STRING, Config),
-    {ok, _} = capi_client_invoices:create_invoice(?config(context, Config), ?INVOICE_PARAMS#{
+    {ok, Response} = capi_client_invoices:create_invoice(?config(context, Config), ?INVOICE_PARAMS#{
         <<"randomizeAmount">> => #{
             <<"deviation">> => ?SMALLER_INTEGER
         }
-    }).
+    }),
+    ?assertMatch(
+        #{
+            <<"invoice">> := #{
+                <<"amount">> := RandomizedAmount,
+                <<"amountRandomized">> := #{
+                    <<"original">> := ?INTEGER,
+                    <<"randomized">> := RandomizedAmount
+                }
+            }
+        },
+        Response
+    ).
 
 -spec create_invoice_autorization_error_test(config()) -> _.
 create_invoice_autorization_error_test(Config) ->
