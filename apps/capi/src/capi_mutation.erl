@@ -43,14 +43,14 @@ decode_amount_randomization_params(Mutations) when is_list(Mutations) ->
                     }}},
                 _
             ) ->
-                #{
+                genlib_map:compact(#{
                     <<"deviation">> => Deviation,
                     <<"precision">> => Precision,
                     <<"direction">> => atom_to_binary(Direction),
                     <<"minAmountCondition">> => MinAmountCondition,
                     <<"maxAmountCondition">> => MaxAmountCondition,
                     <<"amountMultiplicityCondition">> => AmountMultiplicityCondition
-                };
+                });
             (_, Opts) ->
                 Opts
         end,

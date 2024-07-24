@@ -31,6 +31,7 @@
     get_invoice_by_external_id_not_impl_error/1,
     create_invoice_access_token_ok_test/1,
     create_invoice_template_ok_test/1,
+    create_invoice_template_w_randomization_ok_test/1,
     create_invoice_with_template_test/1,
     create_invoice_template_autorization_error_test/1,
     create_customer_ok_test/1,
@@ -162,6 +163,7 @@ groups() ->
             check_no_invoice_by_external_id_test,
             create_invoice_access_token_ok_test,
             create_invoice_template_ok_test,
+            create_invoice_template_w_randomization_ok_test,
             create_invoice_template_autorization_error_test,
             create_invoice_with_template_test,
             rescind_invoice_ok_test,
@@ -478,6 +480,65 @@ create_invoice_template_ok_test(Config) ->
     {ok, _} = capi_client_invoice_templates:create(?config(context, Config), Req#{
         <<"details">> => ?INVOICE_TMPL_DETAILS_PARAMS
     }).
+
+-spec create_invoice_template_w_randomization_ok_test(config()) -> _.
+create_invoice_template_w_randomization_ok_test(Config) ->
+    _ = capi_ct_helper:mock_services(
+        [
+            {invoice_templating, fun('Create', {#payproc_InvoiceTemplateCreateParams{party_id = ?STRING}}) ->
+                {ok, (?INVOICE_TPL)#domain_InvoiceTemplate{
+                    mutations = [
+                        {amount,
+                            {randomization, #domain_RandomizationMutationParams{
+                                deviation = ?SMALLER_INTEGER,
+                                precision = 2,
+                                direction = both
+                            }}}
+                    ]
+                }}
+            end},
+            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"CreateInvoiceTemplate">>, ?STRING, ?STRING, Config),
+    Req = #{
+        <<"shopID">> => ?STRING,
+        <<"lifetime">> => capi_ct_helper:get_lifetime(),
+        <<"description">> => <<"test_invoice_template_description">>,
+        <<"metadata">> => #{<<"invoice_template_dummy_metadata">> => <<"test_value">>},
+        <<"randomizeAmount">> => #{
+            <<"deviation">> => ?SMALLER_INTEGER,
+            <<"precision">> => 2,
+            <<"direction">> => <<"both">>
+        }
+    },
+    Details0 = #{
+        <<"templateType">> => <<"InvoiceTemplateSingleLine">>,
+        <<"product">> => <<"test_invoice_template_product">>,
+        <<"price">> => #{
+            <<"costType">> => <<"InvoiceTemplateLineCostFixed">>,
+            <<"currency">> => ?RUB,
+            <<"amount">> => ?INTEGER
+        }
+    },
+    {ok, _} = capi_client_invoice_templates:create(?config(context, Config), Req#{<<"details">> => Details0}),
+    {ok, InvoiceTplWithToken} = capi_client_invoice_templates:create(?config(context, Config), Req#{
+        <<"details">> => ?INVOICE_TMPL_DETAILS_PARAMS
+    }),
+    ?assertMatch(
+        #{
+            <<"invoiceTemplate">> := #{
+                <<"randomizeAmount">> :=
+                    #{
+                        <<"deviation">> := ?SMALLER_INTEGER,
+                        <<"direction">> := <<"both">>,
+                        <<"precision">> := 2
+                    }
+            }
+        },
+        InvoiceTplWithToken
+    ).
 
 -spec create_invoice_template_autorization_error_test(config()) -> _.
 create_invoice_template_autorization_error_test(Config) ->
