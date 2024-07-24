@@ -20,7 +20,7 @@ encode_amount_randomization_params(Opts) when is_map(Opts) ->
                 precision = maps:get(<<"precision">>, Opts, 2),
                 direction = binary_to_existing_atom(maps:get(<<"direction">>, Opts, <<"both">>)),
                 min_amount_condition = maps:get(<<"minAmountCondition">>, Opts, undefined),
-                max_amount_condition = maps:get(<<"maxAmountCondition">>, Opts, 2),
+                max_amount_condition = maps:get(<<"maxAmountCondition">>, Opts, undefined),
                 amount_multiplicity_condition = maps:get(<<"amountMultiplicityCondition">>, Opts, undefined)
             }}}
     ];
