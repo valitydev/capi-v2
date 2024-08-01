@@ -431,6 +431,7 @@
     status = {active, #domain_ContractActive{}},
     terms = #domain_TermSetHierarchyRef{id = ?INTEGER},
     adjustments = [?CONTRACT_ADJUSTMENT],
+    payout_tools = [],
     legal_agreement = ?CONTRACT_LEGAL_AGREEMENT,
     report_preferences = ?CONTRACT_REPORT_PREFS
 }).
@@ -478,7 +479,8 @@
     account = #domain_ShopAccount{
         currency = #domain_CurrencyRef{symbolic_code = Currency},
         settlement = ?INTEGER,
-        guarantee = ?INTEGER
+        guarantee = ?INTEGER,
+        payout = ?INTEGER
     }
 }).
 
@@ -516,7 +518,8 @@
     valid_until = ?TIMESTAMP,
     status = {active, #domain_ContractActive{}},
     terms = #domain_TermSetHierarchyRef{id = ?INTEGER},
-    adjustments = []
+    adjustments = [],
+    payout_tools = []
 }).
 
 -define(WALLET, #domain_Wallet{
