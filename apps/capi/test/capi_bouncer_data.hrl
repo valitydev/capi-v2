@@ -157,13 +157,6 @@
     party = ?CTX_ENTITY(PartyID)
 }).
 
--define(CTX_PAYOUT(ID, PartyID, ContractID, ShopID), #ctx_v1_Payout{
-    id = ID,
-    party = ?CTX_ENTITY(PartyID),
-    contract = ?CTX_ENTITY(ContractID),
-    shop = ?CTX_ENTITY(ShopID)
-}).
-
 -define(assertContextMatches(Expect), fun(Context) ->
     try
         ?assertMatch(Expect, Context),

@@ -10,6 +10,8 @@
         snowflake,
         genlib,
         feat,
+        prometheus,
+        prometheus_cowboy,
         woody,
         capi_woody_client,
         damsel,
