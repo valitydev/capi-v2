@@ -431,12 +431,7 @@
     status = {active, #domain_ContractActive{}},
     terms = #domain_TermSetHierarchyRef{id = ?INTEGER},
     adjustments = [?CONTRACT_ADJUSTMENT],
-    payout_tools = [
-        ?PAYOUT_TOOL(?BANKID_RU, ?RUSSIAN_BANK_ACCOUNT),
-        ?PAYOUT_TOOL(?BANKID_US, ?INTERNATIONAL_BANK_ACCOUNT),
-        ?PAYOUT_TOOL(?WALLET_TOOL, ?WALLET_INFO),
-        ?PAYOUT_TOOL(?PI_ACCOUNT_TOOL, ?PAYMENT_INSTITUTION_ACCOUNT)
-    ],
+    payout_tools = [],
     legal_agreement = ?CONTRACT_LEGAL_AGREEMENT,
     report_preferences = ?CONTRACT_REPORT_PREFS
 }).
@@ -904,10 +899,7 @@
                         minute = {every, #'base_ScheduleEvery'{}},
                         second = {every, #'base_ScheduleEvery'{}}
                     },
-                    delay = #'base_TimeSpan'{},
-                    policy = #domain_PayoutCompilationPolicy{
-                        assets_freeze_for = #'base_TimeSpan'{}
-                    }
+                    delay = #'base_TimeSpan'{}
                 }
             }},
         {globals, #domain_GlobalsRef{}} =>
@@ -1075,11 +1067,8 @@
 }).
 
 -define(TERM_SET, #domain_TermSet{
-    payouts = ?PAYOUTS_SERVICE_TERMS,
     payments = ?PAYMENTS_SERVICE_TERMS
 }).
-
--define(PAYOUTS_SERVICE_TERMS, #domain_PayoutsServiceTerms{}).
 
 -define(PAYMENTS_SERVICE_TERMS, #domain_PaymentsServiceTerms{
     payment_methods =
@@ -1307,15 +1296,6 @@
     <<"shopID">> => ?STRING,
     <<"contactInfo">> => #{<<"email">> => <<"bla@bla.ru">>},
     <<"metadata">> => #{<<"text">> => [<<"SOMESHIT">>, 42]}
-}).
-
--define(PAYOUT_PARAMS, #{
-    <<"id">> => ?STRING,
-    <<"shopID">> => ?STRING,
-    <<"partyID">> => ?STRING,
-    <<"payoutToolID">> => ?WALLET_TOOL,
-    <<"amount">> => 2,
-    <<"currency">> => <<"RUB">>
 }).
 
 -define(PAYMENT_PARAMS(EID, Token), #{
