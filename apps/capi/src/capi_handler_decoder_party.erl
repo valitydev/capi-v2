@@ -40,7 +40,9 @@ decode_contact_info(#domain_ContactInfo{
     state = State,
     city = City,
     address = Address,
-    postal_code = PostalCode
+    postal_code = PostalCode,
+    date_of_birth = DateOfBirth,
+    document_id = DocumentId
 }) ->
     genlib_map:compact(#{
         <<"phoneNumber">> => PhoneNumber,
@@ -51,7 +53,9 @@ decode_contact_info(#domain_ContactInfo{
         <<"state">> => State,
         <<"city">> => City,
         <<"address">> => Address,
-        <<"postalCode">> => PostalCode
+        <<"postalCode">> => PostalCode,
+        <<"dateOfBirth">> => DateOfBirth,
+        <<"documentId">> => DocumentId
     }).
 
 -spec decode_party(capi_handler_encoder:encode_data()) -> capi_handler_decoder_utils:decode_data().

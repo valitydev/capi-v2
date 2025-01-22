@@ -295,7 +295,9 @@ decode_stat_payer(
             state = State,
             city = City,
             address = Address,
-            postal_code = PostalCode
+            postal_code = PostalCode,
+            date_of_birth = DateOfBirth,
+            document_id = DocumentId
         }
     }}
 ) ->
@@ -311,7 +313,9 @@ decode_stat_payer(
             <<"state">> => State,
             <<"city">> => City,
             <<"address">> => Address,
-            <<"postalCode">> => PostalCode
+            <<"postalCode">> => PostalCode,
+            <<"dateOfBirth">> => DateOfBirth,
+            <<"documentId">> => DocumentId
         }),
         <<"recurrentParentPayment">> => capi_handler_decoder_invoicing:decode_recurrent_parent(RecurrentParent)
     };
@@ -334,7 +338,9 @@ decode_stat_payer(
             state = State,
             city = City,
             address = Address,
-            postal_code = PostalCode
+            postal_code = PostalCode,
+            date_of_birth = DateOfBirth,
+            document_id = DocumentId
         }
     }}
 ) ->
@@ -355,7 +361,9 @@ decode_stat_payer(
             <<"state">> => State,
             <<"city">> => City,
             <<"address">> => Address,
-            <<"postalCode">> => PostalCode
+            <<"postalCode">> => PostalCode,
+            <<"dateOfBirth">> => DateOfBirth,
+            <<"documentId">> => DocumentId
         })
     }).
 
