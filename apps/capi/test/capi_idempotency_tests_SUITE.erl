@@ -199,7 +199,11 @@ end_per_testcase(_Name, C) ->
 create_payment_ok_test(Config) ->
     BenderKey = <<"bender_key">>,
     ExternalID = <<"merch_id">>,
-    ContactInfo = #{},
+    ContactInfo = #{
+        <<"phoneNumber">> => ?STRING,
+        <<"email">> => ?EMAIL,
+        <<"dateOfBirth">> => <<"1970-01-01">>
+    },
     Jwe1 = get_encrypted_token(<<"visa">>, ?EXP_DATE(2, 2020)),
     Jwe2 = get_encrypted_token(<<"visa">>, ?EXP_DATE(2, 2020)),
     Req1 = payment_params(ExternalID, Jwe1, ContactInfo, undefined),
@@ -212,7 +216,9 @@ create_payment_ok_test(Config) ->
         [
             [<<"externalID">>],
             [<<"metadata">>, <<"bla">>, 0],
-            [<<"payer">>, <<"contactInfo">>],
+            [<<"payer">>, <<"contactInfo">>, <<"dateOfBirth">>],
+            [<<"payer">>, <<"contactInfo">>, <<"email">>],
+            [<<"payer">>, <<"contactInfo">>, <<"phoneNumber">>],
             [<<"payer">>, <<"paymentSession">>],
             [<<"payer">>, <<"paymentTool">>, <<"payment_system">>],
             [<<"payer">>, <<"paymentToolToken">>],
@@ -267,7 +273,10 @@ different_payment_tools_test(Config) ->
 second_request_without_idempotent_feature_test(Config) ->
     BenderKey = <<"bender_key">>,
     ExternalID = <<"merch_id">>,
-    ContactInfo = #{},
+    ContactInfo = #{
+        <<"email">> => ?EMAIL,
+        <<"documentId">> => ?STRING
+    },
     Jwe1 = encrypt_payment_tool({bank_card, ?BANK_CARD(<<"visa">>, ?EXP_DATE(2, 2020), <<"Mr. Surname">>)}),
     Jwe2 = encrypt_payment_tool({bank_card, ?BANK_CARD(<<"visa">>, undefined, <<"Mr. Surname">>)}),
     Req1 = payment_params(ExternalID, Jwe1, ContactInfo, undefined),
