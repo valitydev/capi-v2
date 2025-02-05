@@ -75,6 +75,8 @@
 -define(city, 69).
 -define(address, 70).
 -define(postal_code, 71).
+-define(date_of_birth, 72).
+-define(document_id, 73).
 
 -export([payment/0]).
 -export([invoice/0]).
@@ -340,7 +342,9 @@ contact_info_schema() ->
         ?state => <<"state">>,
         ?city => <<"city">>,
         ?address => <<"address">>,
-        ?postal_code => <<"postalCode">>
+        ?postal_code => <<"postalCode">>,
+        ?date_of_birth => <<"dateOfBirth">>,
+        ?document_id => <<"documentId">>
     }.
 
 -ifdef(TEST).
@@ -623,7 +627,9 @@ read_customer_features_test() ->
             ?state => undefined,
             ?city => undefined,
             ?address => undefined,
-            ?postal_code => undefined
+            ?postal_code => undefined,
+            ?date_of_birth => undefined,
+            ?document_id => undefined
         }
     },
     ?assertEqual(
@@ -650,7 +656,9 @@ compare_customer_features_test() ->
             <<"state">> => <<"state">>,
             <<"city">> => <<"city">>,
             <<"address">> => <<"address">>,
-            <<"postalCode">> => <<"postalCode">>
+            <<"postalCode">> => <<"postalCode">>,
+            <<"dateOfBirth">> => <<"dateOfBirth">>,
+            <<"documentId">> => <<"documentId">>
         }
     },
     common_compare_tests(
