@@ -51,8 +51,8 @@ decode_trade_bloc_refs(undefined) ->
     undefined;
 decode_trade_bloc_refs(TradeBlocRefs) ->
     lists:map(
-        fun(#domain_TradeBlocRef{id = Id}) ->
-            Id
+        fun(#domain_TradeBlocRef{id = ID}) ->
+            ID
         end,
         ordsets:to_list(TradeBlocRefs)
     ).

@@ -224,7 +224,7 @@ respond_if_forbidden(allowed, _Response) ->
 get_auth_context(#{auth_context := AuthContext}) ->
     AuthContext.
 
-do_authorize_api_key(SwagContext = #{auth_context := PreAuthContext}, WoodyContext) ->
+do_authorize_api_key(#{auth_context := PreAuthContext} = SwagContext, WoodyContext) ->
     case capi_auth:authorize_api_key(PreAuthContext, make_token_context(SwagContext), WoodyContext) of
         {ok, AuthContext} ->
             SwagContext#{auth_context => AuthContext};

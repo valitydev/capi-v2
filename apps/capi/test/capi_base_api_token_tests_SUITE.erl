@@ -314,10 +314,11 @@ create_invoice_ok_test(Config) ->
 -spec create_invoice_rand_amount_ok_test(config()) -> _.
 create_invoice_rand_amount_ok_test(Config) ->
     RandomizedAmount = ?INTEGER + ?SMALLER_INTEGER,
-    ExpectedInvoice = ?INVOICE#domain_Invoice{
-        cost = ?CASH(RandomizedAmount),
-        mutations = [{amount, #domain_InvoiceAmountMutation{original = ?INTEGER, mutated = RandomizedAmount}}]
-    },
+    ExpectedInvoice = ?RECORD_UPDATE(
+        #domain_Invoice.mutations,
+        [{amount, #domain_InvoiceAmountMutation{original = ?INTEGER, mutated = RandomizedAmount}}],
+        ?RECORD_UPDATE(#domain_Invoice.cost, ?CASH(RandomizedAmount), ?INVOICE)
+    ),
     _ = capi_ct_helper:mock_services(
         [
             {invoicing, fun('Create', _) -> {ok, ?PAYPROC_INVOICE(ExpectedInvoice, [])} end},
@@ -326,11 +327,14 @@ create_invoice_rand_amount_ok_test(Config) ->
         Config
     ),
     _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"CreateInvoice">>, ?STRING, ?STRING, Config),
-    {ok, Response} = capi_client_invoices:create_invoice(?config(context, Config), ?INVOICE_PARAMS#{
-        <<"randomizeAmount">> => #{
-            <<"deviation">> => ?SMALLER_INTEGER
-        }
-    }),
+    {ok, Response} = capi_client_invoices:create_invoice(
+        ?config(context, Config),
+        maps:merge(?INVOICE_PARAMS, #{
+            <<"randomizeAmount">> => #{
+                <<"deviation">> => ?SMALLER_INTEGER
+            }
+        })
+    ),
     ?assertMatch(
         #{
             <<"invoice">> := #{
@@ -360,7 +364,7 @@ create_invoice_autorization_error_test(Config) ->
         {error, {400, #{<<"code">> := <<"invalidPartyID">>}}},
         capi_client_invoices:create_invoice(
             ?config(context, Config),
-            ?INVOICE_PARAMS#{<<"partyID">> => <<"WrongPartyID">>}
+            maps:merge(?INVOICE_PARAMS, #{<<"partyID">> => <<"WrongPartyID">>})
         )
     ).
 
@@ -486,16 +490,19 @@ create_invoice_template_w_randomization_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
             {invoice_templating, fun('Create', {#payproc_InvoiceTemplateCreateParams{party_id = ?STRING}}) ->
-                {ok, (?INVOICE_TPL)#domain_InvoiceTemplate{
-                    mutations = [
-                        {amount,
-                            {randomization, #domain_RandomizationMutationParams{
-                                deviation = ?SMALLER_INTEGER,
-                                precision = 2,
-                                direction = both
-                            }}}
-                    ]
-                }}
+                {ok,
+                    ?RECORD_UPDATE(
+                        #domain_InvoiceTemplate.mutations,
+                        [
+                            {amount,
+                                {randomization, #domain_RandomizationMutationParams{
+                                    deviation = ?SMALLER_INTEGER,
+                                    precision = 2,
+                                    direction = both
+                                }}}
+                        ],
+                        ?INVOICE_TPL
+                    )}
             end},
             {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
         ],
@@ -672,9 +679,9 @@ create_customer_autorization_error_test(Config) ->
         {error, {400, #{<<"code">> := <<"invalidPartyID">>}}},
         capi_client_customers:create_customer(
             ?config(context, Config),
-            ?CUSTOMER_PARAMS#{
+            maps:merge(?CUSTOMER_PARAMS, #{
                 <<"partyID">> => <<"WrongPartyID">>
-            }
+            })
         )
     ).
 

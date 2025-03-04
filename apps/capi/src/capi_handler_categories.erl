@@ -13,7 +13,7 @@
     Req :: capi_handler:request_data(),
     Context :: capi_handler:processing_context()
 ) -> {ok, capi_handler:request_state()} | {error, noimpl}.
-prepare(OperationID = 'GetCategories', _Req, Context) ->
+prepare('GetCategories' = OperationID, _Req, Context) ->
     Authorize = fun() ->
         Prototypes = [{operation, #{id => OperationID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
@@ -23,7 +23,7 @@ prepare(OperationID = 'GetCategories', _Req, Context) ->
         {ok, {200, #{}, [decode_category(C) || C <- Categories]}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetCategoryByRef', Req, Context) ->
+prepare('GetCategoryByRef' = OperationID, Req, Context) ->
     Authorize = fun() ->
         Prototypes = [{operation, #{id => OperationID}}],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}

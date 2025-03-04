@@ -168,7 +168,7 @@ x_request_id_header() ->
 -spec x_request_deadline_header(iodata() | undefined, list()) -> list().
 x_request_deadline_header(undefined, Headers) ->
     Headers;
-x_request_deadline_header(WoodyDeadline = {_, _}, Headers) ->
+x_request_deadline_header({_, _} = WoodyDeadline, Headers) ->
     [{<<"X-Request-Deadline">>, woody_deadline:to_binary(WoodyDeadline)} | Headers];
 x_request_deadline_header(Time, Headers) ->
     [{<<"X-Request-Deadline">>, Time} | Headers].

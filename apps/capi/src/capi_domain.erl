@@ -102,7 +102,7 @@ extract_type(Name) when is_atom(Name) ->
     {dmsl_domain_thrift, Name};
 extract_type({_ID, _Kind, TypeInfo, _Field, _Default}) ->
     extract_type(TypeInfo);
-extract_type(Type = {Module, Name}) when is_atom(Module), is_atom(Name) ->
+extract_type({Module, Name} = Type) when is_atom(Module), is_atom(Name) ->
     Type;
 extract_type({struct, struct, Type = {Module, Name}}) when is_atom(Module), is_atom(Name) ->
     Type;

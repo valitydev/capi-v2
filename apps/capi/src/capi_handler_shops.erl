@@ -14,7 +14,7 @@
     Req :: capi_handler:request_data(),
     Context :: capi_handler:processing_context()
 ) -> {ok, capi_handler:request_state()} | {error, noimpl}.
-prepare(OperationID = 'ActivateShop', Req, Context) ->
+prepare('ActivateShop' = OperationID, Req, Context) ->
     PartyID = capi_handler_utils:get_party_id(Context),
     ShopID = maps:get('shopID', Req),
     Authorize = fun() ->
@@ -32,7 +32,7 @@ prepare(OperationID = 'ActivateShop', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'SuspendShop', Req, Context) ->
+prepare('SuspendShop' = OperationID, Req, Context) ->
     PartyID = capi_handler_utils:get_party_id(Context),
     ShopID = maps:get('shopID', Req),
     Authorize = fun() ->
@@ -50,7 +50,7 @@ prepare(OperationID = 'SuspendShop', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetShops', _Req, Context) ->
+prepare('GetShops' = OperationID, _Req, Context) ->
     PartyID = capi_handler_utils:get_party_id(Context),
     Authorize = fun() ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID}}],
@@ -61,7 +61,7 @@ prepare(OperationID = 'GetShops', _Req, Context) ->
         {ok, {200, #{}, decode_shops_map(Party#domain_Party.shops)}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetShopByID', Req, Context) ->
+prepare('GetShopByID' = OperationID, Req, Context) ->
     PartyID = capi_handler_utils:get_party_id(Context),
     ShopID = maps:get('shopID', Req),
     Authorize = fun() ->
@@ -79,7 +79,7 @@ prepare(OperationID = 'GetShopByID', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetShopsForParty', Req, Context) ->
+prepare('GetShopsForParty' = OperationID, Req, Context) ->
     PartyID = maps:get('partyID', Req),
     Authorize = fun() ->
         Prototypes = [{operation, #{id => OperationID, party => PartyID}}],
@@ -103,7 +103,7 @@ prepare(OperationID = 'GetShopsForParty', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process, process_restricted => ProcessRestricted}};
-prepare(OperationID = 'GetShopByIDForParty', Req, Context) ->
+prepare('GetShopByIDForParty' = OperationID, Req, Context) ->
     PartyID = maps:get('partyID', Req),
     ShopID = maps:get('shopID', Req),
     Authorize = fun() ->
@@ -121,7 +121,7 @@ prepare(OperationID = 'GetShopByIDForParty', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'ActivateShopForParty', Req, Context) ->
+prepare('ActivateShopForParty' = OperationID, Req, Context) ->
     PartyID = maps:get('partyID', Req),
     ShopID = maps:get('shopID', Req),
     Authorize = fun() ->
@@ -141,7 +141,7 @@ prepare(OperationID = 'ActivateShopForParty', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'SuspendShopForParty', Req, Context) ->
+prepare('SuspendShopForParty' = OperationID, Req, Context) ->
     PartyID = maps:get('partyID', Req),
     ShopID = maps:get('shopID', Req),
     Authorize = fun() ->

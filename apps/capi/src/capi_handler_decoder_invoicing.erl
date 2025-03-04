@@ -97,7 +97,7 @@ decode_crypto_amount(#'user_interaction_CryptoCurrencyTransferRequest'{crypto_ca
 ensure_correct_exponent(#base_Rational{q = Q}) ->
     Log = math:log10(Q),
     case Log - trunc(Log) of
-        0.0 -> ok;
+        V when V == 0 -> ok;
         _ -> error('expected a power of 10 denominator')
     end.
 
@@ -111,7 +111,7 @@ decode_fractional_part(#base_Rational{p = P, q = Q}) ->
 get_exponent(Q) ->
     erlang:trunc(math:log10(Q)).
 
-build_fractional(_Fractional, _Exponent = 0) ->
+build_fractional(_Fractional, 0 = _Exponent) ->
     <<>>;
 build_fractional(Fractional, Exponent) ->
     BinaryFractional = erlang:integer_to_binary(Fractional),
@@ -177,7 +177,7 @@ decode_payment(InvoiceID, Payment, Context) ->
 
 -spec decode_invoice_payment(binary(), capi_handler_encoder:encode_data(), processing_context()) ->
     decode_data().
-decode_invoice_payment(InvoiceID, InvoicePayment = #payproc_InvoicePayment{payment = Payment}, Context) ->
+decode_invoice_payment(InvoiceID, #payproc_InvoicePayment{payment = Payment} = InvoicePayment, Context) ->
     capi_handler_utils:merge_and_compact(
         decode_payment(InvoiceID, Payment, Context),
         #{
@@ -528,7 +528,7 @@ decode_invoice_cart(#domain_InvoiceCart{lines = Lines}) ->
 decode_invoice_cart(undefined) ->
     undefined.
 
-decode_invoice_line(InvoiceLine = #domain_InvoiceLine{quantity = Quantity, price = #domain_Cash{amount = Price}}) ->
+decode_invoice_line(#domain_InvoiceLine{quantity = Quantity, price = #domain_Cash{amount = Price}} = InvoiceLine) ->
     genlib_map:compact(#{
         <<"product">> => InvoiceLine#domain_InvoiceLine.product,
         <<"quantity">> => Quantity,

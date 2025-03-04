@@ -54,8 +54,8 @@
 -spec get_subject_id(auth_context()) -> binary() | undefined.
 get_subject_id(AuthContext) ->
     case get_party_id(AuthContext) of
-        PartyId when is_binary(PartyId) ->
-            PartyId;
+        PartyID when is_binary(PartyID) ->
+            PartyID;
         undefined ->
             get_user_id(AuthContext)
     end.

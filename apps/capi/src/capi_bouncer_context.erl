@@ -86,7 +86,7 @@ build(Prototypes, {Acc0, External}, WoodyCtx) ->
     Acc1 = lists:foldl(fun({T, Params}, Acc) -> build(T, Params, Acc, WoodyCtx) end, Acc0, Prototypes),
     {Acc1, External}.
 
-build(operation, Params = #{id := OperationID}, Acc, _WoodyCtx) ->
+build(operation, #{id := OperationID} = Params, Acc, _WoodyCtx) ->
     Acc#ctx_v1_ContextFragment{
         capi = #ctx_v1_ContextCommonAPI{
             op = #ctx_v1_CommonAPIOperation{
@@ -105,7 +105,7 @@ build(operation, Params = #{id := OperationID}, Acc, _WoodyCtx) ->
             }
         }
     };
-build(payproc, Params = #{}, Acc, WoodyCtx) ->
+build(payproc, #{} = Params, Acc, WoodyCtx) ->
     Acc#ctx_v1_ContextFragment{
         payment_processing = #ctx_v1_ContextPaymentProcessing{
             invoice = maybe_with(
@@ -125,7 +125,7 @@ build(payproc, Params = #{}, Acc, WoodyCtx) ->
             )
         }
     };
-build(webhooks, Params = #{}, Acc, WoodyCtx) ->
+build(webhooks, #{} = Params, Acc, WoodyCtx) ->
     Acc#ctx_v1_ContextFragment{
         webhooks = #ctx_v1_ContextWebhooks{
             webhook = maybe_with(
