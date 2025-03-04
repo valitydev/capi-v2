@@ -229,21 +229,21 @@ build_webhook_filter({Type, Filter}) ->
 build_webhook_filter_details(#webhooker_PartyEventFilter{}, Ctx) ->
     Ctx;
 build_webhook_filter_details(#webhooker_InvoiceEventFilter{shop_id = ShopID}, Ctx) ->
-    Ctx#ctx_v1_WebhookFilter{shop = maybe(ShopID, fun build_entity/1)};
+    Ctx#ctx_v1_WebhookFilter{shop = 'maybe'(ShopID, fun build_entity/1)};
 build_webhook_filter_details(#webhooker_CustomerEventFilter{shop_id = ShopID}, Ctx) ->
-    Ctx#ctx_v1_WebhookFilter{shop = maybe(ShopID, fun build_entity/1)};
+    Ctx#ctx_v1_WebhookFilter{shop = 'maybe'(ShopID, fun build_entity/1)};
 build_webhook_filter_details(#webhooker_WalletEventFilter{}, Ctx) ->
     Ctx.
 
 %%
 
-maybe(undefined, _Then) ->
+'maybe'(undefined, _Then) ->
     undefined;
-maybe(V, Then) ->
+'maybe'(V, Then) ->
     Then(V).
 
 maybe_with(Name, Params, Then) ->
-    maybe(maps:get(Name, Params, undefined), Then).
+    'maybe'(maps:get(Name, Params, undefined), Then).
 
 maybe_with_woody_result(ServiceName, Function, Args, WoodyCtx, Then) ->
     % TODO

@@ -691,7 +691,7 @@ decode_bank_card_details(BankCard, V) ->
         <<"first6">> => Bin,
         <<"cardNumberMask">> => capi_handler_decoder_utils:decode_masked_pan(Bin, LastDigits),
         <<"paymentSystem">> => capi_handler_decoder_utils:decode_payment_system_ref(PaymentSystem),
-        <<"tokenProvider">> => capi_utils:maybe(
+        <<"tokenProvider">> => capi_utils:'maybe'(
             TokenProvider,
             fun capi_handler_decoder_utils:decode_bank_card_token_service_ref/1
         )

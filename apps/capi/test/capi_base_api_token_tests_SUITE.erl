@@ -284,7 +284,7 @@ end_per_group(Group, C) when
     Group =:= operations_by_api_key_token;
     Group =:= operations_by_user_session_token
 ->
-    capi_utils:maybe(?config(group_test_sup, C), fun capi_ct_helper:stop_mocked_service_sup/1);
+    capi_utils:'maybe'(?config(group_test_sup, C), fun capi_ct_helper:stop_mocked_service_sup/1);
 end_per_group(_Group, _C) ->
     ok.
 

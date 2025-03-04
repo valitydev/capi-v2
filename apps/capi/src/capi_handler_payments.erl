@@ -106,12 +106,12 @@ prepare(OperationID, #{'partyID' := PartyID, 'externalID' := ExternalID}, Contex
     OperationID =:= 'GetPaymentByExternalIDForParty'
 ->
     InternalID = get_payment_by_external_id(PartyID, ExternalID, Context),
-    Invoice = maybe(
+    Invoice = 'maybe'(
         InternalID,
         fun({InvoiceID, _}) -> get_invoice_by_id(InvoiceID, Context) end
     ),
 
-    OperationPrototype = maybe(
+    OperationPrototype = 'maybe'(
         InternalID,
         fun({InvoiceID, PaymentID}) ->
             #{id => OperationID, invoice => InvoiceID, payment => PaymentID}
@@ -374,11 +374,11 @@ prepare(OperationID, #{'partyID' := PartyID, 'externalID' := ExternalID}, Contex
     OperationID =:= 'GetRefundByExternalIDForParty'
 ->
     InternalID = get_refund_by_external_id(PartyID, ExternalID, Context),
-    Invoice = maybe(
+    Invoice = 'maybe'(
         InternalID,
         fun({InvoiceID, _PaymentID, _RefundID}) -> get_invoice_by_id(InvoiceID, Context) end
     ),
-    OperationPrototype = maybe(
+    OperationPrototype = 'maybe'(
         InternalID,
         fun({InvoiceID, PaymentID, RefundID}) ->
             #{id => OperationID, invoice => InvoiceID, payment => PaymentID, refund => RefundID}
@@ -482,7 +482,7 @@ validate_refund(Params) ->
 
 create_payment(Invoice, PaymentParams, Context, OperationID) ->
     PaymentToken = decode_payment_token(PaymentParams),
-    PaymentTool = capi_utils:maybe(PaymentToken, fun(#{payment_tool := V}) -> V end),
+    PaymentTool = capi_utils:'maybe'(PaymentToken, fun(#{payment_tool := V}) -> V end),
 
     InvoiceID = Invoice#domain_Invoice.id,
     PaymentID = create_payment_id(Invoice, PaymentParams, Context, OperationID, PaymentTool),
@@ -495,7 +495,7 @@ create_payment_id(Invoice, PaymentParams0, Context, OperationID, PaymentToolThri
     InvoiceID = Invoice#domain_Invoice.id,
     PartyID = Invoice#domain_Invoice.owner_id,
     Payer = maps:get(<<"payer">>, PaymentParams0),
-    PaymentTool = capi_utils:maybe(PaymentToolThrift, fun capi_handler_decoder_invoicing:decode_payment_tool/1),
+    PaymentTool = capi_utils:'maybe'(PaymentToolThrift, fun capi_handler_decoder_invoicing:decode_payment_tool/1),
     PaymentParams = PaymentParams0#{
         % Требуется для последующей кодировки параметров плательщика
         <<"invoiceID">> => InvoiceID,
@@ -759,7 +759,7 @@ create_sequence_id([Identifier | Rest], BenderPrefix) ->
 create_sequence_id([], BenderPrefix) ->
     genlib:to_binary(BenderPrefix).
 
-maybe(undefined, _) ->
+'maybe'(undefined, _) ->
     undefined;
-maybe(V, Fun) ->
+'maybe'(V, Fun) ->
     Fun(V).

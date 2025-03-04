@@ -151,7 +151,7 @@ decode_payment_service(ID, PaymentService = #domain_PaymentService{}) ->
         <<"id">> => ID,
         <<"brandName">> => PaymentService#domain_PaymentService.brand_name,
         <<"category">> => PaymentService#domain_PaymentService.category,
-        <<"metadata">> => capi_utils:maybe(
+        <<"metadata">> => capi_utils:'maybe'(
             PaymentService#domain_PaymentService.metadata,
             fun capi_handler_decoder_utils:decode_namespaced_metadata/1
         )

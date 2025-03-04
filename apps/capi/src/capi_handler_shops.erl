@@ -174,7 +174,7 @@ decode_shops_map(Shops) ->
     capi_handler_decoder_utils:decode_map(Shops, fun decode_shop/1).
 
 decode_shop(Shop) ->
-    Currency = capi_utils:maybe(
+    Currency = capi_utils:'maybe'(
         Shop#domain_Shop.account,
         fun(#domain_ShopAccount{currency = Currency}) ->
             capi_handler_decoder_utils:decode_currency(Currency)
