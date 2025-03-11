@@ -104,7 +104,7 @@ init_per_group(GroupName, Config) ->
 
 -spec end_per_group(group_name(), config()) -> _.
 end_per_group(_Group, C) ->
-    _ = capi_utils:maybe(?config(group_test_sup, C), fun capi_ct_helper:stop_mocked_service_sup/1),
+    _ = capi_utils:'maybe'(?config(group_test_sup, C), fun capi_ct_helper:stop_mocked_service_sup/1),
     ok.
 
 %%% Tests

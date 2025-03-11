@@ -301,7 +301,7 @@ get_product_from_tpl_details({cart, #domain_InvoiceCart{lines = [FirstLine | _]}
 get_product_from_tpl_details(undefined) ->
     undefined.
 
-encode_optional_context(Params = #{<<"metadata">> := _}) ->
+encode_optional_context(#{<<"metadata">> := _} = Params) ->
     capi_handler_encoder:encode_invoice_context(Params);
 encode_optional_context(#{}) ->
     undefined.
@@ -340,7 +340,7 @@ encode_invoice_tpl_product(Details) ->
         metadata = capi_handler_encoder:encode_invoice_line_meta(Details)
     }.
 
-encode_optional_invoice_cost(Params = #{<<"amount">> := _, <<"currency">> := _}) ->
+encode_optional_invoice_cost(#{<<"amount">> := _, <<"currency">> := _} = Params) ->
     capi_handler_encoder:encode_cash(Params);
 encode_optional_invoice_cost(#{<<"amount">> := _}) ->
     throw({bad_invoice_params, amount_no_currency});

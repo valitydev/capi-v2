@@ -419,7 +419,7 @@ decode_bank_card_details(BankCard, V) ->
     LastDigits = BankCard#domain_BankCard.last_digits,
     Bin = capi_handler_decoder_utils:decode_bank_card_bin(BankCard#domain_BankCard.bin),
     PaymentSystem = capi_handler_decoder_utils:decode_payment_system_ref(BankCard#domain_BankCard.payment_system),
-    BankCardTokenServiceRef = capi_utils:maybe(
+    BankCardTokenServiceRef = capi_utils:'maybe'(
         BankCard#domain_BankCard.payment_token,
         fun capi_handler_decoder_utils:decode_bank_card_token_service_ref/1
     ),

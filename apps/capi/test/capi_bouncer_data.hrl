@@ -118,10 +118,10 @@
         id = ID,
         party = ?CTX_ENTITY(PartyID),
         shop = ?CTX_ENTITY(ShopID),
-        invoice = capi_utils:maybe(InvoiceID, fun(V) -> ?CTX_ENTITY(V) end),
-        payment = capi_utils:maybe(PaymentID, fun(V) -> ?CTX_ENTITY(V) end),
-        customer = capi_utils:maybe(CustomerID, fun(V) -> ?CTX_ENTITY(V) end),
-        refund = capi_utils:maybe(RefundID, fun(V) -> ?CTX_ENTITY(V) end)
+        invoice = capi_utils:'maybe'(InvoiceID, fun(V) -> ?CTX_ENTITY(V) end),
+        payment = capi_utils:'maybe'(PaymentID, fun(V) -> ?CTX_ENTITY(V) end),
+        customer = capi_utils:'maybe'(CustomerID, fun(V) -> ?CTX_ENTITY(V) end),
+        refund = capi_utils:'maybe'(RefundID, fun(V) -> ?CTX_ENTITY(V) end)
     }
 ).
 

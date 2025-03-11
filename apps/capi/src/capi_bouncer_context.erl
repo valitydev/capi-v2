@@ -86,7 +86,7 @@ build(Prototypes, {Acc0, External}, WoodyCtx) ->
     Acc1 = lists:foldl(fun({T, Params}, Acc) -> build(T, Params, Acc, WoodyCtx) end, Acc0, Prototypes),
     {Acc1, External}.
 
-build(operation, Params = #{id := OperationID}, Acc, _WoodyCtx) ->
+build(operation, #{id := OperationID} = Params, Acc, _WoodyCtx) ->
     Acc#ctx_v1_ContextFragment{
         capi = #ctx_v1_ContextCommonAPI{
             op = #ctx_v1_CommonAPIOperation{
@@ -105,7 +105,7 @@ build(operation, Params = #{id := OperationID}, Acc, _WoodyCtx) ->
             }
         }
     };
-build(payproc, Params = #{}, Acc, WoodyCtx) ->
+build(payproc, #{} = Params, Acc, WoodyCtx) ->
     Acc#ctx_v1_ContextFragment{
         payment_processing = #ctx_v1_ContextPaymentProcessing{
             invoice = maybe_with(
@@ -125,7 +125,7 @@ build(payproc, Params = #{}, Acc, WoodyCtx) ->
             )
         }
     };
-build(webhooks, Params = #{}, Acc, WoodyCtx) ->
+build(webhooks, #{} = Params, Acc, WoodyCtx) ->
     Acc#ctx_v1_ContextFragment{
         webhooks = #ctx_v1_ContextWebhooks{
             webhook = maybe_with(
@@ -229,21 +229,21 @@ build_webhook_filter({Type, Filter}) ->
 build_webhook_filter_details(#webhooker_PartyEventFilter{}, Ctx) ->
     Ctx;
 build_webhook_filter_details(#webhooker_InvoiceEventFilter{shop_id = ShopID}, Ctx) ->
-    Ctx#ctx_v1_WebhookFilter{shop = maybe(ShopID, fun build_entity/1)};
+    Ctx#ctx_v1_WebhookFilter{shop = 'maybe'(ShopID, fun build_entity/1)};
 build_webhook_filter_details(#webhooker_CustomerEventFilter{shop_id = ShopID}, Ctx) ->
-    Ctx#ctx_v1_WebhookFilter{shop = maybe(ShopID, fun build_entity/1)};
+    Ctx#ctx_v1_WebhookFilter{shop = 'maybe'(ShopID, fun build_entity/1)};
 build_webhook_filter_details(#webhooker_WalletEventFilter{}, Ctx) ->
     Ctx.
 
 %%
 
-maybe(undefined, _Then) ->
+'maybe'(undefined, _Then) ->
     undefined;
-maybe(V, Then) ->
+'maybe'(V, Then) ->
     Then(V).
 
 maybe_with(Name, Params, Then) ->
-    maybe(maps:get(Name, Params, undefined), Then).
+    'maybe'(maps:get(Name, Params, undefined), Then).
 
 maybe_with_woody_result(ServiceName, Function, Args, WoodyCtx, Then) ->
     % TODO

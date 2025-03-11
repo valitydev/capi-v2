@@ -181,7 +181,7 @@ init_per_group(_, Config) ->
 
 -spec end_per_group(group_name(), config()) -> _.
 end_per_group(_Group, C) ->
-    _ = capi_utils:maybe(?config(group_test_sup, C), fun capi_ct_helper:stop_mocked_service_sup/1),
+    _ = capi_utils:'maybe'(?config(group_test_sup, C), fun capi_ct_helper:stop_mocked_service_sup/1),
     ok.
 
 -spec init_per_testcase(test_case_name(), config()) -> config().
@@ -635,7 +635,7 @@ create_refund_idemp_fail_test(Config) ->
 -spec create_customer_ok_test(config()) -> _.
 create_customer_ok_test(Config) ->
     BenderKey = <<"create_customer_ok_test">>,
-    Req1 = ?CUSTOMER_PARAMS#{<<"externalID">> => genlib:unique()},
+    Req1 = maps:merge(?CUSTOMER_PARAMS, #{<<"externalID">> => genlib:unique()}),
     Req2 = Req1#{<<"externalID">> => genlib:unique()},
 
     UnusedFeatures = [[<<"externalID">>], [<<"metadata">>, <<"text">>, 0], [<<"metadata">>, <<"text">>, 1]],
@@ -652,7 +652,7 @@ create_customer_ok_test(Config) ->
 create_customer_fail_test(Config) ->
     BenderKey = <<"create_customer_fail_test">>,
     ExternalID = genlib:unique(),
-    Req1 = ?CUSTOMER_PARAMS#{<<"externalID">> => ExternalID, <<"shopID">> => <<"1">>},
+    Req1 = maps:merge(?CUSTOMER_PARAMS, #{<<"externalID">> => ExternalID, <<"shopID">> => <<"1">>}),
     Req2 = Req1#{<<"shopID">> => <<"2">>},
 
     [CustomerResult1, CustomerResult2] = create_customers(BenderKey, [Req1, Req2], Config),

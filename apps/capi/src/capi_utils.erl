@@ -24,7 +24,7 @@
 
 -export([get_unique_id/0]).
 
--export([maybe/2]).
+-export(['maybe'/2]).
 
 % 1 min
 -define(MAX_REQUEST_DEADLINE_TIME, timer:minutes(1)).
@@ -203,10 +203,10 @@ get_unique_id() ->
     <<ID:64>> = snowflake:new(),
     genlib_format:format_int_base(ID, 62).
 
--spec maybe(T | undefined, fun((T) -> R)) -> R | undefined.
-maybe(undefined, _Fun) ->
+-spec 'maybe'(T | undefined, fun((T) -> R)) -> R | undefined.
+'maybe'(undefined, _Fun) ->
     undefined;
-maybe(V, Fun) ->
+'maybe'(V, Fun) ->
     Fun(V).
 
 %%

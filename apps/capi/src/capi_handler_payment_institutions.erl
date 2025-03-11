@@ -16,7 +16,7 @@
     Req :: capi_handler:request_data(),
     Context :: capi_handler:processing_context()
 ) -> {ok, capi_handler:request_state()} | {error, noimpl}.
-prepare(OperationID = 'GetPaymentInstitutions', Req, Context) ->
+prepare('GetPaymentInstitutions' = OperationID, Req, Context) ->
     Authorize = mk_authorize_operation(OperationID, Context),
     Process = fun() ->
         try
@@ -31,7 +31,7 @@ prepare(OperationID = 'GetPaymentInstitutions', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetPaymentInstitutionByRef', Req, Context) ->
+prepare('GetPaymentInstitutionByRef' = OperationID, Req, Context) ->
     Authorize = mk_authorize_operation(OperationID, Context),
     Process = fun() ->
         PaymentInstitutionID = genlib:to_int(maps:get('paymentInstitutionID', Req)),
@@ -44,7 +44,7 @@ prepare(OperationID = 'GetPaymentInstitutionByRef', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetPaymentInstitutionPaymentTerms', Req, Context) ->
+prepare('GetPaymentInstitutionPaymentTerms' = OperationID, Req, Context) ->
     Authorize = mk_authorize_operation(OperationID, Context),
     Process = fun() ->
         PaymentInstitutionID = genlib:to_int(maps:get('paymentInstitutionID', Req)),
@@ -56,7 +56,7 @@ prepare(OperationID = 'GetPaymentInstitutionPaymentTerms', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetServiceProviderByID', Req, Context) ->
+prepare('GetServiceProviderByID' = OperationID, Req, Context) ->
     Authorize = mk_authorize_operation(OperationID, Context),
     Process = fun() ->
         ServiceProviderID = maps:get('serviceProviderID', Req),
@@ -146,12 +146,12 @@ decode_payment_terms(_, _) ->
 
 %%
 
-decode_payment_service(ID, PaymentService = #domain_PaymentService{}) ->
+decode_payment_service(ID, #domain_PaymentService{} = PaymentService) ->
     genlib_map:compact(#{
         <<"id">> => ID,
         <<"brandName">> => PaymentService#domain_PaymentService.brand_name,
         <<"category">> => PaymentService#domain_PaymentService.category,
-        <<"metadata">> => capi_utils:maybe(
+        <<"metadata">> => capi_utils:'maybe'(
             PaymentService#domain_PaymentService.metadata,
             fun capi_handler_decoder_utils:decode_namespaced_metadata/1
         )

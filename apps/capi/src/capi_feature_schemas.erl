@@ -699,7 +699,7 @@ compare_customer_binding_features_test() ->
     Request1 = payment_resource(Session1, Tool1),
 
     Session2 = ?TEST_PAYMENT_SESSION(<<"Session2">>),
-    Tool2 = ?TEST_PAYMENT_TOOL(<<"mastercard">>)#{<<"exp_date">> => <<"01/2020">>},
+    Tool2 = maps:merge(?TEST_PAYMENT_TOOL(<<"mastercard">>), #{<<"exp_date">> => <<"01/2020">>}),
     Request2 = payment_resource(Session2, Tool2),
 
     common_compare_tests(customer_binding(), Request1, Request2, [
@@ -864,7 +864,7 @@ read_allocation_transaction_test_() ->
 -spec compare_allocation_transaction_test() -> _.
 compare_allocation_transaction_test() ->
     Request1 = ?ALLOCATION_TRANSACTION_PARAMS,
-    Request2 = ?ALLOCATION_TRANSACTION_PARAMS#{
+    Request2 = maps:merge(?ALLOCATION_TRANSACTION_PARAMS, #{
         <<"total">> => 1024,
         <<"amount">> => 512,
         <<"fee">> => #{
@@ -873,7 +873,7 @@ compare_allocation_transaction_test() ->
             <<"amount">> => ?INTEGER,
             <<"share">> => undefined
         }
-    },
+    }),
     %% Request3 = #{
     %%     <<"target">> => ?ALLOCATION_TARGET#{<<"shopID">> => <<"SomeShop">>},
     %%     <<"allocationBodyType">> => <<"AllocationBodyAmount">>,

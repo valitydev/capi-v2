@@ -147,8 +147,8 @@ build_bender_ctx(Features, Ctx) ->
 get_external_id({_BenderPrefix, _PartyOrUserID, ExternalID}) ->
     ExternalID.
 
-try_generate_id(BenderIdSchema, IdempotentKey, Identity, WoodyContext, CtxData) ->
-    case generate_id(BenderIdSchema, IdempotentKey, Identity, WoodyContext, CtxData) of
+try_generate_id(BenderIDSchema, IdempotentKey, Identity, WoodyContext, CtxData) ->
+    case generate_id(BenderIDSchema, IdempotentKey, Identity, WoodyContext, CtxData) of
         {ok, ID} ->
             ID;
         {error, {external_id_conflict, ID, Difference, Schema}} ->
@@ -158,14 +158,14 @@ try_generate_id(BenderIdSchema, IdempotentKey, Identity, WoodyContext, CtxData) 
             throw({external_id_conflict, ID, SourceID, Schema})
     end.
 
-generate_id(BenderIdSchema, IdempKeyParams, Identity, WoodyContext, CtxData) ->
+generate_id(BenderIDSchema, IdempKeyParams, Identity, WoodyContext, CtxData) ->
     IdempKey = make_idempotent_key(IdempKeyParams),
     case IdempKey of
         undefined ->
-            ID = generator_generate_id(BenderIdSchema, WoodyContext),
+            ID = generator_generate_id(BenderIDSchema, WoodyContext),
             {ok, ID};
         IdempKey ->
-            bender_generate_id(BenderIdSchema, IdempKey, Identity, WoodyContext, CtxData)
+            bender_generate_id(BenderIDSchema, IdempKey, Identity, WoodyContext, CtxData)
     end.
 
 -spec make_idempotent_key(idempotent_key_params()) -> idempotent_key() | undefined.
@@ -177,10 +177,10 @@ make_idempotent_key({_Prefix, _PartyID, undefined}) ->
 make_idempotent_key({Prefix, PartyID, ExternalID}) ->
     bender_client:get_idempotent_key(?BENDER_NAMESPACE, Prefix, PartyID, ExternalID).
 
-bender_generate_id(BenderIdSchema, IdempKey, Identity, WoodyContext, CtxData) ->
+bender_generate_id(BenderIDSchema, IdempKey, Identity, WoodyContext, CtxData) ->
     {identity, Features, Schema} = Identity,
     BenderCtx = build_bender_ctx(Features, CtxData),
-    case bender_client:gen_id(IdempKey, BenderIdSchema, WoodyContext, BenderCtx) of
+    case bender_client:gen_id(IdempKey, BenderIDSchema, WoodyContext, BenderCtx) of
         {ok, ID} ->
             {ok, ID};
         {ok, ID, #{<<"version">> := ?SCHEMA_VER3} = SavedBenderCtx} ->

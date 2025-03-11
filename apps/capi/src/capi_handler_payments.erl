@@ -17,7 +17,7 @@
     Req :: capi_handler:request_data(),
     Context :: capi_handler:processing_context()
 ) -> {ok, capi_handler:request_state()} | {error, noimpl}.
-prepare(OperationID = 'CreatePayment', Req, Context) ->
+prepare('CreatePayment' = OperationID, Req, Context) ->
     InvoiceID = maps:get('invoiceID', Req),
     Invoice = get_invoice_by_id(InvoiceID, Context),
     PaymentParams = maps:get('PaymentParams', Req),
@@ -64,7 +64,7 @@ prepare(OperationID = 'CreatePayment', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetPayments', Req, Context) ->
+prepare('GetPayments' = OperationID, Req, Context) ->
     InvoiceID = maps:get('invoiceID', Req),
     Invoice = get_invoice_by_id(InvoiceID, Context),
     Authorize = fun() ->
@@ -80,7 +80,7 @@ prepare(OperationID = 'GetPayments', Req, Context) ->
         {ok, {200, #{}, [decode_invoice_payment(InvoiceID, P, Context) || P <- Payments]}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetPaymentByID', Req, Context) ->
+prepare('GetPaymentByID' = OperationID, Req, Context) ->
     InvoiceID = maps:get('invoiceID', Req),
     PaymentID = maps:get('paymentID', Req),
     Invoice = get_invoice_by_id(InvoiceID, Context),
@@ -106,12 +106,12 @@ prepare(OperationID, #{'partyID' := PartyID, 'externalID' := ExternalID}, Contex
     OperationID =:= 'GetPaymentByExternalIDForParty'
 ->
     InternalID = get_payment_by_external_id(PartyID, ExternalID, Context),
-    Invoice = maybe(
+    Invoice = 'maybe'(
         InternalID,
         fun({InvoiceID, _}) -> get_invoice_by_id(InvoiceID, Context) end
     ),
 
-    OperationPrototype = maybe(
+    OperationPrototype = 'maybe'(
         InternalID,
         fun({InvoiceID, PaymentID}) ->
             #{id => OperationID, invoice => InvoiceID, payment => PaymentID}
@@ -137,11 +137,11 @@ prepare(OperationID, #{'partyID' := PartyID, 'externalID' := ExternalID}, Contex
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetPaymentByExternalID', Req, Context) ->
+prepare('GetPaymentByExternalID' = OperationID, Req, Context) ->
     PartyID = capi_handler_utils:get_party_id(Context),
     Req1 = maps:put('partyID', PartyID, Req),
     prepare(OperationID, Req1, Context);
-prepare(OperationID = 'CapturePayment', Req, Context) ->
+prepare('CapturePayment' = OperationID, Req, Context) ->
     InvoiceID = maps:get('invoiceID', Req),
     PaymentID = maps:get('paymentID', Req),
     Invoice = get_invoice_by_id(InvoiceID, Context),
@@ -214,7 +214,7 @@ prepare(OperationID = 'CapturePayment', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'CancelPayment', Req, Context) ->
+prepare('CancelPayment' = OperationID, Req, Context) ->
     InvoiceID = maps:get('invoiceID', Req),
     PaymentID = maps:get('paymentID', Req),
     Authorize = fun() ->
@@ -249,7 +249,7 @@ prepare(OperationID = 'CancelPayment', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'CreateRefund', Req, Context) ->
+prepare('CreateRefund' = OperationID, Req, Context) ->
     InvoiceID = maps:get('invoiceID', Req),
     PaymentID = maps:get('paymentID', Req),
     RefundParams = maps:get('RefundParams', Req),
@@ -319,7 +319,7 @@ prepare(OperationID = 'CreateRefund', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetRefunds', Req, Context) ->
+prepare('GetRefunds' = OperationID, Req, Context) ->
     InvoiceID = maps:get('invoiceID', Req),
     PaymentID = maps:get('paymentID', Req),
     Invoice = get_invoice_by_id(InvoiceID, Context),
@@ -344,7 +344,7 @@ prepare(OperationID = 'GetRefunds', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetRefundByID', Req, Context) ->
+prepare('GetRefundByID' = OperationID, Req, Context) ->
     InvoiceID = maps:get('invoiceID', Req),
     PaymentID = maps:get('paymentID', Req),
     RefundID = maps:get('refundID', Req),
@@ -374,11 +374,11 @@ prepare(OperationID, #{'partyID' := PartyID, 'externalID' := ExternalID}, Contex
     OperationID =:= 'GetRefundByExternalIDForParty'
 ->
     InternalID = get_refund_by_external_id(PartyID, ExternalID, Context),
-    Invoice = maybe(
+    Invoice = 'maybe'(
         InternalID,
         fun({InvoiceID, _PaymentID, _RefundID}) -> get_invoice_by_id(InvoiceID, Context) end
     ),
-    OperationPrototype = maybe(
+    OperationPrototype = 'maybe'(
         InternalID,
         fun({InvoiceID, PaymentID, RefundID}) ->
             #{id => OperationID, invoice => InvoiceID, payment => PaymentID, refund => RefundID}
@@ -407,11 +407,11 @@ prepare(OperationID, #{'partyID' := PartyID, 'externalID' := ExternalID}, Contex
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetRefundByExternalID', Req, Context) ->
+prepare('GetRefundByExternalID' = OperationID, Req, Context) ->
     PartyID = capi_handler_utils:get_party_id(Context),
     Req1 = maps:put('partyID', PartyID, Req),
     prepare(OperationID, Req1, Context);
-prepare(OperationID = 'GetChargebacks', Req, Context) ->
+prepare('GetChargebacks' = OperationID, Req, Context) ->
     InvoiceID = maps:get('invoiceID', Req),
     PaymentID = maps:get('paymentID', Req),
     Invoice = get_invoice_by_id(InvoiceID, Context),
@@ -435,7 +435,7 @@ prepare(OperationID = 'GetChargebacks', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetChargebackByID', Req, Context) ->
+prepare('GetChargebackByID' = OperationID, Req, Context) ->
     InvoiceID = maps:get('invoiceID', Req),
     PaymentID = maps:get('paymentID', Req),
     ChargebackID = maps:get('chargebackID', Req),
@@ -482,7 +482,7 @@ validate_refund(Params) ->
 
 create_payment(Invoice, PaymentParams, Context, OperationID) ->
     PaymentToken = decode_payment_token(PaymentParams),
-    PaymentTool = capi_utils:maybe(PaymentToken, fun(#{payment_tool := V}) -> V end),
+    PaymentTool = capi_utils:'maybe'(PaymentToken, fun(#{payment_tool := V}) -> V end),
 
     InvoiceID = Invoice#domain_Invoice.id,
     PaymentID = create_payment_id(Invoice, PaymentParams, Context, OperationID, PaymentTool),
@@ -495,7 +495,7 @@ create_payment_id(Invoice, PaymentParams0, Context, OperationID, PaymentToolThri
     InvoiceID = Invoice#domain_Invoice.id,
     PartyID = Invoice#domain_Invoice.owner_id,
     Payer = maps:get(<<"payer">>, PaymentParams0),
-    PaymentTool = capi_utils:maybe(PaymentToolThrift, fun capi_handler_decoder_invoicing:decode_payment_tool/1),
+    PaymentTool = capi_utils:'maybe'(PaymentToolThrift, fun capi_handler_decoder_invoicing:decode_payment_tool/1),
     PaymentParams = PaymentParams0#{
         % Требуется для последующей кодировки параметров плательщика
         <<"invoiceID">> => InvoiceID,
@@ -629,9 +629,9 @@ encode_flow(#{<<"type">> := <<"PaymentFlowHold">>} = Entity) ->
         on_hold_expiration = binary_to_existing_atom(OnHoldExpiration, utf8)
     }}.
 
-encode_optional_cash(Params = #{<<"amount">> := _, <<"currency">> := _}, _, _, _) ->
+encode_optional_cash(#{<<"amount">> := _, <<"currency">> := _} = Params, _, _, _) ->
     capi_handler_encoder:encode_cash(Params);
-encode_optional_cash(Params = #{<<"amount">> := _}, InvoiceID, PaymentID, Context) ->
+encode_optional_cash(#{<<"amount">> := _} = Params, InvoiceID, PaymentID, Context) ->
     {ok, #payproc_InvoicePayment{
         payment = #domain_InvoicePayment{
             cost = #domain_Cash{currency = Currency}
@@ -759,7 +759,7 @@ create_sequence_id([Identifier | Rest], BenderPrefix) ->
 create_sequence_id([], BenderPrefix) ->
     genlib:to_binary(BenderPrefix).
 
-maybe(undefined, _) ->
+'maybe'(undefined, _) ->
     undefined;
-maybe(V, Fun) ->
+'maybe'(V, Fun) ->
     Fun(V).

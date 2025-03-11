@@ -2,7 +2,6 @@
 
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
--include_lib("damsel/include/dmsl_base_thrift.hrl").
 
 -behaviour(capi_handler).
 
@@ -15,7 +14,7 @@
     Req :: capi_handler:request_data(),
     Context :: capi_handler:processing_context()
 ) -> {ok, capi_handler:request_state()} | {error, noimpl}.
-prepare(OperationID = 'GetContracts', _Req, Context) ->
+prepare('GetContracts' = OperationID, _Req, Context) ->
     PartyID = capi_handler_utils:get_party_id(Context),
     Authorize = fun() ->
         Prototypes = [
@@ -28,7 +27,7 @@ prepare(OperationID = 'GetContracts', _Req, Context) ->
         {ok, {200, #{}, decode_contracts_map(Party#domain_Party.contracts, Party#domain_Party.contractors)}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetContractByID', Req, Context) ->
+prepare('GetContractByID' = OperationID, Req, Context) ->
     ContractID = maps:get('contractID', Req),
     PartyID = capi_handler_utils:get_party_id(Context),
     Authorize = fun() ->
@@ -48,7 +47,7 @@ prepare(OperationID = 'GetContractByID', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetContractAdjustments', Req, Context) ->
+prepare('GetContractAdjustments' = OperationID, Req, Context) ->
     ContractID = maps:get('contractID', Req),
     PartyID = capi_handler_utils:get_party_id(Context),
     Authorize = fun() ->
@@ -63,7 +62,7 @@ prepare(OperationID = 'GetContractAdjustments', Req, Context) ->
         {ok, {200, #{}, Resp}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetContractAdjustmentByID', Req, Context) ->
+prepare('GetContractAdjustmentByID' = OperationID, Req, Context) ->
     ContractID = maps:get('contractID', Req),
     PartyID = capi_handler_utils:get_party_id(Context),
     Authorize = fun() ->
@@ -84,7 +83,7 @@ prepare(OperationID = 'GetContractAdjustmentByID', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetContractsForParty', Req, Context) ->
+prepare('GetContractsForParty' = OperationID, Req, Context) ->
     PartyID = maps:get('partyID', Req),
     Authorize = fun() ->
         Prototypes = [
@@ -101,7 +100,7 @@ prepare(OperationID = 'GetContractsForParty', Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetContractByIDForParty', Req, Context) ->
+prepare('GetContractByIDForParty' = OperationID, Req, Context) ->
     ContractID = maps:get('contractID', Req),
     PartyID = maps:get('partyID', Req),
     Authorize = fun() ->
@@ -117,7 +116,7 @@ prepare(OperationID = 'GetContractByIDForParty', Req, Context) ->
         {ok, {200, #{}, decode_contract(Contract, Party#domain_Party.contractors)}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetContractAdjustmentsForParty', Req, Context) ->
+prepare('GetContractAdjustmentsForParty' = OperationID, Req, Context) ->
     ContractID = maps:get('contractID', Req),
     PartyID = maps:get('partyID', Req),
     Authorize = fun() ->
@@ -132,7 +131,7 @@ prepare(OperationID = 'GetContractAdjustmentsForParty', Req, Context) ->
         {ok, {200, #{}, Resp}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare(OperationID = 'GetContractAdjustmentByIDForParty', Req, Context) ->
+prepare('GetContractAdjustmentByIDForParty' = OperationID, Req, Context) ->
     ContractID = maps:get('contractID', Req),
     PartyID = maps:get('partyID', Req),
     Authorize = fun() ->

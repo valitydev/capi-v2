@@ -2,7 +2,6 @@
 
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
--include_lib("damsel/include/dmsl_base_thrift.hrl").
 
 -behaviour(capi_handler).
 
@@ -302,7 +301,7 @@ encode_customer_params(CustomerID, PartyID, Params) ->
 encode_customer_metadata(Meta) ->
     capi_json_marshalling:marshal(Meta).
 
-generate_binding_ids(OperationID, CustomerBindingParams, Context = #{woody_context := WoodyContext}) ->
+generate_binding_ids(OperationID, CustomerBindingParams, #{woody_context := WoodyContext} = Context) ->
     ExternalID = maps:get(<<"externalID">>, CustomerBindingParams, undefined),
     PartyID = capi_handler_utils:get_party_id(Context),
 
@@ -424,7 +423,7 @@ decode_customer_binding_status({Status, StatusInfo}) ->
         <<"error">> => Error
     }.
 
-decode_customer_event(Event = #payproc_Event{source = {customer_id, _}, payload = Payload}) ->
+decode_customer_event(#payproc_Event{source = {customer_id, _}, payload = Payload} = Event) ->
     case decode_customer_changes(Payload) of
         [_Something | _] = Changes ->
             {true, #{

@@ -7,8 +7,9 @@
 -include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_conf_thrift.hrl").
 -include_lib("damsel/include/dmsl_user_interaction_thrift.hrl").
--include_lib("payout_manager_proto/include/payouts_payout_manager_thrift.hrl").
 -include_lib("magista_proto/include/magista_magista_thrift.hrl").
+
+-define(RECORD_UPDATE(FieldIndex, Value, Record), erlang:setelement(FieldIndex, Record, Value)).
 
 -define(STRING, <<"TEST">>).
 -define(RUB, <<"RUB">>).
@@ -466,7 +467,7 @@
 
 -define(SUSPENTION, {active, #domain_Active{since = ?TIMESTAMP}}).
 
--define(SHOP, #domain_Shop{
+-define(SHOP(Account), #domain_Shop{
     id = ?STRING,
     created_at = ?TIMESTAMP,
     blocking = ?BLOCKING,
@@ -474,16 +475,17 @@
     details = ?SHOP_DETAILS,
     location = ?SHOP_LOCATION,
     category = #domain_CategoryRef{id = ?INTEGER},
-    contract_id = ?STRING
+    contract_id = ?STRING,
+    account = Account
 }).
 
--define(SHOP(Currency), (?SHOP)#domain_Shop{
-    account = #domain_ShopAccount{
-        currency = #domain_CurrencyRef{symbolic_code = Currency},
-        settlement = ?INTEGER,
-        guarantee = ?INTEGER,
-        payout = ?INTEGER
-    }
+-define(SHOP, ?SHOP(undefined)).
+
+-define(SHOP_ACCOUNT(Currency), #domain_ShopAccount{
+    currency = #domain_CurrencyRef{symbolic_code = Currency},
+    settlement = ?INTEGER,
+    guarantee = ?INTEGER,
+    payout = ?INTEGER
 }).
 
 -define(SHOP_CONTRACT, #payproc_ShopContract{
@@ -544,7 +546,7 @@
     },
     shops = #{
         ?STRING => ?SHOP,
-        ?USD => ?SHOP(?USD)
+        ?USD => ?SHOP(?SHOP_ACCOUNT(?USD))
     },
     contractors = #{?STRING => ?PARTY_CONTRACTOR},
     wallets = #{?STRING => ?WALLET},
