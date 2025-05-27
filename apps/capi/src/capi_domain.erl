@@ -1,7 +1,7 @@
 -module(capi_domain).
 
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
--include_lib("damsel/include/dmsl_domain_conf_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_conf_v2_thrift.hrl").
 
 -export([get_payment_institution/2]).
 -export([get_payment_institutions/1]).
@@ -37,10 +37,8 @@ get_payment_institutions(Context) ->
     try
         Opts = make_opts(Context),
 
-        #'domain_conf_VersionedObject'{
-            version = Version,
-            object = {globals, #domain_GlobalsObject{data = Globals}}
-        } = dmt_client:checkout_versioned_object(latest, globals(), Opts),
+        {Version, #domain_GlobalsObject{data = Globals}} =
+            unwrap_versioned(dmt_client:checkout_object(latest, globals(), Opts)),
 
         PaymentInstitutionRefs =
             case Globals#domain_Globals.payment_institutions of
@@ -51,9 +49,8 @@ get_payment_institutions(Context) ->
         PaymentInstitutions =
             lists:map(
                 fun(Ref) ->
-                    {payment_institution, Object} = dmt_client:checkout_object(
-                        Version, {payment_institution, Ref}, Opts
-                    ),
+                    {_, Object} =
+                        unwrap_versioned(dmt_client:checkout_object(Version, {payment_institution, Ref}, Opts)),
                     Object
                 end,
                 PaymentInstitutionRefs
@@ -61,7 +58,7 @@ get_payment_institutions(Context) ->
 
         {ok, PaymentInstitutions}
     catch
-        throw:#'domain_conf_ObjectNotFound'{} ->
+        throw:#domain_conf_v2_ObjectNotFound{} ->
             {error, not_found}
     end.
 
@@ -69,11 +66,20 @@ get_payment_institutions(Context) ->
 get(Ref, Context) ->
     try
         Opts = make_opts(Context),
-        {_Type, Object} = dmt_client:checkout_object(latest, Ref, Opts),
+        {_, Object} = unwrap_versioned(dmt_client:checkout_object(latest, Ref, Opts)),
         {ok, Object}
     catch
-        throw:#'domain_conf_ObjectNotFound'{} ->
-            {error, not_found}
+        throw:#domain_conf_v2_ObjectNotFound{} ->
+            {error, not_found};
+        %% NOTE FIXME При чекауте объекта страны по ID не входящим в
+        %% перечнь допустимых значений (на уровне трифт-протокола)
+        %% выкидывается соответствующая ошибка трифта. Но в тестах
+        %% прежде полагалось, что выборка происходит из снепшота
+        %% версии где трифт валидация уже не учавствует, а потому это
+        %% не приводит к исключетельной ситуации, но лишь к возврат
+        %% ошибки `{error, object_not_found}`.
+        Class:Reason:Stacktrace -> ct:print("ERROR: ~p ~p~n~p~n", [Class, Reason, Stacktrace]),
+                 erlang:raise(Class, Reason, Stacktrace)
     end.
 
 -spec encode_enum(Type :: atom(), binary()) -> {ok, atom()} | {error, unknown_atom | unknown_variant}.
@@ -117,7 +123,13 @@ globals() ->
 -spec get_objects_by_type(Type :: atom(), processing_context()) -> {ok, [dmsl_domain_thrift:'DomainObject'()]}.
 get_objects_by_type(Type, Context) ->
     Opts = make_opts(Context),
-    Objects = dmt_client:checkout_objects_by_type(latest, Type, Opts),
+    Objects = lists:map(
+        fun(VersionedObject) ->
+            {_, Object} = unwrap_versioned(VersionedObject),
+            Object
+        end,
+        dmt_client:checkout_objects_by_type(latest, Type, Opts)
+    ),
     {ok, Objects}.
 
 -spec make_opts(processing_context()) -> dmt_client:opts().
@@ -125,3 +137,9 @@ make_opts(#{woody_context := WoodyContext}) ->
     #{woody_context => WoodyContext};
 make_opts(_) ->
     #{}.
+
+unwrap_versioned(#domain_conf_v2_VersionedObject{
+    info = #domain_conf_v2_VersionedObjectInfo{version = Version},
+    object = {_Type, Object}
+}) ->
+    {Version, Object}.

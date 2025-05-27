@@ -3,9 +3,7 @@
 -include_lib("common_test/include/ct.hrl").
 -include_lib("capi_dummy_data.hrl").
 -include_lib("capi_token_keeper_data.hrl").
--include_lib("damsel/include/dmsl_domain_conf_thrift.hrl").
--include_lib("damsel/include/dmsl_domain_thrift.hrl").
--include_lib("damsel/include/dmsl_base_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_conf_v2_thrift.hrl").
 
 -export([init_suite/2]).
 -export([init_suite/3]).
@@ -51,11 +49,43 @@ init_suite(Module, Config, CapiEnv) ->
     ServiceURLs = mock_services_(
         [
             {
+                'RepositoryClient',
+                {dmsl_domain_conf_v2_thrift, 'RepositoryClient'},
+                fun('CheckoutObject', {{version, ?INTEGER}, ObjectRef}) ->
+                    case maps:get(ObjectRef, ?ALL_OBJECTS, undefined) of
+                        undefined ->
+                            woody_error:raise(business, #domain_conf_v2_ObjectNotFound{});
+                        Object ->
+                            {ok, dmt_wrap_object(Object)}
+                    end
+                end
+            },
+            {
                 'Repository',
-                {dmsl_domain_conf_thrift, 'Repository'},
+                {dmsl_domain_conf_v2_thrift, 'Repository'},
                 fun
-                    ('Checkout', _) -> {ok, ?SNAPSHOT};
-                    ('PullRange', _) -> {ok, #{}}
+                    ('GetLatestVersion', _) ->
+                        {ok, ?INTEGER};
+                    (
+                        'SearchFullObjects',
+                        {#domain_conf_v2_SearchRequestParams{
+                            query = ~b"*", version = ?INTEGER, limit = _, type = Type, continuation_token = _
+                        }}
+                    ) ->
+                        Result0 = lists:foldl(
+                            fun
+                                ({{T, _}, Object}, Acc) when T =:= Type ->
+                                    [dmt_wrap_object(Object) | Acc];
+                                (_, Acc) ->
+                                    Acc
+                            end,
+                            [],
+                            maps:to_list(?ALL_OBJECTS)
+                        ),
+                        Result1 = lists:reverse(Result0),
+                        {ok, #domain_conf_v2_SearchFullResponse{
+                            result = Result1, total_count = length(Result1), continuation_token = undefined
+                        }}
                 end
             }
         ],
@@ -321,3 +351,17 @@ add_prefix(Key, Value, {Prefix, Acc}) ->
 
 get_blacklisted_keys_dir(Config) ->
     filename:join(?config(data_dir, Config), "blacklisted_keys").
+
+dmt_wrap_object(Object) ->
+    #domain_conf_v2_VersionedObject{
+        info = #domain_conf_v2_VersionedObjectInfo{
+            version = ?INTEGER,
+            changed_at = genlib_rfc3339:format(genlib_time:unow(), second),
+            changed_by = #domain_conf_v2_Author{
+                id = ?STRING,
+                name = ?STRING,
+                email = ?STRING
+            }
+        },
+        object = Object
+    }.
