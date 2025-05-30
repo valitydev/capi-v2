@@ -29,8 +29,7 @@ process_request('GetCountries', _Req, Context) ->
     {ok, {200, #{}, lists:map(fun decode_country_object/1, Countries)}};
 process_request('GetCountryByID', Req, Context) ->
     CountryCode = capi_coder_utils:encode_country_code(maps:get('countryID', Req)),
-    Ref = {country, #domain_CountryRef{id = CountryCode}},
-    case capi_domain:get(Ref, Context) of
+    case capi_domain:get_country(CountryCode, Context) of
         {ok, CountryObject} ->
             {ok, {200, #{}, decode_country_object(CountryObject)}};
         {error, not_found} ->

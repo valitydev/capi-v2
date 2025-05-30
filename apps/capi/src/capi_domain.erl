@@ -5,6 +5,7 @@
 
 -export([get_payment_institution/2]).
 -export([get_payment_institutions/1]).
+-export([get_country/2]).
 -export([get/2]).
 -export([get_objects_by_type/2]).
 -export([encode_enum/2]).
@@ -12,6 +13,8 @@
 -export([extract_type/1]).
 
 -type processing_context() :: capi_handler:processing_context().
+-type country_code() :: dmsl_domain_thrift:'CountryCode'().
+-type country_object() :: dmsl_domain_thrift:'CountryObject'().
 -type ref() :: dmsl_domain_thrift:'Reference'().
 -type data() :: _.
 
@@ -62,6 +65,17 @@ get_payment_institutions(Context) ->
             {error, not_found}
     end.
 
+-spec get_country(country_code(), processing_context() | undefined) -> {ok, country_object()} | {error, not_found}.
+get_country(CountryCode, Context) ->
+    Ref = {country, #domain_CountryRef{id = CountryCode}},
+    try
+        get(Ref, Context)
+    catch
+        error:{woody_error, {internal, result_unexpected, _}} ->
+            %% NOTE Object not exists if woody fails to encode country code
+            {error, not_found}
+    end.
+
 -spec get(ref(), processing_context() | undefined) -> {ok, data()} | {error, not_found}.
 get(Ref, Context) ->
     try
@@ -70,16 +84,7 @@ get(Ref, Context) ->
         {ok, Object}
     catch
         throw:#domain_conf_v2_ObjectNotFound{} ->
-            {error, not_found};
-        %% NOTE FIXME При чекауте объекта страны по ID не входящим в
-        %% перечнь допустимых значений (на уровне трифт-протокола)
-        %% выкидывается соответствующая ошибка трифта. Но в тестах
-        %% прежде полагалось, что выборка происходит из снепшота
-        %% версии где трифт валидация уже не учавствует, а потому это
-        %% не приводит к исключетельной ситуации, но лишь к возврат
-        %% ошибки `{error, object_not_found}`.
-        Class:Reason:Stacktrace -> ct:print("ERROR: ~p ~p~n~p~n", [Class, Reason, Stacktrace]),
-                 erlang:raise(Class, Reason, Stacktrace)
+            {error, not_found}
     end.
 
 -spec encode_enum(Type :: atom(), binary()) -> {ok, atom()} | {error, unknown_atom | unknown_variant}.
