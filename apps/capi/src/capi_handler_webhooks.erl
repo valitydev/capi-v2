@@ -28,7 +28,7 @@ prepare('CreateWebhook' = OperationID, Req, Context) ->
         case capi_party:get_shop(PartyID, ShopID, Context) of
             {ok, _} ->
                 ok;
-            {error, #payproc_ShopNotFound{}} ->
+            {error, not_found} ->
                 capi_handler:respond(logic_error('invalidShopID', <<"Shop not found">>))
         end,
         case capi_handler_utils:service_call({webhook_manager, 'Create', {WebhookParams}}, Context) of

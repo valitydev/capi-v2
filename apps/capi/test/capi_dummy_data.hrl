@@ -442,11 +442,11 @@
     party_id = ?STRING
 }).
 
--define(SHOP, ?SHOP(undefined)).
+-define(SHOP, ?SHOP(?RUB)).
 
 -define(SHOP_LOCATION, {url, ?URL}).
 
--define(SHOP_DETAILS, #domain_ShopDetails{name = ?STRING}).
+-define(SHOP_DETAILS, #domain_Details{name = ?STRING}).
 
 -define(PARTY, #domain_PartyConfig{
     id = ?STRING,

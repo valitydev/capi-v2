@@ -294,8 +294,8 @@ emplace_token_provider_data(PaymentMethods, TokenProviderData) ->
     ).
 
 construct_token_provider_data(PartyID, ShopID, Context) ->
-    {ok, ShopConfig} = capi_party:get_shop(PartyID, ShopID),
-    ShopName = ShopConfig#domain_ShopConfig.details#domain_ShopDetails.name,
+    {ok, ShopConfig} = capi_party:get_shop(PartyID, ShopID, Context),
+    ShopName = ShopConfig#domain_ShopConfig.details#domain_Details.name,
     PiRef = ShopConfig#domain_ShopConfig.payment_institution,
     {ok, Pi} = capi_domain:get_payment_institution(PiRef, Context),
     Realm = Pi#domain_PaymentInstitution.realm,

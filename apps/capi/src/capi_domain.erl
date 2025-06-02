@@ -7,6 +7,7 @@
 -export([get_payment_institution/2]).
 -export([get_payment_institutions/1]).
 -export([get/2]).
+-export([get/3]).
 -export([get_objects_by_type/2]).
 -export([encode_enum/2]).
 -export([encode_enum/3]).
@@ -23,6 +24,7 @@
 -type realm() :: dmsl_domain_thrift:'PaymentInstitutionRealm'().
 
 -export_type([realm/0]).
+-export_type([revision/0]).
 
 -spec head() -> revision().
 head() ->
@@ -73,9 +75,13 @@ get_payment_institutions(Context) ->
 
 -spec get(ref(), processing_context() | undefined) -> {ok, data()} | {error, not_found}.
 get(Ref, Context) ->
+    get(Ref, latest, Context).
+
+-spec get(ref(), revision(), processing_context() | undefined) -> {ok, data()} | {error, not_found}.
+get(Ref, Revision, Context) ->
     try
         Opts = make_opts(Context),
-        {_Type, Object} = dmt_client:checkout_object(latest, Ref, Opts),
+        {_Type, Object} = dmt_client:checkout_object(Revision, Ref, Opts),
         {ok, Object}
     catch
         throw:#'domain_conf_ObjectNotFound'{} ->

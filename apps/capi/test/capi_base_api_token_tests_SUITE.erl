@@ -59,27 +59,12 @@
     get_refund_by_external_id/1,
     update_invoice_template_ok_test/1,
     delete_invoice_template_ok_test/1,
-    get_my_party_ok_test/1,
-    get_my_party_lazy_creation_ok_test/1,
-    get_my_party_lazy_creation_fail_test/1,
-    suspend_my_party_ok_test/1,
-    activate_my_party_ok_test/1,
     get_party_by_id_ok_test/1,
-    suspend_party_by_id_ok_test/1,
-    activate_party_by_id_ok_test/1,
-    get_shop_by_id_ok_test/1,
-    get_shops_ok_test/1,
-    activate_shop_ok_test/1,
-    suspend_shop_ok_test/1,
     get_shop_by_id_for_party_ok_test/1,
     get_shops_for_party_ok_test/1,
     get_shops_for_party_restricted_ok_test/1,
-    suspend_shop_for_party_ok_test/1,
-    activate_shop_for_party_ok_test/1,
     get_shop_by_id_for_party_error_test/1,
     get_shops_for_party_error_test/1,
-    suspend_shop_for_party_error_test/1,
-    activate_shop_for_party_error_test/1,
     create_webhook_ok_test/1,
     create_webhook_limit_exceeded_test/1,
     get_webhooks/1,
@@ -129,11 +114,9 @@ all() ->
 groups() ->
     [
         {operations_by_api_key_token, [], [
-            get_my_party_lazy_creation_fail_test,
             {group, operations_by_any_token}
         ]},
         {operations_by_user_session_token, [], [
-            get_my_party_lazy_creation_ok_test,
             {group, operations_by_any_token}
         ]},
         {operations_by_any_token, [], [
@@ -154,17 +137,7 @@ groups() ->
             update_invoice_template_ok_test,
             delete_invoice_template_ok_test,
 
-            get_my_party_ok_test,
-            suspend_my_party_ok_test,
-            activate_my_party_ok_test,
             get_party_by_id_ok_test,
-            suspend_party_by_id_ok_test,
-            activate_party_by_id_ok_test,
-            get_shop_by_id_ok_test,
-            get_shops_ok_test,
-            activate_shop_ok_test,
-            suspend_shop_ok_test,
-
             get_categories_ok_test,
 
             get_shop_by_id_for_party_ok_test,
@@ -172,10 +145,6 @@ groups() ->
             get_shops_for_party_ok_test,
             get_shops_for_party_restricted_ok_test,
             get_shops_for_party_error_test,
-            suspend_shop_for_party_ok_test,
-            suspend_shop_for_party_error_test,
-            activate_shop_for_party_ok_test,
-            activate_shop_for_party_error_test,
 
             create_payment_ok_test,
             create_payment_with_changed_cost_ok_test,
@@ -1197,93 +1166,6 @@ delete_invoice_template_ok_test(Config) ->
     ),
     ok = capi_client_invoice_templates:delete(?config(context, Config), ?STRING).
 
--spec get_my_party_ok_test(config()) -> _.
-get_my_party_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {party_management, fun
-                ('GetRevision', _) -> {ok, ?INTEGER};
-                ('Checkout', _) -> {ok, ?PARTY}
-            end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetMyParty">>, ?STRING, Config),
-    {ok, _} = capi_client_parties:get_my_party(?config(context, Config)).
-
--spec get_my_party_lazy_creation_ok_test(config()) -> _.
-get_my_party_lazy_creation_ok_test(Config) ->
-    TestETS = ets:new(get_my_party_lazy_creation_ok_test, [public]),
-    _ = capi_ct_helper:mock_services(
-        [
-            {party_management, fun
-                ('GetRevision', _) ->
-                    case ets:lookup(TestETS, party_created) of
-                        [{party_created, true}] -> {ok, ?INTEGER};
-                        _ -> {throwing, #payproc_PartyNotFound{}}
-                    end;
-                ('Checkout', _) ->
-                    case ets:lookup(TestETS, party_created) of
-                        [{party_created, true}] -> {ok, ?PARTY};
-                        _ -> {throwing, #payproc_PartyNotFound{}}
-                    end;
-                ('Create', _) ->
-                    case ets:insert_new(TestETS, {party_created, true}) of
-                        true -> {ok, ok};
-                        _ -> {throwing, #payproc_PartyExists{}}
-                    end
-            end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetMyParty">>, ?STRING, Config),
-    {ok, _} = capi_client_parties:get_my_party(?config(context, Config)),
-    true = ets:delete(TestETS).
-
--spec get_my_party_lazy_creation_fail_test(config()) -> _.
-get_my_party_lazy_creation_fail_test(Config) ->
-    TestETS = ets:new(get_my_party_lazy_creation_fail_test, [public]),
-    _ = capi_ct_helper:mock_services(
-        [
-            {party_management, fun
-                ('GetRevision', _) ->
-                    case ets:lookup(TestETS, party_created) of
-                        [{party_created, true}] -> {ok, ?INTEGER};
-                        _ -> {throwing, #payproc_PartyNotFound{}}
-                    end;
-                ('Checkout', _) ->
-                    case ets:lookup(TestETS, party_created) of
-                        [{party_created, true}] -> {ok, ?PARTY};
-                        _ -> {throwing, #payproc_PartyNotFound{}}
-                    end;
-                ('Create', _) ->
-                    case ets:insert_new(TestETS, {party_created, true}) of
-                        true -> {ok, ok};
-                        _ -> {throwing, #payproc_PartyExists{}}
-                    end
-            end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetMyParty">>, ?STRING, Config),
-    ?assertMatch(
-        {error, {400, _}},
-        capi_client_parties:get_my_party(?config(context, Config))
-    ),
-    true = ets:delete(TestETS).
-
--spec suspend_my_party_ok_test(config()) -> _.
-suspend_my_party_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services([{party_management, fun('Suspend', _) -> {ok, ok} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"SuspendMyParty">>, ?STRING, Config),
-    ok = capi_client_parties:suspend_my_party(?config(context, Config)).
-
--spec activate_my_party_ok_test(config()) -> _.
-activate_my_party_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services([{party_management, fun('Activate', _) -> {ok, ok} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"ActivateMyParty">>, ?STRING, Config),
-    ok = capi_client_parties:activate_my_party(?config(context, Config)).
-
 -spec get_party_by_id_ok_test(config()) -> _.
 get_party_by_id_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
@@ -1297,24 +1179,6 @@ get_party_by_id_ok_test(Config) ->
     ),
     _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetPartyByID">>, ?STRING, Config),
     {ok, _} = capi_client_parties:get_party_by_id(?config(context, Config), ?STRING).
-
--spec suspend_party_by_id_ok_test(config()) -> _.
-suspend_party_by_id_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services([{party_management, fun('Suspend', _) -> {ok, ok} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"SuspendPartyByID">>, ?STRING, Config),
-    ok = capi_client_parties:suspend_party_by_id(?config(context, Config), ?STRING).
-
--spec activate_party_by_id_ok_test(config()) -> _.
-activate_party_by_id_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services([{party_management, fun('Activate', _) -> {ok, ok} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"ActivatePartyByID">>, ?STRING, Config),
-    ok = capi_client_parties:activate_party_by_id(?config(context, Config), ?STRING).
-
--spec get_shop_by_id_ok_test(config()) -> _.
-get_shop_by_id_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services([{party_management, fun('GetShop', _) -> {ok, ?SHOP} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"GetShopByID">>, ?STRING, ?STRING, Config),
-    {ok, _} = capi_client_shops:get_shop_by_id(?config(context, Config), ?STRING).
 
 -spec get_shop_by_id_for_party_ok_test(config()) -> _.
 get_shop_by_id_for_party_ok_test(Config) ->
@@ -1347,20 +1211,6 @@ get_shop_by_id_for_party_error_test(Config) ->
         {error, {404, _}},
         capi_client_shops:get_shop_by_id_for_party(?config(context, Config), <<"WrongPartyID">>, ?STRING)
     ).
-
--spec get_shops_ok_test(config()) -> _.
-get_shops_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {party_management, fun
-                ('GetRevision', _) -> {ok, ?INTEGER};
-                ('Checkout', _) -> {ok, ?PARTY}
-            end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetShops">>, ?STRING, Config),
-    {ok, _} = capi_client_shops:get_shops(?config(context, Config)).
 
 -spec get_shops_for_party_ok_test(config()) -> _.
 get_shops_for_party_ok_test(Config) ->
@@ -1402,82 +1252,6 @@ get_shops_for_party_error_test(Config) ->
     ?assertMatch(
         {error, {404, _}},
         capi_client_shops:get_shops_for_party(?config(context, Config), <<"WrongPartyID">>)
-    ).
-
--spec activate_shop_ok_test(config()) -> _.
-activate_shop_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services([{party_management, fun('ActivateShop', _) -> {ok, ok} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"ActivateShop">>, ?STRING, ?STRING, Config),
-    ok = capi_client_shops:activate_shop(?config(context, Config), ?STRING).
-
--spec activate_shop_for_party_ok_test(config()) -> _.
-activate_shop_for_party_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {party_management, fun('ActivateShop', {?STRING, _}) -> {ok, ok} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"ActivateShopForParty">>, ?STRING, ?STRING, Config),
-    ok = capi_client_shops:activate_shop_for_party(?config(context, Config), ?STRING, ?STRING).
-
--spec activate_shop_for_party_error_test(config()) -> _.
-activate_shop_for_party_error_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {party_management, fun('ActivateShop', {<<"WrongPartyID">>, _}) ->
-                {throwing, #payproc_PartyNotFound{}}
-            end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(
-        <<"ActivateShopForParty">>,
-        <<"WrongPartyID">>,
-        ?STRING,
-        Config
-    ),
-    ?assertMatch(
-        {error, {404, _}},
-        capi_client_shops:activate_shop_for_party(?config(context, Config), <<"WrongPartyID">>, ?STRING)
-    ).
-
--spec suspend_shop_ok_test(config()) -> _.
-suspend_shop_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services([{party_management, fun('SuspendShop', _) -> {ok, ok} end}], Config),
-    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"SuspendShop">>, ?STRING, ?STRING, Config),
-    ok = capi_client_shops:suspend_shop(?config(context, Config), ?STRING).
-
--spec suspend_shop_for_party_ok_test(config()) -> _.
-suspend_shop_for_party_ok_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {party_management, fun('SuspendShop', _) -> {ok, ok} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"SuspendShopForParty">>, ?STRING, ?STRING, Config),
-    ok = capi_client_shops:suspend_shop_for_party(?config(context, Config), ?STRING, ?STRING).
-
--spec suspend_shop_for_party_error_test(config()) -> _.
-suspend_shop_for_party_error_test(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {party_management, fun('SuspendShop', {<<"WrongPartyID">>, _}) ->
-                {throwing, #payproc_PartyNotFound{}}
-            end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(
-        <<"SuspendShopForParty">>,
-        <<"WrongPartyID">>,
-        ?STRING,
-        Config
-    ),
-    ?assertMatch(
-        {error, {404, _}},
-        capi_client_shops:suspend_shop_for_party(?config(context, Config), <<"WrongPartyID">>, ?STRING)
     ).
 
 -spec create_webhook_ok_test(config()) -> _.
@@ -1912,4 +1686,4 @@ different_ip_header(Config) ->
     ),
     Context0 = ?config(context, Config),
     Context1 = Context0#{ip_address => IPAddress},
-    {ok, _} = capi_client_shops:get_shop_by_id(Context1, ?STRING).
+    {ok, _} = capi_client_shops:get_shop_by_id_for_party(Context1, ?STRING, ?STRING).

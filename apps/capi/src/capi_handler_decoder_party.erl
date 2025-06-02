@@ -25,6 +25,11 @@ decode_shop_details(#domain_ShopDetails{name = Name, description = Description})
     genlib_map:compact(#{
         <<"name">> => Name,
         <<"description">> => Description
+    });
+decode_shop_details(#domain_Details{name = Name, description = Description}) ->
+    genlib_map:compact(#{
+        <<"name">> => Name,
+        <<"description">> => Description
     }).
 
 -spec decode_contact_info(capi_handler_encoder:encode_data()) -> capi_handler_decoder_utils:decode_data().
