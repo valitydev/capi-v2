@@ -58,7 +58,7 @@ prepare('GetShops' = OperationID, _Req, Context) ->
     end,
     Process = fun() ->
         Party = capi_utils:unwrap(capi_party:get_party(PartyID, Context)),
-        {ok, {200, #{}, decode_shops_map(Party#domain_Party.shops)}}
+        {ok, {200, #{}, decode_shops_map(Party#domain_PartyConfig.shops)}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare('GetShopByID' = OperationID, Req, Context) ->
@@ -88,7 +88,7 @@ prepare('GetShopsForParty' = OperationID, Req, Context) ->
     Process = fun() ->
         case capi_party:get_party(PartyID, Context) of
             {ok, Party} ->
-                {ok, {200, #{}, decode_shops_map(Party#domain_Party.shops)}};
+                {ok, {200, #{}, decode_shops_map(Party#domain_PartyConfig.shops)}};
             {error, #payproc_PartyNotFound{}} ->
                 {ok, general_error(404, <<"Party not found">>)}
         end
@@ -96,7 +96,7 @@ prepare('GetShopsForParty' = OperationID, Req, Context) ->
     ProcessRestricted = fun(Restrictions) ->
         case capi_party:get_party(PartyID, Context) of
             {ok, Party} ->
-                Shops = restrict_shops(Party#domain_Party.shops, Restrictions),
+                Shops = restrict_shops(Party#domain_PartyConfig.shops, Restrictions),
                 {ok, {200, #{}, decode_shops_map(Shops)}};
             {error, #payproc_PartyNotFound{}} ->
                 {ok, general_error(404, <<"Party not found">>)}
@@ -174,20 +174,19 @@ decode_shops_map(Shops) ->
     capi_handler_decoder_utils:decode_map(Shops, fun decode_shop/1).
 
 decode_shop(Shop) ->
-    Currency = capi_utils:'maybe'(
-        Shop#domain_Shop.account,
-        fun(#domain_ShopAccount{currency = Currency}) ->
-            capi_handler_decoder_utils:decode_currency(Currency)
-        end
-    ),
+    Currency = get_shop_currency(Shop),
     genlib_map:compact(#{
-        <<"id">> => Shop#domain_Shop.id,
-        <<"createdAt">> => Shop#domain_Shop.created_at,
-        <<"isBlocked">> => capi_handler_decoder_party:is_blocked(Shop#domain_Shop.blocking),
-        <<"isSuspended">> => capi_handler_decoder_party:is_suspended(Shop#domain_Shop.suspension),
+        <<"id">> => Shop#domain_ShopConfig.id,
+        <<"createdAt">> => Shop#domain_ShopConfig.created_at,
+        <<"isBlocked">> => capi_handler_decoder_party:is_blocked(Shop#domain_ShopConfig.blocking),
+        <<"isSuspended">> => capi_handler_decoder_party:is_suspended(Shop#domain_ShopConfig.suspension),
         <<"currency">> => Currency,
-        <<"categoryID">> => capi_handler_decoder_utils:decode_category_ref(Shop#domain_Shop.category),
-        <<"details">> => capi_handler_decoder_party:decode_shop_details(Shop#domain_Shop.details),
-        <<"location">> => capi_handler_decoder_party:decode_shop_location(Shop#domain_Shop.location),
-        <<"contractID">> => Shop#domain_Shop.contract_id
+        <<"categoryID">> => capi_handler_decoder_utils:decode_category_ref(Shop#domain_ShopConfig.category),
+        <<"details">> => capi_handler_decoder_party:decode_shop_details(Shop#domain_ShopConfig.details),
+        <<"location">> => capi_handler_decoder_party:decode_shop_location(Shop#domain_ShopConfig.location)
     }).
+
+get_shop_currency(#domain_ShopConfig{currency_configs = Configs}) when is_map(Configs) ->
+    %% TODO: fix it when add multi currency support
+    [Currency | _] = maps:keys(Configs),
+    Currency.

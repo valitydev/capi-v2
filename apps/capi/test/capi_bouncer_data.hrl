@@ -43,12 +43,6 @@
     shop = ?CTX_ENTITY(ShopID)
 }).
 
--define(CTX_CONTRACT_OP(ID, PartyID, ContractID), #ctx_v1_CommonAPIOperation{
-    id = ID,
-    party = ?CTX_ENTITY(PartyID),
-    contract = ?CTX_ENTITY(ContractID)
-}).
-
 -define(CTX_INVOICE_OP(ID, InvoiceID), #ctx_v1_CommonAPIOperation{
     id = ID,
     invoice = ?CTX_ENTITY(InvoiceID)
@@ -77,53 +71,10 @@
     invoice_template = ?CTX_ENTITY(InvoiceTemplateID)
 }).
 
--define(CTX_CUSTOMER_OP(ID, CustomerID), #ctx_v1_CommonAPIOperation{
-    id = ID,
-    customer = ?CTX_ENTITY(CustomerID)
-}).
-
--define(CTX_BINDING_OP(ID, CustomerID, BindingID), #ctx_v1_CommonAPIOperation{
-    id = ID,
-    customer = ?CTX_ENTITY(CustomerID),
-    binding = ?CTX_ENTITY(BindingID)
-}).
-
 -define(CTX_WEBHOOK_OP(ID, WebhookID), #ctx_v1_CommonAPIOperation{
     id = ID,
     webhook = ?CTX_ENTITY(WebhookID)
 }).
-
--define(CTX_SEARCH_OP(ID, PartyID, ShopID, InvoiceID, PaymentID),
-    ?CTX_SEARCH_OP(
-        ID,
-        PartyID,
-        ShopID,
-        InvoiceID,
-        PaymentID,
-        undefined,
-        undefined
-    )
-).
-
--define(CTX_SEARCH_OP(
-    ID,
-    PartyID,
-    ShopID,
-    InvoiceID,
-    PaymentID,
-    CustomerID,
-    RefundID
-),
-    #ctx_v1_CommonAPIOperation{
-        id = ID,
-        party = ?CTX_ENTITY(PartyID),
-        shop = ?CTX_ENTITY(ShopID),
-        invoice = capi_utils:'maybe'(InvoiceID, fun(V) -> ?CTX_ENTITY(V) end),
-        payment = capi_utils:'maybe'(PaymentID, fun(V) -> ?CTX_ENTITY(V) end),
-        customer = capi_utils:'maybe'(CustomerID, fun(V) -> ?CTX_ENTITY(V) end),
-        refund = capi_utils:'maybe'(RefundID, fun(V) -> ?CTX_ENTITY(V) end)
-    }
-).
 
 -define(CTX_INVOICE(ID, PartyID, ShopID), #ctx_v1_Invoice{
     id = ID,
@@ -141,12 +92,6 @@
 -define(CTX_PAYMENT(ID), #ctx_v1_Payment{id = ID}).
 
 -define(CTX_INVOICE_TPL(ID, PartyID, ShopID), #ctx_v1_InvoiceTemplate{
-    id = ID,
-    party = ?CTX_ENTITY(PartyID),
-    shop = ?CTX_ENTITY(ShopID)
-}).
-
--define(CTX_CUSTOMER(ID, PartyID, ShopID), #ctx_v1_Customer{
     id = ID,
     party = ?CTX_ENTITY(PartyID),
     shop = ?CTX_ENTITY(ShopID)

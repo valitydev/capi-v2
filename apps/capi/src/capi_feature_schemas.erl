@@ -23,7 +23,6 @@
 -define(mobile_commerce, 17).
 -define(operator, 18).
 -define(phone, 19).
--define(customer, 20).
 -define(recurrent, 21).
 -define(invoice, 22).
 -define(payment, 23).
@@ -82,8 +81,6 @@
 -export([invoice/0]).
 -export([invoice_template/0]).
 -export([refund/0]).
--export([customer_binding/0]).
--export([customer/0]).
 
 -spec payment() -> schema().
 payment() ->
@@ -103,10 +100,6 @@ payment() ->
         ?payer => {
             <<"payer">>,
             {union, <<"payerType">>, #{
-                <<"CustomerPayer">> =>
-                    {?customer, #{
-                        ?customer => <<"customerID">>
-                    }},
                 <<"RecurrentPayer">> => {
                     ?recurrent, #{
                         ?recurrent => {
@@ -171,25 +164,6 @@ refund() ->
         ?currency => <<"currency">>,
         ?cart => {<<"cart">>, {set, cart_line_schema()}},
         ?allocation => {<<"allocation">>, {set, allocation_transaction()}}
-    }.
-
--spec customer() -> schema().
-customer() ->
-    #{
-        ?shop_id => <<"shopID">>,
-        ?contact_info => {<<"contactInfo">>, contact_info_schema()}
-    }.
-
--spec customer_binding() -> schema().
-customer_binding() ->
-    #{
-        ?payment_resource => {
-            <<"paymentResource">>,
-            #{
-                ?payment_session => <<"paymentSession">>,
-                ?payment_tool => {<<"paymentTool">>, payment_tool_schema()}
-            }
-        }
     }.
 
 -spec payment_tool_schema() -> schema().
@@ -331,22 +305,6 @@ lifetime_schema() ->
         ?years => <<"years">>
     }.
 
--spec contact_info_schema() -> schema().
-contact_info_schema() ->
-    #{
-        ?email => <<"email">>,
-        ?phone_number => <<"phoneNumber">>,
-        ?first_name => <<"firstName">>,
-        ?last_name => <<"lastName">>,
-        ?country => <<"country">>,
-        ?state => <<"state">>,
-        ?city => <<"city">>,
-        ?address => <<"address">>,
-        ?postal_code => <<"postalCode">>,
-        ?date_of_birth => <<"dateOfBirth">>,
-        ?document_id => <<"documentId">>
-    }.
-
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 -include_lib("capi_dummy_data.hrl").
@@ -457,27 +415,6 @@ compare_different_payment_tool_test() ->
     Request2 = payment_params(PaymentTool2),
 
     common_compare_tests(payment(), Request1, Request2, [<<"payer">>]).
-
--spec read_payment_customer_features_value_test() -> _.
-read_payment_customer_features_value_test() ->
-    PayerType = <<"CustomerPayer">>,
-    CustomerID = <<"some customer id">>,
-    Request = #{
-        <<"payer">> => #{
-            <<"payerType">> => PayerType,
-            <<"customerID">> => CustomerID
-        }
-    },
-    Features = read(payment(), Request),
-    ?assertEqual(
-        #{
-            ?invoice_id => undefined,
-            ?make_recurrent => undefined,
-            ?flow => undefined,
-            ?payer => [?customer, #{?customer => hash(CustomerID)}]
-        },
-        Features
-    ).
 
 -spec read_invoice_features_test() -> _.
 read_invoice_features_test() ->
@@ -612,100 +549,6 @@ compare_invoices_features_test() ->
         list_diff_fields(Schema, Diff)
     ),
     ?assert(compare(Invoice1, Invoice1#{?cart => undefined})).
-
--spec read_customer_features_test() -> _.
-read_customer_features_test() ->
-    Request = ?CUSTOMER_PARAMS,
-    Features = #{
-        ?shop_id => hash(?STRING),
-        ?contact_info => #{
-            ?email => hash(<<"bla@bla.ru">>),
-            ?phone_number => undefined,
-            ?first_name => undefined,
-            ?last_name => undefined,
-            ?country => undefined,
-            ?state => undefined,
-            ?city => undefined,
-            ?address => undefined,
-            ?postal_code => undefined,
-            ?date_of_birth => undefined,
-            ?document_id => undefined
-        }
-    },
-    ?assertEqual(
-        Features,
-        read(customer(), Request)
-    ).
-
--spec compare_customer_features_test() -> _.
-compare_customer_features_test() ->
-    Request = ?CUSTOMER_PARAMS,
-    RequestSame = Request#{
-        <<"partyID">> => <<"ANOTHER PARTY">>,
-
-        <<"metadata">> => #{<<"text">> => <<"sample text">>}
-    },
-    RequestDifferent = Request#{
-        <<"shopID">> => hash(<<"Another shop">>),
-        <<"contactInfo">> => #{
-            <<"email">> => hash(<<"bla@example.com">>),
-            <<"phoneNumber">> => <<"8-800-555-35-35">>,
-            <<"firstName">> => <<"firstName">>,
-            <<"lastName">> => <<"lastName">>,
-            <<"country">> => <<"country">>,
-            <<"state">> => <<"state">>,
-            <<"city">> => <<"city">>,
-            <<"address">> => <<"address">>,
-            <<"postalCode">> => <<"postalCode">>,
-            <<"dateOfBirth">> => <<"dateOfBirth">>,
-            <<"documentId">> => <<"documentId">>
-        }
-    },
-    common_compare_tests(
-        customer(),
-        Request,
-        RequestSame,
-        RequestDifferent,
-        all
-    ).
-
--spec read_customer_binding_features_test() -> _.
-read_customer_binding_features_test() ->
-    Session = ?TEST_PAYMENT_SESSION(<<"Session">>),
-    Tool = ?TEST_PAYMENT_TOOL(<<"visa">>, <<"TOKEN">>),
-    Request = payment_resource(Session, Tool),
-    Features = #{
-        ?payment_resource => #{
-            ?payment_session => hash(Session),
-            ?payment_tool => [
-                ?bank_card,
-                #{
-                    ?token => hash(<<"TOKEN">>),
-                    ?exp_date => hash(<<"12/2012">>)
-                }
-            ]
-        }
-    },
-
-    ?assertEqual(
-        Features,
-        read(customer_binding(), Request)
-    ).
-
--spec compare_customer_binding_features_test() -> _.
-compare_customer_binding_features_test() ->
-    Session1 = ?TEST_PAYMENT_SESSION(<<"Session1">>),
-    Tool1 = ?TEST_PAYMENT_TOOL(<<"visa">>),
-    Request1 = payment_resource(Session1, Tool1),
-
-    Session2 = ?TEST_PAYMENT_SESSION(<<"Session2">>),
-    Tool2 = maps:merge(?TEST_PAYMENT_TOOL(<<"mastercard">>), #{<<"exp_date">> => <<"01/2020">>}),
-    Request2 = payment_resource(Session2, Tool2),
-
-    common_compare_tests(customer_binding(), Request1, Request2, [
-        <<"paymentResource.paymentTool.exp_date">>,
-        <<"paymentResource.paymentSession">>
-    ]).
 
 %% Add invoice_template tests
 
@@ -914,13 +757,13 @@ demo_compare_allocation_transaction_test() ->
 
 %%
 
-payment_resource(Session, Tool) ->
-    #{
-        <<"paymentResource">> => #{
-            <<"paymentSession">> => Session,
-            <<"paymentTool">> => Tool
-        }
-    }.
+% payment_resource(Session, Tool) ->
+%     #{
+%         <<"paymentResource">> => #{
+%             <<"paymentSession">> => Session,
+%             <<"paymentTool">> => Tool
+%         }
+%     }.
 
 payment_params(PaymentTool) ->
     deep_merge(

@@ -27,7 +27,7 @@
 -type consumer() :: client | merchant | provider.
 -type token_spec() :: #{
     party := binary(),
-    scope := {invoice | invoice_template | customer, binary()},
+    scope := {invoice | invoice_template, binary()},
     shop => binary(),
     lifetime => pos_integer() | unlimited,
     metadata => token_keeper_client:metadata()
@@ -132,7 +132,6 @@ issue_access_token(TokenSpec, WoodyContext) ->
 %%
 
 -define(DEFAULT_INVOICE_ACCESS_TOKEN_LIFETIME, 259200).
--define(DEFAULT_CUSTOMER_ACCESS_TOKEN_LIFETIME, 259200).
 
 -include_lib("bouncer_proto/include/bouncer_ctx_v1_thrift.hrl").
 
@@ -169,7 +168,6 @@ resolve_auth_scope(TokenSpec) ->
     ).
 
 resolve_auth_method(#{scope := {invoice, _}}) -> ?CTX_V1_AUTHMETHOD_INVOICEACCESSTOKEN;
-resolve_auth_method(#{scope := {customer, _}}) -> ?CTX_V1_AUTHMETHOD_CUSTOMERACCESSTOKEN;
 resolve_auth_method(#{scope := {invoice_template, _}}) -> ?CTX_V1_AUTHMETHOD_INVOICETEMPLATEACCESSTOKEN.
 
 resolve_auth_expiration(TokenSpec) ->
@@ -187,13 +185,9 @@ get_token_lifetime(#{lifetime := LifeTime} = TokenSpec) when LifeTime =/= undefi
 get_token_lifetime(#{scope := {invoice, _}}) ->
     ?DEFAULT_INVOICE_ACCESS_TOKEN_LIFETIME;
 get_token_lifetime(#{scope := {invoice_template, _}}) ->
-    unlimited;
-get_token_lifetime(#{scope := {customer, _}}) ->
-    ?DEFAULT_CUSTOMER_ACCESS_TOKEN_LIFETIME.
+    unlimited.
 
-%% Forbid creation of unlimited lifetime invoice and customer tokens
 verify_token_lifetime(#{scope := {invoice, _}}, LifeTime) when LifeTime =/= unlimited -> ok;
-verify_token_lifetime(#{scope := {customer, _}}, LifeTime) when LifeTime =/= unlimited -> ok;
 verify_token_lifetime(#{scope := {invoice_template, _}}, _LifeTime) -> ok.
 
 %%

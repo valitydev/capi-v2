@@ -27,8 +27,7 @@
     get_invoice_forbidden_notfound/1,
     get_invoice_by_external_id_forbidden_notfound/1,
     get_payment_by_external_id_forbidden_notfound/1,
-    get_refund_by_external_id_forbidden_notfound/1,
-    get_customer_forbidden_notfound/1
+    get_refund_by_external_id_forbidden_notfound/1
 ]).
 
 -define(EMPTYRESP(Code), {error, {Code, #{}}}).
@@ -62,8 +61,7 @@ groups() ->
             get_invoice_forbidden_notfound,
             get_invoice_by_external_id_forbidden_notfound,
             get_payment_by_external_id_forbidden_notfound,
-            get_refund_by_external_id_forbidden_notfound,
-            get_customer_forbidden_notfound
+            get_refund_by_external_id_forbidden_notfound
         ]}
     ].
 
@@ -128,7 +126,6 @@ authorization_error_no_permission_test(Config) ->
 -spec get_invoice_by_external_id_forbidden_notfound(config()) -> _.
 -spec get_payment_by_external_id_forbidden_notfound(config()) -> _.
 -spec get_refund_by_external_id_forbidden_notfound(config()) -> _.
--spec get_customer_forbidden_notfound(config()) -> _.
 
 get_party_forbidden_notfound(Config) ->
     PartyID = <<"NONEXISTENT">>,
@@ -174,14 +171,6 @@ get_refund_by_external_id_forbidden_notfound(Config) ->
         Config
     ),
     {error, {404, _}} = capi_client_payments:get_refund_by_external_id(mk_context(), ExternalID).
-
-get_customer_forbidden_notfound(Config) ->
-    CustomerID = <<"NONEXISTENT">>,
-    _ = capi_ct_helper:mock_services(
-        [{customer_management, fun('Get', _) -> {throwing, #payproc_CustomerNotFound{}} end}],
-        Config
-    ),
-    {error, {404, _}} = capi_client_customers:get_customer_by_id(mk_context(), CustomerID).
 
 mk_context() ->
     capi_ct_helper:get_context(?API_TOKEN).

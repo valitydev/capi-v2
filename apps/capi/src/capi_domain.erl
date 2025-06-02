@@ -3,6 +3,7 @@
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_conf_thrift.hrl").
 
+-export([head/0]).
 -export([get_payment_institution/2]).
 -export([get_payment_institutions/1]).
 -export([get/2]).
@@ -14,6 +15,7 @@
 -type processing_context() :: capi_handler:processing_context().
 -type ref() :: dmsl_domain_thrift:'Reference'().
 -type data() :: _.
+-type revision() :: dmt_client:version().
 
 -type payment_institution() :: dmsl_domain_thrift:'PaymentInstitution'().
 -type payment_institution_ref() :: dmsl_domain_thrift:'PaymentInstitutionRef'().
@@ -21,6 +23,10 @@
 -type realm() :: dmsl_domain_thrift:'PaymentInstitutionRealm'().
 
 -export_type([realm/0]).
+
+-spec head() -> revision().
+head() ->
+    dmt_client:get_last_version().
 
 -spec get_payment_institution(payment_institution_ref(), processing_context()) ->
     {ok, payment_institution()} | {error, not_found}.
