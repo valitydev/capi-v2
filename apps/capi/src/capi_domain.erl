@@ -8,6 +8,7 @@
 -export([get_payment_institutions/1]).
 -export([get/2]).
 -export([get/3]).
+-export([get_ext/3]).
 -export([get_objects_by_type/2]).
 -export([encode_enum/2]).
 -export([encode_enum/3]).
@@ -87,6 +88,19 @@ get(Ref, Revision, Context) ->
         throw:#'domain_conf_ObjectNotFound'{} ->
             {error, not_found}
     end.
+
+-spec get_ext(ref(), revision(), processing_context() | undefined) -> {ok, data()} | {error, not_found}.
+get_ext(Ref, Revision, Context) ->
+    try
+        Opts = make_opts(Context),
+        {ok, extract_data(dmt_client:checkout_object(Revision, Ref, Opts))}
+    catch
+        throw:#'domain_conf_ObjectNotFound'{} ->
+            {error, not_found}
+    end.
+
+extract_data({_Tag, {_Name, _Ref, Data}}) ->
+    Data.
 
 -spec encode_enum(Type :: atom(), binary()) -> {ok, atom()} | {error, unknown_atom | unknown_variant}.
 encode_enum(Type, Binary) ->

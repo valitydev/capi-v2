@@ -27,7 +27,7 @@ get_party_revision() ->
 
 -spec checkout(party_id(), capi_domain:revision(), processing_context()) -> {ok, party()} | {error, not_found}.
 checkout(PartyID, Revision, Context) ->
-    case capi_domain:get({party_config, #domain_PartyConfigRef{id = PartyID}}, Revision, Context) of
+    case capi_domain:get_ext({party_config, #domain_PartyConfigRef{id = PartyID}}, Revision, Context) of
         {error, not_found} = Error ->
             Error;
         Party ->
@@ -41,7 +41,7 @@ get_shop(PartyID, ShopID, Context) ->
             Ref = #domain_ShopConfigRef{id = ShopID},
             case lists:member(Ref, ShopRefs) of
                 true ->
-                    capi_domain:get({shop_config, Ref}, capi_domain:head(), Context);
+                    capi_domain:get_ext({shop_config, Ref}, capi_domain:head(), Context);
                 false ->
                     {error, not_found}
             end;

@@ -66,22 +66,29 @@ prepare(_OperationID, _Req, _Context) ->
 %%
 
 get_shops_for_party(#domain_PartyConfig{shops = ShopRefs}, Context) ->
-    Shops = lists:foldl(fun(ShopRef, Acc) ->
-        case capi_domain:get({shop_config, ShopRef}, capi_domain:head(), Context) of
-            {ok, Shop} ->
-                [decode_shop(Shop) | Acc];
-            {error, not_found} ->
-                Acc
-        end
-    end, [], ShopRefs),
+    Shops = lists:foldl(
+        fun(ShopRef, Acc) ->
+            case capi_domain:get_ext({shop_config, ShopRef}, capi_domain:head(), Context) of
+                {ok, Shop} ->
+                    [decode_shop(Shop) | Acc];
+                {error, not_found} ->
+                    Acc
+            end
+        end,
+        [],
+        ShopRefs
+    ),
     lists:reverse(Shops).
 
 restrict_shops(Shops, Restrictions) ->
     RestrictedShopIDs = capi_bouncer_restrictions:get_restricted_shop_ids(Restrictions),
-    lists:filter(fun(Shop) ->
-        ShopID = maps:get(<<"id">>, Shop),
-        lists:member(ShopID, RestrictedShopIDs)
-    end, Shops).
+    lists:filter(
+        fun(Shop) ->
+            ShopID = maps:get(<<"id">>, Shop),
+            lists:member(ShopID, RestrictedShopIDs)
+        end,
+        Shops
+    ).
 
 decode_shop(Shop) ->
     Currency = get_shop_currency(Shop),
