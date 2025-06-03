@@ -1218,7 +1218,7 @@ get_shops_for_party_ok_test(Config) ->
         [
             {party_management, fun
                 ('GetRevision', _) -> {ok, ?INTEGER};
-                ('Checkout', _) -> {ok, ?PARTY}
+                ('Checkout', _) -> {ok, ?PARTY_WITH_SHOPS}
             end}
         ],
         Config
@@ -1232,12 +1232,12 @@ get_shops_for_party_restricted_ok_test(Config) ->
         [
             {party_management, fun
                 ('GetRevision', _) -> {ok, ?INTEGER};
-                ('Checkout', _) -> {ok, ?PARTY}
+                ('Checkout', _) -> {ok, ?PARTY_WITH_SHOPS}
             end}
         ],
         Config
     ),
-    _ = capi_ct_helper_bouncer:mock_restricted_shops([?CTX_ENTITY(?USD)], Config),
+    _ = capi_ct_helper_bouncer:mock_restricted_shops([?CTX_ENTITY(?STRING)], Config),
     {ok, [#{<<"currency">> := ?USD}]} =
         capi_client_shops:get_shops_for_party(?config(context, Config), ?STRING).
 

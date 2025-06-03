@@ -116,7 +116,7 @@ authorization_error_no_header_test(Config) ->
 -spec authorization_error_no_permission_test(config()) -> _.
 authorization_error_no_permission_test(Config) ->
     _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_forbidden(), Config),
-    ?EMPTYRESP(401) = capi_client_parties:get_party_by_id(mk_context(), <<"ANY_ID">>).
+    ?EMPTYRESP(404) = capi_client_parties:get_party_by_id(mk_context(), <<"ANY_ID">>).
 
 %%%
 

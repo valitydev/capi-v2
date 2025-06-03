@@ -105,7 +105,7 @@ oops_body_test(Config) ->
     Context = ?config(context, Config),
     Params = #{binding => #{<<"invoiceID">> => ?STRING}},
     {Endpoint, PreparedParams, Opts0} = capi_client_lib:make_request(Context, Params),
-    Url = swag_client_utils:get_url(Endpoint, "/v2/processing/me"),
+    Url = swag_client_utils:get_url(Endpoint, "/v2/processing/invoices/" ++ binary_to_list(?STRING)),
     Headers = maps:to_list(maps:get(header, PreparedParams)),
     Body = <<"{}">>,
     Opts = Opts0 ++ [with_body],

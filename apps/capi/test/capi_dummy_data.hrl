@@ -437,8 +437,8 @@
             guarantee = ?INTEGER
         }
     },
-    payment_institution = #domain_PaymentInstitutionRef{id = 1},
-    terms = #domain_TermSetHierarchyRef{id = 1},
+    payment_institution = #domain_PaymentInstitutionRef{id = ?INTEGER},
+    terms = #domain_TermSetHierarchyRef{id = ?INTEGER},
     party_id = ?STRING
 }).
 
@@ -455,6 +455,16 @@
     blocking = ?BLOCKING,
     suspension = ?SUSPENTION,
     shops = [],
+    wallets = []
+}).
+
+-define(PARTY_WITH_SHOPS, #domain_PartyConfig{
+    id = ?STRING,
+    contact_info = #domain_PartyContactInfo{registration_email = ?STRING},
+    created_at = ?TIMESTAMP,
+    blocking = ?BLOCKING,
+    suspension = ?SUSPENTION,
+    shops = [#domain_ShopConfigRef{id = ?STRING}],
     wallets = []
 }).
 
@@ -731,6 +741,16 @@
                 data = #domain_Country{
                     name = <<"Russia">>
                 }
+            }},
+        {party_config, #domain_PartyConfigRef{id = ?STRING}} =>
+            {party_config, #domain_PartyConfigObject{
+                ref = #domain_PartyConfigRef{id = ?STRING},
+                data = ?PARTY_WITH_SHOPS
+            }},
+        {shop_config, #domain_ShopConfigRef{id = ?STRING}} =>
+            {shop_config, #domain_ShopConfigObject{
+                ref = #domain_ShopConfigRef{id = ?STRING},
+                data = ?SHOP(?USD)
             }},
         {country, #domain_CountryRef{id = deu}} =>
             {country, #domain_CountryObject{

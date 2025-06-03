@@ -100,10 +100,11 @@ decode_shop(Shop) ->
         <<"currency">> => Currency,
         <<"categoryID">> => capi_handler_decoder_utils:decode_category_ref(Shop#domain_ShopConfig.category),
         <<"details">> => capi_handler_decoder_party:decode_shop_details(Shop#domain_ShopConfig.details),
-        <<"location">> => capi_handler_decoder_party:decode_shop_location(Shop#domain_ShopConfig.location)
+        <<"location">> => capi_handler_decoder_party:decode_shop_location(Shop#domain_ShopConfig.location),
+        <<"contractID">> => genlib:to_binary(Shop#domain_ShopConfig.terms#domain_TermSetHierarchyRef.id)
     }).
 
 get_shop_currency(#domain_ShopConfig{currency_configs = Configs}) when is_map(Configs) ->
     %% TODO: fix it when add multi currency support
     [Currency | _] = maps:keys(Configs),
-    Currency.
+    capi_handler_decoder_utils:decode_currency(Currency).
