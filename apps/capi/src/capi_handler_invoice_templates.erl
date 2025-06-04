@@ -169,7 +169,7 @@ prepare('CreateInvoiceWithTemplate' = OperationID, Req, Context) ->
             {exception, #payproc_InvoiceTemplateRemoved{}} ->
                 {ok, general_error(404, <<"Invoice Template not found">>)};
             {exception, #payproc_InvoiceTermsViolated{}} ->
-                {ok, logic_error('invoiceTermsViolated', <<"Invoice parameters violate contract terms">>)}
+                {ok, logic_error('invoiceTermsViolated', <<"Invoice parameters violate terms">>)}
         catch
             throw:{bad_invoice_params, currency_no_amount} ->
                 {ok, logic_error('invalidRequest', <<"Amount is required for the currency">>)};
@@ -193,12 +193,7 @@ prepare('GetInvoicePaymentMethodsByTemplateID' = OperationID, Req, Context) ->
     end,
     Process = fun() ->
         capi_handler:respond_if_undefined(InvoiceTemplate, general_error(404, <<"Invoice template not found">>)),
-        Timestamp = genlib_rfc3339:format_relaxed(erlang:system_time(microsecond), microsecond),
-        PartyID = InvoiceTemplate#domain_InvoiceTemplate.owner_id,
-        % В данном контексте - Party не может не существовать
-        {ok, Party} = capi_party:get_party(PartyID, Context),
-        Args = {InvoiceTemplateID, Timestamp, {revision, Party#domain_Party.revision}},
-        case capi_handler_utils:get_payment_methods(invoice_templating, Args, Context) of
+        case capi_handler_utils:get_payment_methods(invoice_templating, {InvoiceTemplateID}, Context) of
             {ok, PaymentMethodRefs} ->
                 PaymentMethods0 = capi_handler_decoder_invoicing:decode_payment_methods(PaymentMethodRefs),
                 PaymentMethods1 = capi_utils:deduplicate_payment_methods(PaymentMethods0),

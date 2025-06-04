@@ -287,16 +287,6 @@
     }}
 ).
 
--define(CUSTOMER_PAYER,
-    {customer, #domain_CustomerPayer{
-        customer_id = ?STRING,
-        customer_binding_id = ?STRING,
-        rec_payment_tool_id = ?STRING,
-        payment_tool = {bank_card, ?BANK_CARD},
-        contact_info = ?CONTACT_INFO
-    }}
-).
-
 -define(PAYER(PT),
     {payment_resource, #domain_PaymentResourcePayer{
         resource = ?DISP_PAYMENT_RESOURCE(PT),
@@ -332,7 +322,6 @@
 -define(PAYMENT, ?PAYMENT(?STRING, ?PAYMENT_STATUS_PENDING, ?PAYER)).
 
 -define(PAYMENT_WITH_RECURRENT_PAYER, ?PAYMENT(?STRING, ?PAYMENT_STATUS_PENDING, ?RECURRENT_PAYER)).
--define(PAYMENT_WITH_CUSTOMER_PAYER, ?PAYMENT(?STRING, ?PAYMENT_STATUS_PENDING, ?CUSTOMER_PAYER)).
 
 -define(PAYMENT_W_EXTERNAL_ID(ID, ExternalID), ?PAYMENT(ID, ?PAYMENT_STATUS_PENDING, ?PAYER, ExternalID, undefined)).
 
@@ -424,40 +413,6 @@
     category = {dispute, #'domain_InvoicePaymentChargebackCategoryDispute'{}}
 }).
 
--define(CONTRACT, #domain_Contract{
-    id = ?STRING,
-    contractor = ?CONTRACTOR_REGISTERED_USER,
-    payment_institution = #domain_PaymentInstitutionRef{id = ?INTEGER},
-    created_at = ?TIMESTAMP,
-    valid_since = ?TIMESTAMP,
-    valid_until = ?TIMESTAMP,
-    status = {active, #domain_ContractActive{}},
-    terms = #domain_TermSetHierarchyRef{id = ?INTEGER},
-    adjustments = [?CONTRACT_ADJUSTMENT],
-    payout_tools = [],
-    legal_agreement = ?CONTRACT_LEGAL_AGREEMENT,
-    report_preferences = ?CONTRACT_REPORT_PREFS
-}).
-
--define(CONTRACT_LEGAL_AGREEMENT, #domain_LegalAgreement{
-    signed_at = ?TIMESTAMP,
-    legal_agreement_id = ?STRING,
-    valid_until = ?TIMESTAMP
-}).
-
--define(CONTRACT_REPORT_PREFS, #domain_ReportPreferences{
-    service_acceptance_act_preferences = #domain_ServiceAcceptanceActPreferences{
-        schedule = #domain_BusinessScheduleRef{id = ?INTEGER},
-        signer = #domain_Representative{
-            position = ?STRING,
-            full_name = ?STRING,
-            document = {articles_of_association, #domain_ArticlesOfAssociation{}}
-        }
-    }
-}).
-
--define(CONTRACTOR_REGISTERED_USER, {registered_user, #domain_RegisteredUser{email = ?STRING}}).
-
 -define(BLOCKING,
     {unblocked, #domain_Unblocked{
         reason = ?STRING,
@@ -467,7 +422,7 @@
 
 -define(SUSPENTION, {active, #domain_Active{since = ?TIMESTAMP}}).
 
--define(SHOP(Account), #domain_Shop{
+-define(SHOP(Currency), #domain_ShopConfig{
     id = ?STRING,
     created_at = ?TIMESTAMP,
     blocking = ?BLOCKING,
@@ -475,82 +430,42 @@
     details = ?SHOP_DETAILS,
     location = ?SHOP_LOCATION,
     category = #domain_CategoryRef{id = ?INTEGER},
-    contract_id = ?STRING,
-    account = Account
+    currency_configs = #{
+        #domain_CurrencyRef{symbolic_code = Currency} => #domain_ShopCurrencyConfig{
+            currency = #domain_CurrencyRef{symbolic_code = Currency},
+            settlement = ?INTEGER,
+            guarantee = ?INTEGER
+        }
+    },
+    payment_institution = #domain_PaymentInstitutionRef{id = ?INTEGER},
+    terms = #domain_TermSetHierarchyRef{id = ?INTEGER},
+    party_id = ?STRING
 }).
 
--define(SHOP, ?SHOP(undefined)).
-
--define(SHOP_ACCOUNT(Currency), #domain_ShopAccount{
-    currency = #domain_CurrencyRef{symbolic_code = Currency},
-    settlement = ?INTEGER,
-    guarantee = ?INTEGER,
-    payout = ?INTEGER
-}).
-
--define(SHOP_CONTRACT, #payproc_ShopContract{
-    shop = ?SHOP,
-    contract = ?CONTRACT
-}).
+-define(SHOP, ?SHOP(?RUB)).
 
 -define(SHOP_LOCATION, {url, ?URL}).
 
--define(SHOP_DETAILS, #domain_ShopDetails{name = ?STRING}).
+-define(SHOP_DETAILS, #domain_Details{name = ?STRING}).
 
--define(PARTY_CONTRACTOR, #domain_PartyContractor{
-    id = ?STRING,
-    contractor =
-        {private_entity,
-            {russian_private_entity, #domain_RussianPrivateEntity{
-                first_name = ?STRING,
-                second_name = ?STRING,
-                middle_name = ?STRING,
-                contact_info = ?CONTACT_INFO
-            }}},
-    status = none,
-    identity_documents = []
-}).
-
--define(WALLET_CONTRACT_ID, <<"WALLET_CONTRACT_ID">>).
-
--define(WALLET_CONTRACT, #domain_Contract{
-    id = ?WALLET_CONTRACT_ID,
-    contractor_id = ?STRING,
-    payment_institution = #domain_PaymentInstitutionRef{id = ?INTEGER},
-    created_at = ?TIMESTAMP,
-    valid_since = ?TIMESTAMP,
-    valid_until = ?TIMESTAMP,
-    status = {active, #domain_ContractActive{}},
-    terms = #domain_TermSetHierarchyRef{id = ?INTEGER},
-    adjustments = [],
-    payout_tools = []
-}).
-
--define(WALLET, #domain_Wallet{
-    id = ?STRING,
-    created_at = ?TIMESTAMP,
-    blocking = ?BLOCKING,
-    suspension = ?SUSPENTION,
-    contract = ?WALLET_CONTRACT_ID
-}).
-
--define(PARTY, #domain_Party{
+-define(PARTY, #domain_PartyConfig{
     id = ?STRING,
     contact_info = #domain_PartyContactInfo{registration_email = ?STRING},
     created_at = ?TIMESTAMP,
     blocking = ?BLOCKING,
     suspension = ?SUSPENTION,
-    contracts = #{
-        ?STRING => ?CONTRACT,
-        ?WALLET_CONTRACT_ID => ?WALLET_CONTRACT
-    },
-    shops = #{
-        ?STRING => ?SHOP,
-        ?USD => ?SHOP(?SHOP_ACCOUNT(?USD))
-    },
-    contractors = #{?STRING => ?PARTY_CONTRACTOR},
-    wallets = #{?STRING => ?WALLET},
-    revision = 0
+    shops = [],
+    wallets = []
+}).
+
+-define(PARTY_WITH_SHOPS, #domain_PartyConfig{
+    id = ?STRING,
+    contact_info = #domain_PartyContactInfo{registration_email = ?STRING},
+    created_at = ?TIMESTAMP,
+    blocking = ?BLOCKING,
+    suspension = ?SUSPENTION,
+    shops = [#domain_ShopConfigRef{id = ?STRING}],
+    wallets = []
 }).
 
 -define(ADJUSTMENT, #domain_InvoicePaymentAdjustment{
@@ -563,14 +478,6 @@
     old_cash_flow_inverse = []
 }).
 
--define(CONTRACT_ADJUSTMENT, #domain_ContractAdjustment{
-    id = ?STRING,
-    created_at = ?TIMESTAMP,
-    valid_since = ?TIMESTAMP,
-    valid_until = ?TIMESTAMP,
-    terms = #domain_TermSetHierarchyRef{id = ?INTEGER}
-}).
-
 -define(PAYOUT_TOOL(ID, ToolInfo), #domain_PayoutTool{
     id = ID,
     created_at = ?TIMESTAMP,
@@ -581,34 +488,6 @@
 -define(PAYMENT_INSTITUTION_ACCOUNT,
     {payment_institution_account, #domain_PaymentInstitutionAccount{}}
 ).
-
--define(RUSSIAN_BANK_ACCOUNT,
-    {russian_bank_account, #domain_RussianBankAccount{
-        account = <<"12345678901234567890">>,
-        bank_name = ?STRING,
-        bank_post_account = <<"12345678901234567890">>,
-        bank_bik = <<"123456789">>
-    }}
-).
-
--define(INTERNATIONAL_BANK_ACCOUNT,
-    {international_bank_account, #domain_InternationalBankAccount{
-        number = <<"12345678901234567890">>,
-        bank = ?INTERNATIONAL_BANK_DETAILS,
-        correspondent_account = #domain_InternationalBankAccount{number = <<"00000000000000000000">>},
-        iban = <<"GR1601101250000000012300695">>,
-        account_holder = ?STRING
-    }}
-).
-
--define(INTERNATIONAL_BANK_DETAILS, #domain_InternationalBankDetails{
-    %% In reality either bic or aba_rtn should be used, not both.
-    bic = <<"DEUTDEFF500">>,
-    country = usa,
-    name = ?STRING,
-    address = ?STRING,
-    aba_rtn = <<"129131673">>
-}).
 
 -define(WALLET_INFO,
     {wallet_info, #domain_WalletInfo{
@@ -754,70 +633,6 @@
     enabled = true
 }).
 
--define(STAT_RESPONSE_INVOICES, #magista_StatInvoiceResponse{
-    invoices = [
-        ?STAT_INVOICE({unpaid, #domain_InvoiceUnpaid{}}),
-        ?STAT_INVOICE({paid, #domain_InvoicePaid{}}),
-        ?STAT_INVOICE({cancelled, #domain_InvoiceCancelled{details = ?STRING}}),
-        ?STAT_INVOICE({fulfilled, #domain_InvoiceFulfilled{details = ?STRING}})
-    ],
-    continuation_token = ?STRING
-}).
-
--define(STAT_INVOICE(Status), #magista_StatInvoice{
-    id = ?STRING,
-    owner_id = ?STRING,
-    shop_id = ?STRING,
-    created_at = ?TIMESTAMP,
-    status = Status,
-    product = ?STRING,
-    description = ?STRING,
-    due = ?TIMESTAMP,
-    amount = ?INTEGER,
-    currency_symbolic_code = ?RUB,
-    context = ?CONTENT,
-    cart = ?INVOICE_CART,
-    external_id = ?STRING,
-    status_changed_at = ?TIMESTAMP
-}).
-
--define(STAT_RESPONSE_PAYMENTS, #magista_StatPaymentResponse{
-    payments = [
-        ?STAT_PAYMENT(
-            ?STAT_CUSTOMER_PAYER({digital_wallet, ?DIGITAL_WALLET(?STRING, ?STRING, ?STRING)}),
-            ?STAT_PAYMENT_STATUS_PENDING
-        ),
-        ?STAT_PAYMENT(?STAT_CUSTOMER_PAYER({bank_card, ?BANK_CARD}), ?STAT_PAYMENT_STATUS_FAILED),
-        ?STAT_PAYMENT(?RECURRENT_PAYER, ?STAT_PAYMENT_STATUS_PENDING),
-        ?STAT_PAYMENT(?PAYER, ?STAT_PAYMENT_STATUS_CAPTURED),
-        ?STAT_PAYMENT(
-            ?PAYER,
-            ?STAT_PAYMENT_STATUS_PENDING,
-            {hold, #magista_InvoicePaymentFlowHold{on_hold_expiration = cancel, held_until = ?TIMESTAMP}}
-        )
-    ],
-    continuation_token = ?STRING
-}).
-
--define(STAT_PAYMENT(Payer, Status, Flow), #magista_StatPayment{
-    id = ?STRING,
-    invoice_id = ?STRING,
-    owner_id = ?STRING,
-    shop_id = ?STRING,
-    created_at = ?TIMESTAMP,
-    status = Status,
-    amount = ?INTEGER,
-    fee = ?INTEGER,
-    currency_symbolic_code = ?RUB,
-    payer = Payer,
-    context = ?CONTENT,
-    flow = Flow,
-    domain_revision = ?INTEGER,
-    additional_transaction_info = ?ADDITIONAL_TX_INFO
-}).
-
--define(STAT_PAYMENT(Payer, Status), ?STAT_PAYMENT(Payer, Status, {instant, #magista_InvoicePaymentFlowInstant{}})).
-
 -define(TX_INFO, #domain_TransactionInfo{
     id = ?STRING,
     timestamp = ?TIMESTAMP,
@@ -830,14 +645,6 @@
     approval_code = <<"808080">>,
     extra_payment_info = #{<<"test_key">> => <<"test_value">>}
 }).
-
--define(STAT_CUSTOMER_PAYER(PaymentTool),
-    {customer, #magista_CustomerPayer{
-        customer_id = ?STRING,
-        payment_tool = PaymentTool,
-        contact_info = ?CONTACT_INFO
-    }}
-).
 
 -define(STAT_PAYMENT_STATUS_PENDING, {pending, #domain_InvoicePaymentPending{}}).
 
@@ -934,6 +741,16 @@
                 data = #domain_Country{
                     name = <<"Russia">>
                 }
+            }},
+        {party_config, #domain_PartyConfigRef{id = ?STRING}} =>
+            {party_config, #domain_PartyConfigObject{
+                ref = #domain_PartyConfigRef{id = ?STRING},
+                data = ?PARTY_WITH_SHOPS
+            }},
+        {shop_config, #domain_ShopConfigRef{id = ?STRING}} =>
+            {shop_config, #domain_ShopConfigObject{
+                ref = #domain_ShopConfigRef{id = ?STRING},
+                data = ?SHOP(?USD)
             }},
         {country, #domain_CountryRef{id = deu}} =>
             {country, #domain_CountryObject{
@@ -1138,81 +955,6 @@
             ])}
 }).
 
--define(CUSTOMER, ?CUSTOMER(?STRING)).
--define(CUSTOMER(ID), #payproc_Customer{
-    id = ID,
-    owner_id = ?STRING,
-    shop_id = ?STRING,
-    status = ?CUSTOMER_READY,
-    created_at = ?TIMESTAMP,
-    bindings = [?CUSTOMER_BINDING],
-    contact_info = ?CONTACT_INFO,
-    metadata = {obj, #{}}
-}).
-
--define(CUSTOMER_READY, {ready, #payproc_CustomerReady{}}).
-
--define(CUSTOMER_BINDING, ?CUSTOMER_BINDING(?STRING, ?STRING)).
-
--define(CUSTOMER_BINDING(ID, RECID), #payproc_CustomerBinding{
-    id = ID,
-    rec_payment_tool_id = RECID,
-    payment_resource = ?DISP_PAYMENT_RESOURCE,
-    status = {succeeded, #payproc_CustomerBindingSucceeded{}}
-}).
-
--define(CUSTOMER_EVENT(ID), #payproc_Event{
-    id = ID,
-    created_at = ?TIMESTAMP,
-    source = {customer_id, ?STRING},
-    payload =
-        {customer_changes, [
-            {customer_created, #payproc_CustomerCreated{
-                customer_id = ?STRING,
-                owner_id = ?STRING,
-                shop_id = ?STRING,
-                created_at = ?TIMESTAMP,
-                contact_info = ?CONTACT_INFO,
-                metadata = {obj, #{}}
-            }},
-            {customer_status_changed, #payproc_CustomerStatusChanged{
-                status = ?CUSTOMER_READY
-            }},
-            {customer_binding_changed, #payproc_CustomerBindingChanged{
-                id = ?STRING,
-                payload =
-                    {started, #payproc_CustomerBindingStarted{
-                        binding = ?CUSTOMER_BINDING
-                    }}
-            }},
-            {customer_binding_changed, #payproc_CustomerBindingChanged{
-                id = ?STRING,
-                payload =
-                    {status_changed, #payproc_CustomerBindingStatusChanged{
-                        status =
-                            {failed, #payproc_CustomerBindingFailed{
-                                failure = {failure, #domain_Failure{code = <<"error_code">>}}
-                            }}
-                    }}
-            }},
-            {customer_binding_changed, #payproc_CustomerBindingChanged{
-                id = ?STRING,
-                payload =
-                    {interaction_changed, #payproc_CustomerBindingInteractionChanged{
-                        interaction = ?USER_INTERACTION
-                    }}
-            }},
-            {customer_binding_changed, #payproc_CustomerBindingChanged{
-                id = ?STRING,
-                payload =
-                    {interaction_changed, #payproc_CustomerBindingInteractionChanged{
-                        interaction = ?USER_INTERACTION,
-                        status = ?USER_INTERACTION_COMPLETED
-                    }}
-            }}
-        ]}
-}).
-
 -define(PAYOUT, ?PAYOUT(?PI_ACCOUNT_TOOL, ?STRING)).
 -define(PAYOUT(ToolID), ?PAYOUT(ToolID, ?STRING)).
 
@@ -1294,12 +1036,6 @@
         <<"account">> => <<"12345678901234567890">>,
         <<"bankBik">> => <<"123456789">>
     }
-}).
-
--define(CUSTOMER_PARAMS, #{
-    <<"shopID">> => ?STRING,
-    <<"contactInfo">> => #{<<"email">> => <<"bla@bla.ru">>},
-    <<"metadata">> => #{<<"text">> => [<<"SOMESHIT">>, 42]}
 }).
 
 -define(PAYMENT_PARAMS(EID, Token), #{

@@ -201,17 +201,6 @@ decode_additional_tx_info(AdditionalTransactionInfo) ->
     }).
 
 decode_payer(
-    {customer, #domain_CustomerPayer{
-        payment_tool = PaymentTool,
-        customer_id = ID
-    }}
-) ->
-    #{
-        <<"payerType">> => <<"CustomerPayer">>,
-        <<"customerID">> => ID,
-        <<"paymentToolDetails">> => decode_payment_tool_details(PaymentTool)
-    };
-decode_payer(
     {recurrent, #domain_RecurrentPayer{
         payment_tool = PaymentTool,
         recurrent_parent = RecurrentParent,

@@ -28,7 +28,7 @@ prepare('CreateWebhook' = OperationID, Req, Context) ->
         case capi_party:get_shop(PartyID, ShopID, Context) of
             {ok, _} ->
                 ok;
-            {error, #payproc_ShopNotFound{}} ->
+            {error, not_found} ->
                 capi_handler:respond(logic_error('invalidShopID', <<"Shop not found">>))
         end,
         case capi_handler_utils:service_call({webhook_manager, 'Create', {WebhookParams}}, Context) of
@@ -127,8 +127,6 @@ validate_webhook_params(#webhooker_WebhookParams{event_filter = EventFilter}) ->
     validate_event_filter(EventFilter).
 
 validate_event_filter({invoice, #webhooker_InvoiceEventFilter{shop_id = ShopID}}) ->
-    validate_event_filter_shop(ShopID);
-validate_event_filter({customer, #webhooker_CustomerEventFilter{shop_id = ShopID}}) ->
     validate_event_filter_shop(ShopID).
 
 validate_event_filter_shop(ShopID) when ShopID /= undefined ->
@@ -171,11 +169,6 @@ encode_webhook_scope(#{<<"topic">> := <<"InvoicesTopic">>, <<"shopID">> := ShopI
     {invoice, #webhooker_InvoiceEventFilter{
         shop_id = ShopID,
         types = ordsets:from_list([encode_invoice_event_type(V) || V <- EventTypes])
-    }};
-encode_webhook_scope(#{<<"topic">> := <<"CustomersTopic">>, <<"shopID">> := ShopID, <<"eventTypes">> := EventTypes}) ->
-    {customer, #webhooker_CustomerEventFilter{
-        shop_id = ShopID,
-        types = ordsets:from_list([encode_customer_event_type(V) || V <- EventTypes])
     }}.
 
 -define(INVPAID(), {paid, #webhooker_InvoicePaid{}}).
@@ -235,19 +228,6 @@ encode_invoice_event_type(<<"PaymentUserInteractionRequested">>) ->
 encode_invoice_event_type(<<"PaymentUserInteractionCompleted">>) ->
     {payment, {user_interaction, ?PMTUI(?PMTUISTATUSCOMPLETED())}}.
 
-encode_customer_event_type(<<"CustomerCreated">>) ->
-    {created, #webhooker_CustomerCreated{}};
-encode_customer_event_type(<<"CustomerDeleted">>) ->
-    {deleted, #webhooker_CustomerDeleted{}};
-encode_customer_event_type(<<"CustomerReady">>) ->
-    {ready, #webhooker_CustomerStatusReady{}};
-encode_customer_event_type(<<"CustomerBindingStarted">>) ->
-    {binding, {started, #webhooker_CustomerBindingStarted{}}};
-encode_customer_event_type(<<"CustomerBindingSucceeded">>) ->
-    {binding, {succeeded, #webhooker_CustomerBindingSucceeded{}}};
-encode_customer_event_type(<<"CustomerBindingFailed">>) ->
-    {binding, {failed, #webhooker_CustomerBindingFailed{}}}.
-
 %%
 
 decode_webhook(Hook) ->
@@ -264,12 +244,6 @@ decode_event_filter({invoice, #webhooker_InvoiceEventFilter{shop_id = ShopID, ty
         <<"topic">> => <<"InvoicesTopic">>,
         <<"shopID">> => ShopID,
         <<"eventTypes">> => lists:flatmap(fun decode_invoice_event_type/1, ordsets:to_list(EventTypes))
-    });
-decode_event_filter({customer, #webhooker_CustomerEventFilter{shop_id = ShopID, types = EventTypes}}) ->
-    genlib_map:compact(#{
-        <<"topic">> => <<"CustomersTopic">>,
-        <<"shopID">> => ShopID,
-        <<"eventTypes">> => lists:map(fun decode_customer_event_type/1, ordsets:to_list(EventTypes))
     }).
 
 decode_invoice_event_type({created, #webhooker_InvoiceCreated{}}) ->
@@ -302,16 +276,3 @@ decode_payment_refund_status_event_type(?PMTRFNDSUCCEEDED()) -> <<"PaymentRefund
 
 decode_payment_user_interaction_status_event_type(?PMTUISTATUSREQUESTED()) -> <<"PaymentUserInteractionRequested">>;
 decode_payment_user_interaction_status_event_type(?PMTUISTATUSCOMPLETED()) -> <<"PaymentUserInteractionCompleted">>.
-
-decode_customer_event_type({created, #webhooker_CustomerCreated{}}) ->
-    <<"CustomerCreated">>;
-decode_customer_event_type({deleted, #webhooker_CustomerDeleted{}}) ->
-    <<"CustomerDeleted">>;
-decode_customer_event_type({ready, #webhooker_CustomerStatusReady{}}) ->
-    <<"CustomerReady">>;
-decode_customer_event_type({binding, {started, #webhooker_CustomerBindingStarted{}}}) ->
-    <<"CustomerBindingStarted">>;
-decode_customer_event_type({binding, {succeeded, #webhooker_CustomerBindingSucceeded{}}}) ->
-    <<"CustomerBindingSucceeded">>;
-decode_customer_event_type({binding, {failed, #webhooker_CustomerBindingFailed{}}}) ->
-    <<"CustomerBindingFailed">>.

@@ -39,7 +39,6 @@
 -type response() :: capi_handler:response().
 -type entity() ::
     dmsl_domain_thrift:'Invoice'()
-    | dmsl_payproc_thrift:'Customer'()
     | dmsl_domain_thrift:'InvoiceTemplate'().
 -type token_source() :: capi_auth:token_spec() | entity().
 
@@ -125,13 +124,6 @@ issue_access_token(#domain_Invoice{} = Invoice, ProcessingContext) ->
         party => Invoice#domain_Invoice.owner_id,
         scope => {invoice, Invoice#domain_Invoice.id},
         shop => Invoice#domain_Invoice.shop_id
-    },
-    issue_access_token(TokenSpec, ProcessingContext);
-issue_access_token(#payproc_Customer{} = Customer, ProcessingContext) ->
-    TokenSpec = #{
-        party => Customer#payproc_Customer.owner_id,
-        scope => {customer, Customer#payproc_Customer.id},
-        shop => Customer#payproc_Customer.shop_id
     },
     issue_access_token(TokenSpec, ProcessingContext);
 issue_access_token(#domain_InvoiceTemplate{} = InvoiceTpl, ProcessingContext) ->
@@ -288,11 +280,6 @@ emplace_token_provider_data(#domain_InvoiceTemplate{} = InvoiceTemplate, Payment
     PartyID = InvoiceTemplate#domain_InvoiceTemplate.owner_id,
     ShopID = InvoiceTemplate#domain_InvoiceTemplate.shop_id,
     TokenProviderData = construct_token_provider_data(PartyID, ShopID, Context),
-    emplace_token_provider_data(PaymentMethods, TokenProviderData);
-emplace_token_provider_data(#payproc_Customer{} = Customer, PaymentMethods, Context) ->
-    PartyID = Customer#payproc_Customer.owner_id,
-    ShopID = Customer#payproc_Customer.shop_id,
-    TokenProviderData = construct_token_provider_data(PartyID, ShopID, Context),
     emplace_token_provider_data(PaymentMethods, TokenProviderData).
 
 emplace_token_provider_data(PaymentMethods, TokenProviderData) ->
@@ -307,9 +294,9 @@ emplace_token_provider_data(PaymentMethods, TokenProviderData) ->
     ).
 
 construct_token_provider_data(PartyID, ShopID, Context) ->
-    {ok, ShopContract} = capi_party:get_shop_contract(PartyID, ShopID, Context),
-    ShopName = ShopContract#payproc_ShopContract.shop#domain_Shop.details#domain_ShopDetails.name,
-    PiRef = ShopContract#payproc_ShopContract.contract#domain_Contract.payment_institution,
+    {ok, ShopConfig} = capi_party:get_shop(PartyID, ShopID, Context),
+    ShopName = ShopConfig#domain_ShopConfig.details#domain_Details.name,
+    PiRef = ShopConfig#domain_ShopConfig.payment_institution,
     {ok, Pi} = capi_domain:get_payment_institution(PiRef, Context),
     Realm = Pi#domain_PaymentInstitution.realm,
     MerchantID = capi_merchant_id:encode(Realm, PartyID, ShopID),

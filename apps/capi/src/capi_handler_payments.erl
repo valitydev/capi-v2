@@ -48,7 +48,7 @@ prepare('CreatePayment' = OperationID, Req, Context) ->
                 {exception, #payproc_InvalidShopStatus{}} ->
                     {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)};
                 {exception, #payproc_InvalidContractStatus{}} ->
-                    {ok, logic_error('invalidContractStatus', <<"Invalid contract status">>)};
+                    {ok, logic_error('invalidContractStatus', <<"Invalid status">>)};
                 {exception, #payproc_InvalidRecurrentParentPayment{}} ->
                     {ok, logic_error('invalidRecurrentParent', <<"Specified recurrent parent is invalid">>)};
                 {exception, #payproc_InvoiceNotFound{}} ->
@@ -278,7 +278,7 @@ prepare('CreateRefund' = OperationID, Req, Context) ->
             {exception, #payproc_InvalidShopStatus{}} ->
                 {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)};
             {exception, #payproc_InvalidContractStatus{}} ->
-                {ok, logic_error('invalidContractStatus', <<"Invalid contract status">>)};
+                {ok, logic_error('invalidContractStatus', <<"Invalid status">>)};
             {exception, #payproc_OperationNotPermitted{}} ->
                 {ok, logic_error('operationNotPermitted', <<"Operation not permitted">>)};
             {exception, #payproc_InvalidPaymentStatus{}} ->
@@ -569,14 +569,6 @@ encode_invoice_payment_params(ID, ExternalID, PaymentParams, PaymentTool) ->
         )
     }.
 
-encode_payer_params(
-    #{
-        <<"payerType">> := <<"CustomerPayer">>,
-        <<"customerID">> := ID
-    },
-    _
-) ->
-    {customer, #payproc_CustomerPayerParams{customer_id = ID}};
 encode_payer_params(
     #{
         <<"payerType">> := <<"PaymentResourcePayer">>,
