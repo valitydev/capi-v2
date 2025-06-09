@@ -41,11 +41,11 @@
  {<<"ctx">>,{pkg,<<"ctx">>,<<"0.6.0">>},2},
  {<<"damsel">>,
   {git,"https://github.com/valitydev/damsel.git",
-       {ref,"5ca4f4a2af6bd68ba4d255889c0e2c0c1c5479a4"}},
+       {ref,"ba7414811590859d058817b8f22d2e9c22f627f8"}},
   0},
  {<<"dmt_client">>,
   {git,"https://github.com/valitydev/dmt_client.git",
-       {ref,"d8a4f490d49c038d96f1cbc2a279164c6f4039f9"}},
+       {ref,"fcfb028a041149caeebec8d9cef469c8cdbbc63e"}},
   0},
  {<<"dmt_core">>,
   {git,"https://github.com/valitydev/dmt-core.git",
@@ -108,7 +108,7 @@
  {<<"parse_trans">>,{pkg,<<"parse_trans">>,<<"3.4.1">>},1},
  {<<"party_client">>,
   {git,"https://github.com/valitydev/party-client-erlang.git",
-       {ref,"a82682b6f55f41ff4962b2666bbd12cb5f1ece25"}},
+       {ref,"b10b102673d899f6661e0c1a9e70f04ebddc9263"}},
   0},
  {<<"payout_manager_proto">>,
   {git,"https://github.com/valitydev/payout-manager-proto.git",
@@ -162,7 +162,7 @@
   0},
  {<<"woody_user_identity">>,
   {git,"https://github.com/valitydev/woody_erlang_user_identity.git",
-       {ref,"a480762fea8d7c08f105fb39ca809482b6cb042e"}},
+       {ref,"1bc1e260b8d464fe7720ca3e26f52fed363aff67"}},
   0}]}.
 [
 {pkg_hash,[

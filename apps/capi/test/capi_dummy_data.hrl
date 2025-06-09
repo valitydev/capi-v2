@@ -5,7 +5,6 @@
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
--include_lib("damsel/include/dmsl_domain_conf_thrift.hrl").
 -include_lib("damsel/include/dmsl_user_interaction_thrift.hrl").
 -include_lib("magista_proto/include/magista_magista_thrift.hrl").
 
@@ -684,125 +683,122 @@
     status_changed_at = ?TIMESTAMP
 }).
 
--define(SNAPSHOT, #'domain_conf_Snapshot'{
-    version = ?INTEGER,
-    domain = #{
-        {category, #domain_CategoryRef{id = ?INTEGER}} =>
-            {category, #domain_CategoryObject{
-                ref = #domain_CategoryRef{id = ?INTEGER},
-                data = #domain_Category{
-                    name = ?STRING,
-                    description = ?STRING
-                }
-            }},
-        {business_schedule, #domain_BusinessScheduleRef{id = ?INTEGER}} =>
-            {business_schedule, #domain_BusinessScheduleObject{
-                ref = #domain_BusinessScheduleRef{id = ?INTEGER},
-                data = #domain_BusinessSchedule{
-                    name = ?STRING,
-                    description = ?STRING,
-                    schedule = #'base_Schedule'{
-                        year = {every, #'base_ScheduleEvery'{}},
-                        month = {every, #'base_ScheduleEvery'{}},
-                        day_of_month = {every, #'base_ScheduleEvery'{}},
-                        day_of_week = {every, #'base_ScheduleEvery'{}},
-                        hour = {every, #'base_ScheduleEvery'{}},
-                        minute = {every, #'base_ScheduleEvery'{}},
-                        second = {every, #'base_ScheduleEvery'{}}
-                    },
-                    delay = #'base_TimeSpan'{}
-                }
-            }},
-        {globals, #domain_GlobalsRef{}} =>
-            {globals, #domain_GlobalsObject{
-                ref = #domain_GlobalsRef{},
-                data = #domain_Globals{
-                    external_account_set = {value, #domain_ExternalAccountSetRef{id = ?INTEGER}},
-                    payment_institutions = [#domain_PaymentInstitutionRef{id = ?INTEGER}]
-                }
-            }},
-        {payment_institution, #domain_PaymentInstitutionRef{id = ?INTEGER}} =>
-            {payment_institution, #domain_PaymentInstitutionObject{
-                ref = #domain_PaymentInstitutionRef{id = ?INTEGER},
-                data = #domain_PaymentInstitution{
-                    name = ?STRING,
-                    description = ?STRING,
-                    system_account_set = {value, #domain_SystemAccountSetRef{id = ?INTEGER}},
-                    default_contract_template = {value, #domain_ContractTemplateRef{id = ?INTEGER}},
-                    providers = {value, []},
-                    inspector = {value, #domain_InspectorRef{id = ?INTEGER}},
-                    realm = test,
-                    residences = [rus]
-                }
-            }},
-        {country, #domain_CountryRef{id = rus}} =>
-            {country, #domain_CountryObject{
-                ref = #domain_CountryRef{id = rus},
-                data = #domain_Country{
-                    name = <<"Russia">>
-                }
-            }},
-        {party_config, #domain_PartyConfigRef{id = ?STRING}} =>
-            {party_config, #domain_PartyConfigObject{
-                ref = #domain_PartyConfigRef{id = ?STRING},
-                data = ?PARTY_WITH_SHOPS
-            }},
-        {shop_config, #domain_ShopConfigRef{id = ?STRING}} =>
-            {shop_config, #domain_ShopConfigObject{
-                ref = #domain_ShopConfigRef{id = ?STRING},
-                data = ?SHOP(?USD)
-            }},
-        {country, #domain_CountryRef{id = deu}} =>
-            {country, #domain_CountryObject{
-                ref = #domain_CountryRef{id = deu},
-                data = #domain_Country{
-                    name = <<"Germany">>,
-                    trade_blocs = ordsets:from_list(
-                        [#domain_TradeBlocRef{id = <<"EEA">>}]
-                    )
-                }
-            }},
-        {trade_bloc, #domain_TradeBlocRef{id = <<"EEA">>}} =>
-            {trade_bloc, #domain_TradeBlocObject{
-                ref = #domain_TradeBlocRef{id = <<"EEA">>},
-                data = #domain_TradeBloc{
-                    name = <<"European Economic Area">>,
-                    description = <<"Extension of EU">>
-                }
-            }},
+-define(ALL_OBJECTS, #{
+    {category, #domain_CategoryRef{id = ?INTEGER}} =>
+        {category, #domain_CategoryObject{
+            ref = #domain_CategoryRef{id = ?INTEGER},
+            data = #domain_Category{
+                name = ?STRING,
+                description = ?STRING
+            }
+        }},
+    {business_schedule, #domain_BusinessScheduleRef{id = ?INTEGER}} =>
+        {business_schedule, #domain_BusinessScheduleObject{
+            ref = #domain_BusinessScheduleRef{id = ?INTEGER},
+            data = #domain_BusinessSchedule{
+                name = ?STRING,
+                description = ?STRING,
+                schedule = #'base_Schedule'{
+                    year = {every, #'base_ScheduleEvery'{}},
+                    month = {every, #'base_ScheduleEvery'{}},
+                    day_of_month = {every, #'base_ScheduleEvery'{}},
+                    day_of_week = {every, #'base_ScheduleEvery'{}},
+                    hour = {every, #'base_ScheduleEvery'{}},
+                    minute = {every, #'base_ScheduleEvery'{}},
+                    second = {every, #'base_ScheduleEvery'{}}
+                },
+                delay = #'base_TimeSpan'{}
+            }
+        }},
+    {globals, #domain_GlobalsRef{}} =>
+        {globals, #domain_GlobalsObject{
+            ref = #domain_GlobalsRef{},
+            data = #domain_Globals{
+                external_account_set = {value, #domain_ExternalAccountSetRef{id = ?INTEGER}},
+                payment_institutions = [#domain_PaymentInstitutionRef{id = ?INTEGER}]
+            }
+        }},
+    {payment_institution, #domain_PaymentInstitutionRef{id = ?INTEGER}} =>
+        {payment_institution, #domain_PaymentInstitutionObject{
+            ref = #domain_PaymentInstitutionRef{id = ?INTEGER},
+            data = #domain_PaymentInstitution{
+                name = ?STRING,
+                description = ?STRING,
+                system_account_set = {value, #domain_SystemAccountSetRef{id = ?INTEGER}},
+                default_contract_template = {value, #domain_ContractTemplateRef{id = ?INTEGER}},
+                providers = {value, []},
+                inspector = {value, #domain_InspectorRef{id = ?INTEGER}},
+                realm = test,
+                residences = [rus]
+            }
+        }},
+    {country, #domain_CountryRef{id = rus}} =>
+        {country, #domain_CountryObject{
+            ref = #domain_CountryRef{id = rus},
+            data = #domain_Country{
+                name = <<"Russia">>
+            }
+        }},
+    {party_config, #domain_PartyConfigRef{id = ?STRING}} =>
+        {party_config, #domain_PartyConfigObject{
+            ref = #domain_PartyConfigRef{id = ?STRING},
+            data = ?PARTY_WITH_SHOPS
+        }},
+    {shop_config, #domain_ShopConfigRef{id = ?STRING}} =>
+        {shop_config, #domain_ShopConfigObject{
+            ref = #domain_ShopConfigRef{id = ?STRING},
+            data = ?SHOP(?USD)
+        }},
+    {country, #domain_CountryRef{id = deu}} =>
+        {country, #domain_CountryObject{
+            ref = #domain_CountryRef{id = deu},
+            data = #domain_Country{
+                name = <<"Germany">>,
+                trade_blocs = ordsets:from_list(
+                    [#domain_TradeBlocRef{id = <<"EEA">>}]
+                )
+            }
+        }},
+    {trade_bloc, #domain_TradeBlocRef{id = <<"EEA">>}} =>
+        {trade_bloc, #domain_TradeBlocObject{
+            ref = #domain_TradeBlocRef{id = <<"EEA">>},
+            data = #domain_TradeBloc{
+                name = <<"European Economic Area">>,
+                description = <<"Extension of EU">>
+            }
+        }},
 
-        {payment_system, #domain_PaymentSystemRef{id = <<"visa">>}} =>
-            {payment_system, #domain_PaymentSystemObject{
-                ref = #domain_PaymentSystemRef{id = <<"visa">>},
-                data = #domain_PaymentSystem{name = <<"Visa">>}
-            }},
+    {payment_system, #domain_PaymentSystemRef{id = <<"visa">>}} =>
+        {payment_system, #domain_PaymentSystemObject{
+            ref = #domain_PaymentSystemRef{id = <<"visa">>},
+            data = #domain_PaymentSystem{name = <<"Visa">>}
+        }},
 
-        {payment_system, #domain_PaymentSystemRef{id = <<"mastercard">>}} =>
-            {payment_system, #domain_PaymentSystemObject{
-                ref = #domain_PaymentSystemRef{id = <<"mastercard">>},
-                data = #domain_PaymentSystem{name = <<"Mastercard">>}
-            }},
+    {payment_system, #domain_PaymentSystemRef{id = <<"mastercard">>}} =>
+        {payment_system, #domain_PaymentSystemObject{
+            ref = #domain_PaymentSystemRef{id = <<"mastercard">>},
+            data = #domain_PaymentSystem{name = <<"Mastercard">>}
+        }},
 
-        {payment_service, #domain_PaymentServiceRef{id = <<"qiwi">>}} =>
-            {payment_service, #domain_PaymentServiceObject{
-                ref = #domain_PaymentServiceRef{id = <<"qiwi">>},
-                data = #domain_PaymentService{
-                    name = <<"Qiwi">>,
-                    brand_name = <<"QIWI">>,
-                    category = <<"wallets">>,
-                    metadata = #{
-                        <<"test.ns">> =>
-                            {obj, #{
-                                <<"answer">> => {i, 42},
-                                <<"localization">> =>
-                                    {obj, #{
-                                        <<"ru_RU">> => {arr, [{str, <<"КИВИ Кошелёк">>}]}
-                                    }}
-                            }}
-                    }
+    {payment_service, #domain_PaymentServiceRef{id = <<"qiwi">>}} =>
+        {payment_service, #domain_PaymentServiceObject{
+            ref = #domain_PaymentServiceRef{id = <<"qiwi">>},
+            data = #domain_PaymentService{
+                name = <<"Qiwi">>,
+                brand_name = <<"QIWI">>,
+                category = <<"wallets">>,
+                metadata = #{
+                    <<"test.ns">> =>
+                        {obj, #{
+                            <<"answer">> => {i, 42},
+                            <<"localization">> =>
+                                {obj, #{
+                                    <<"ru_RU">> => {arr, [{str, <<"КИВИ Кошелёк">>}]}
+                                }}
+                        }}
                 }
-            }}
-    }
+            }
+        }}
 }).
 
 -define(USER_INTERACTION,
