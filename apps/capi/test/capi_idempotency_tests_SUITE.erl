@@ -36,10 +36,6 @@
 -export([create_invoice_random_amount_ok_test/1]).
 -export([create_refund_idemp_ok_test/1]).
 -export([create_refund_idemp_fail_test/1]).
--export([create_customer_ok_test/1]).
--export([create_customer_fail_test/1]).
--export([create_customer_binding_ok_test/1]).
--export([create_customer_binding_fail_test/1]).
 
 -type test_case_name() :: atom().
 -type config() :: [{atom(), any()}].
@@ -59,9 +55,7 @@ all() ->
         {group, invoice_template_creation},
         {group, invoice_with_template_creation},
         {group, refund_creation},
-        {group, invoice_template_creation},
-        {group, customer_creation},
-        {group, customer_binding_creation}
+        {group, invoice_template_creation}
     ].
 
 -spec groups() -> [{group_name(), list(), [test_case_name()]}].
@@ -93,14 +87,6 @@ groups() ->
         {refund_creation, [], [
             create_refund_idemp_ok_test,
             create_refund_idemp_fail_test
-        ]},
-        {customer_creation, [], [
-            create_customer_ok_test,
-            create_customer_fail_test
-        ]},
-        {customer_binding_creation, [], [
-            create_customer_binding_ok_test,
-            create_customer_binding_fail_test
         ]}
     ].
 
@@ -161,9 +147,7 @@ init_per_group(payment_creation, Config) ->
 init_per_group(GroupName, Config) when
     GroupName =:= invoice_creation orelse
         GroupName =:= refund_creation orelse
-        GroupName =:= customer_binding_creation orelse
         GroupName =:= invoice_template_creation orelse
-        GroupName =:= customer_creation orelse
         GroupName =:= invoice_with_template_creation
 ->
     Context = capi_ct_helper:get_context(?API_TOKEN),
@@ -632,95 +616,6 @@ create_refund_idemp_fail_test(Config) ->
     ?assertEqual(Unused, Unused2),
     ?assertEqual(response_error(409, ExternalID, BenderKey), Response2).
 
--spec create_customer_ok_test(config()) -> _.
-create_customer_ok_test(Config) ->
-    BenderKey = <<"create_customer_ok_test">>,
-    Req1 = maps:merge(?CUSTOMER_PARAMS, #{<<"externalID">> => genlib:unique()}),
-    Req2 = Req1#{<<"externalID">> => genlib:unique()},
-
-    UnusedFeatures = [[<<"externalID">>], [<<"metadata">>, <<"text">>, 0], [<<"metadata">>, <<"text">>, 1]],
-    Result = create_customers(BenderKey, [Req1, Req2], Config),
-
-    [{{ok, #{<<"customer">> := Customer1}}, UnusedFeatures1}, {{ok, #{<<"customer">> := Customer2}}, UnusedFeatures2}] =
-        Result,
-
-    ?assertEqual(Customer1, Customer2),
-    ?assertEqual(UnusedFeatures1, UnusedFeatures2),
-    ?assertEqual(UnusedFeatures1, UnusedFeatures).
-
--spec create_customer_fail_test(config()) -> _.
-create_customer_fail_test(Config) ->
-    BenderKey = <<"create_customer_fail_test">>,
-    ExternalID = genlib:unique(),
-    Req1 = maps:merge(?CUSTOMER_PARAMS, #{<<"externalID">> => ExternalID, <<"shopID">> => <<"1">>}),
-    Req2 = Req1#{<<"shopID">> => <<"2">>},
-
-    [CustomerResult1, CustomerResult2] = create_customers(BenderKey, [Req1, Req2], Config),
-    ?assertMatch({{ok, _}, _}, CustomerResult1),
-    ?assertEqual(
-        {response_error(409, ExternalID, BenderKey), [
-            [<<"externalID">>], [<<"metadata">>, <<"text">>, 0], [<<"metadata">>, <<"text">>, 1]
-        ]},
-        CustomerResult2
-    ).
-
--spec create_customer_binding_ok_test(config()) -> _.
-create_customer_binding_ok_test(Config) ->
-    BenderKey = <<"customer_binding_bender_key">>,
-    PaymentTool = {bank_card, ?BANK_CARD},
-    ValidUntil = capi_utils:deadline_from_timeout(10000),
-    PaymentToolToken = capi_crypto:encode_token(#{payment_tool => PaymentTool, valid_until => ValidUntil}),
-    Req1 = #{
-        <<"externalID">> => genlib:unique(),
-        <<"paymentResource">> => #{
-            <<"paymentSession">> => ?TEST_PAYMENT_SESSION,
-            <<"paymentToolToken">> => PaymentToolToken
-        }
-    },
-    Req2 = Req1#{<<"externalID">> => genlib:unique()},
-
-    [BindingResult1, BindingResult2] = create_customer_bindings(BenderKey, [Req1, Req2], Config),
-    ?assertMatch(
-        {{ok, _}, [
-            [<<"externalID">>],
-            [<<"paymentResource">>, <<"paymentTool">>, <<"payment_system">>]
-        ]},
-        BindingResult1
-    ),
-    ?assertEqual(BindingResult1, BindingResult2).
-
--spec create_customer_binding_fail_test(config()) -> _.
-create_customer_binding_fail_test(Config) ->
-    BenderKey = <<"customer_binding_bender_key">>,
-    ExternalID = genlib:unique(),
-    PaymentTool1 = {bank_card, ?BANK_CARD},
-    ValidUntil1 = capi_utils:deadline_from_timeout(10000),
-    PaymentToolToken1 = capi_crypto:encode_token(#{payment_tool => PaymentTool1, valid_until => ValidUntil1}),
-    Req1 = #{
-        <<"externalID">> => ExternalID,
-        <<"paymentResource">> => #{
-            <<"paymentSession">> => ?TEST_PAYMENT_SESSION,
-            <<"paymentToolToken">> => PaymentToolToken1
-        }
-    },
-    PaymentTool2 = {bank_card, ?BANK_CARD(<<"mastercard">>)},
-    ValidUntil2 = capi_utils:deadline_from_timeout(10000),
-    PaymentToolToken2 = capi_crypto:encode_token(#{payment_tool => PaymentTool2, valid_until => ValidUntil2}),
-    Req2 = Req1#{
-        <<"paymentResource">> => #{
-            <<"paymentSession">> => ?TEST_PAYMENT_SESSION,
-            <<"paymentToolToken">> => PaymentToolToken2
-        }
-    },
-
-    [BindingResult1, BindingResult2] = create_customer_bindings(BenderKey, [Req1, Req2], Config),
-    ?assertMatch({{ok, _}, _}, BindingResult1),
-    {ActualBindingResult2, _UnusedParams} = BindingResult2,
-    ?assertEqual(
-        response_error(409, ExternalID, BenderKey),
-        ActualBindingResult2
-    ).
-
 %% Internal functions
 
 create_payment(BenderKey, Requests, Config) ->
@@ -857,63 +752,6 @@ get_encrypted_token(PS, ExpDate, IsCvvEmpty) ->
 
 encrypt_payment_tool(PaymentTool) ->
     capi_crypto:encode_token(#{payment_tool => PaymentTool, valid_until => undefined}).
-
-create_customers(BenderKey, Requests, Config) ->
-    Context = ?config(context, Config),
-    capi_ct_helper_bender:with_storage(
-        fun(StorageID) ->
-            _ = capi_ct_helper:mock_services(
-                [
-                    {customer_management, fun(
-                        'Create',
-                        {#payproc_CustomerParams{customer_id = CustomerID}}
-                    ) ->
-                        {ok, ?CUSTOMER(CustomerID)}
-                    end},
-                    {bender, fun('GenerateID', {_, _, CtxMsgPack}) ->
-                        capi_ct_helper_bender:get_internal_id(StorageID, BenderKey, CtxMsgPack)
-                    end}
-                ],
-                Config
-            ),
-            [
-                with_feature_storage(fun() -> capi_client_customers:create_customer(Context, R) end)
-             || R <- Requests
-            ]
-        end
-    ).
-
-create_customer_bindings(BenderKey, Requests, Config) ->
-    Context = ?config(context, Config),
-    capi_ct_helper_bender:with_storage(
-        fun(StorageID) ->
-            _ = capi_ct_helper:mock_services(
-                [
-                    {customer_management, fun
-                        ('Get', _) ->
-                            {ok, ?CUSTOMER};
-                        (
-                            'StartBinding',
-                            {_, #payproc_CustomerBindingParams{
-                                customer_binding_id = BindingID,
-                                rec_payment_tool_id = RecPaymentToolID
-                            }}
-                        ) ->
-                            {ok, ?CUSTOMER_BINDING(BindingID, RecPaymentToolID)}
-                    end},
-
-                    {bender, fun('GenerateID', {_, _, CtxMsgPack}) ->
-                        capi_ct_helper_bender:get_internal_id(StorageID, BenderKey, CtxMsgPack)
-                    end}
-                ],
-                Config
-            ),
-            [
-                with_feature_storage(fun() -> capi_client_customers:create_binding(Context, ?STRING, R) end)
-             || R <- Requests
-            ]
-        end
-    ).
 
 create_invoice_templates(BenderKey, Requests, Config) ->
     Context = ?config(context, Config),

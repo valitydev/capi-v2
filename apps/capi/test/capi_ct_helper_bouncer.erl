@@ -6,16 +6,12 @@
 -export([mock_assert_op_ctx/2]).
 -export([mock_assert_party_op_ctx/3]).
 -export([mock_assert_shop_op_ctx/4]).
--export([mock_assert_contract_op_ctx/4]).
 -export([mock_assert_invoice_op_ctx/5]).
 -export([mock_assert_payment_op_ctx/5]).
 -export([mock_assert_payment_op_ctx/6]).
 -export([mock_assert_refund_op_ctx/7]).
 -export([mock_assert_invoice_tpl_op_ctx/5]).
--export([mock_assert_customer_op_ctx/5]).
 -export([mock_assert_webhook_op_ctx/4]).
--export([mock_assert_search_op_ctx/2]).
--export([mock_assert_search_op_ctx/3]).
 -export([mock_assert_requester_ctx/2]).
 -export([mock_restricted_shops/2]).
 
@@ -54,17 +50,6 @@ mock_assert_shop_op_ctx(Op, PartyID, ShopID, Config) ->
         ?assertContextMatches(
             #ctx_v1_ContextFragment{
                 capi = ?CTX_CAPI(?CTX_SHOP_OP(Op, PartyID, ShopID))
-            }
-        ),
-        Config
-    ).
-
--spec mock_assert_contract_op_ctx(_, _, _, _) -> _.
-mock_assert_contract_op_ctx(Op, PartyID, ContractID, Config) ->
-    mock_arbiter(
-        ?assertContextMatches(
-            #ctx_v1_ContextFragment{
-                capi = ?CTX_CAPI(?CTX_CONTRACT_OP(Op, PartyID, ContractID))
             }
         ),
         Config
@@ -140,20 +125,6 @@ mock_assert_invoice_tpl_op_ctx(Op, InvoiceTemplateID, PartyID, ShopID, Config) -
         Config
     ).
 
--spec mock_assert_customer_op_ctx(_, _, _, _, _) -> _.
-mock_assert_customer_op_ctx(Op, CustomerID, PartyID, ShopID, Config) ->
-    mock_arbiter(
-        ?assertContextMatches(
-            #ctx_v1_ContextFragment{
-                capi = ?CTX_CAPI(?CTX_CUSTOMER_OP(Op, CustomerID)),
-                payment_processing = #ctx_v1_ContextPaymentProcessing{
-                    customer = ?CTX_CUSTOMER(CustomerID, PartyID, ShopID)
-                }
-            }
-        ),
-        Config
-    ).
-
 -spec mock_assert_webhook_op_ctx(_, _, _, _) -> _.
 mock_assert_webhook_op_ctx(Op, WebhookID, PartyID, Config) ->
     mock_arbiter(
@@ -163,29 +134,6 @@ mock_assert_webhook_op_ctx(Op, WebhookID, PartyID, Config) ->
                 webhooks = #ctx_v1_ContextWebhooks{
                     webhook = ?CTX_WEBHOOK(WebhookID, PartyID)
                 }
-            }
-        ),
-        Config
-    ).
-
--spec mock_assert_search_op_ctx(_, _) -> _.
-mock_assert_search_op_ctx(SearchCtx, Config) ->
-    mock_arbiter(
-        ?assertContextMatches(
-            #ctx_v1_ContextFragment{
-                capi = ?CTX_CAPI(SearchCtx)
-            }
-        ),
-        Config
-    ).
-
--spec mock_assert_search_op_ctx(_, _, _) -> _.
-mock_assert_search_op_ctx(SearchCtx, PayprocCtx, Config) ->
-    mock_arbiter(
-        ?assertContextMatches(
-            #ctx_v1_ContextFragment{
-                capi = ?CTX_CAPI(SearchCtx),
-                payment_processing = PayprocCtx
             }
         ),
         Config

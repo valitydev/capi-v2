@@ -3,10 +3,13 @@
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_conf_v2_thrift.hrl").
 
+-export([head/0]).
 -export([get_payment_institution/2]).
 -export([get_payment_institutions/1]).
 -export([get_country/2]).
 -export([get/2]).
+-export([get/3]).
+-export([get_ext/3]).
 -export([get_objects_by_type/2]).
 -export([encode_enum/2]).
 -export([encode_enum/3]).
@@ -17,6 +20,7 @@
 -type country_object() :: dmsl_domain_thrift:'CountryObject'().
 -type ref() :: dmsl_domain_thrift:'Reference'().
 -type data() :: _.
+-type revision() :: dmt_client:version().
 
 -type payment_institution() :: dmsl_domain_thrift:'PaymentInstitution'().
 -type payment_institution_ref() :: dmsl_domain_thrift:'PaymentInstitutionRef'().
@@ -24,6 +28,11 @@
 -type realm() :: dmsl_domain_thrift:'PaymentInstitutionRealm'().
 
 -export_type([realm/0]).
+-export_type([revision/0]).
+
+-spec head() -> revision().
+head() ->
+    dmt_client:get_last_version().
 
 -spec get_payment_institution(payment_institution_ref(), processing_context()) ->
     {ok, payment_institution()} | {error, not_found}.
@@ -78,14 +87,31 @@ get_country(CountryCode, Context) ->
 
 -spec get(ref(), processing_context() | undefined) -> {ok, data()} | {error, not_found}.
 get(Ref, Context) ->
+    get(Ref, latest, Context).
+
+-spec get(ref(), revision(), processing_context() | undefined) -> {ok, data()} | {error, not_found}.
+get(Ref, Revision, Context) ->
     try
         Opts = make_opts(Context),
-        {_, Object} = unwrap_versioned(dmt_client:checkout_object(latest, Ref, Opts)),
+        {_, Object} = unwrap_versioned(dmt_client:checkout_object(Revision, Ref, Opts)),
         {ok, Object}
     catch
         throw:#domain_conf_v2_ObjectNotFound{} ->
             {error, not_found}
     end.
+
+-spec get_ext(ref(), revision(), processing_context() | undefined) -> {ok, data()} | {error, not_found}.
+get_ext(Ref, Revision, Context) ->
+    try
+        Opts = make_opts(Context),
+        {ok, extract_data(dmt_client:checkout_object(Revision, Ref, Opts))}
+    catch
+        throw:#'domain_conf_ObjectNotFound'{} ->
+            {error, not_found}
+    end.
+
+extract_data({_Tag, {_Name, _Ref, Data}}) ->
+    Data.
 
 -spec encode_enum(Type :: atom(), binary()) -> {ok, atom()} | {error, unknown_atom | unknown_variant}.
 encode_enum(Type, Binary) ->

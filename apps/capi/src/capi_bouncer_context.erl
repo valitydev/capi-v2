@@ -26,21 +26,16 @@
     id => swag_server:operation_id(),
     party => entity_id(),
     shop => entity_id(),
-    contract => entity_id(),
     invoice => entity_id(),
     payment => entity_id(),
     refund => entity_id(),
     invoice_template => entity_id(),
-    customer => entity_id(),
-    binding => entity_id(),
-    file => entity_id(),
     webhook => entity_id()
 }.
 
 -type prototype_payproc() :: #{
     invoice => invoice_id() | invoice() | undefined,
-    invoice_template => invoice_template_id() | invoice_template() | undefined,
-    customer => customer_id() | customer() | undefined
+    invoice_template => invoice_template_id() | invoice_template() | undefined
 }.
 
 -type prototype_webhooks() :: #{
@@ -52,9 +47,6 @@
 
 -type invoice_template_id() :: dmsl_domain_thrift:'InvoiceTemplateID'().
 -type invoice_template() :: dmsl_domain_thrift:'InvoiceTemplate'().
-
--type customer_id() :: dmsl_payproc_thrift:'CustomerID'().
--type customer() :: dmsl_payproc_thrift:'Customer'().
 
 -type webhook_id() :: dmsl_webhooker_thrift:'WebhookID'().
 -type webhook() :: dmsl_webhooker_thrift:'Webhook'().
@@ -93,14 +85,10 @@ build(operation, #{id := OperationID} = Params, Acc, _WoodyCtx) ->
                 id = operation_id_to_binary(OperationID),
                 party = maybe_entity(party, Params),
                 shop = maybe_entity(shop, Params),
-                contract = maybe_entity(contract, Params),
                 invoice = maybe_entity(invoice, Params),
                 payment = maybe_entity(payment, Params),
                 refund = maybe_entity(refund, Params),
                 invoice_template = maybe_entity(invoice_template, Params),
-                customer = maybe_entity(customer, Params),
-                binding = maybe_entity(binding, Params),
-                file = maybe_entity(file, Params),
                 webhook = maybe_entity(webhook, Params)
             }
         }
@@ -117,11 +105,6 @@ build(payproc, #{} = Params, Acc, WoodyCtx) ->
                 invoice_template,
                 Params,
                 fun(V) -> build_invoice_template_ctx(V, WoodyCtx) end
-            ),
-            customer = maybe_with(
-                customer,
-                Params,
-                fun(V) -> build_customer_ctx(V, WoodyCtx) end
             )
         }
     };
@@ -184,28 +167,6 @@ build_invoice_template_ctx(#domain_InvoiceTemplate{id = ID, owner_id = OwnerID, 
         shop = build_entity(ShopID)
     }.
 
-build_customer_ctx(ID, WoodyCtx) when is_binary(ID) ->
-    maybe_with_woody_result(
-        customer_management,
-        'Get',
-        {ID, #payproc_EventRange{}},
-        WoodyCtx,
-        fun build_customer_ctx/1
-    );
-build_customer_ctx(Customer, _WoodyCtx) ->
-    build_customer_ctx(Customer).
-
-build_customer_ctx(#payproc_Customer{id = ID, owner_id = OwnerID, shop_id = ShopID, bindings = Bindings}) ->
-    #ctx_v1_Customer{
-        id = ID,
-        party = build_entity(OwnerID),
-        shop = build_entity(ShopID),
-        bindings = build_set(lists:map(fun build_binding_ctx/1, Bindings))
-    }.
-
-build_binding_ctx(#payproc_CustomerBinding{id = ID}) ->
-    build_entity(ID).
-
 %%
 
 build_webhook_ctx(ID, WoodyCtx) when is_integer(ID) ->
@@ -229,8 +190,6 @@ build_webhook_filter({Type, Filter}) ->
 build_webhook_filter_details(#webhooker_PartyEventFilter{}, Ctx) ->
     Ctx;
 build_webhook_filter_details(#webhooker_InvoiceEventFilter{shop_id = ShopID}, Ctx) ->
-    Ctx#ctx_v1_WebhookFilter{shop = 'maybe'(ShopID, fun build_entity/1)};
-build_webhook_filter_details(#webhooker_CustomerEventFilter{shop_id = ShopID}, Ctx) ->
     Ctx#ctx_v1_WebhookFilter{shop = 'maybe'(ShopID, fun build_entity/1)};
 build_webhook_filter_details(#webhooker_WalletEventFilter{}, Ctx) ->
     Ctx.
