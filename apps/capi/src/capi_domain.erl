@@ -32,7 +32,7 @@
 
 -spec head() -> revision().
 head() ->
-    dmt_client:get_last_version().
+    dmt_client:get_latest_version().
 
 -spec get_payment_institution(payment_institution_ref(), processing_context()) ->
     {ok, payment_institution()} | {error, not_found}.
@@ -100,13 +100,15 @@ get(Ref, Revision, Context) ->
             {error, not_found}
     end.
 
+%% FIXME Naming. It supposed to return unwrapped `Data` from object
+%% structured as `{Type, {Tag, Ref, Data}}`.
 -spec get_ext(ref(), revision(), processing_context() | undefined) -> {ok, data()} | {error, not_found}.
 get_ext(Ref, Revision, Context) ->
     try
         Opts = make_opts(Context),
-        {ok, extract_data(dmt_client:checkout_object(Revision, Ref, Opts))}
+        {ok, extract_data(unwrap_versioned(dmt_client:checkout_object(Revision, Ref, Opts)))}
     catch
-        throw:#'domain_conf_ObjectNotFound'{} ->
+        throw:#domain_conf_v2_ObjectNotFound{} ->
             {error, not_found}
     end.
 
