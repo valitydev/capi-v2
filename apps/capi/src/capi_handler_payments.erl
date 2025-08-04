@@ -47,8 +47,6 @@ prepare('CreatePayment' = OperationID, Req, Context) ->
                     {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
                 {exception, #payproc_InvalidShopStatus{}} ->
                     {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)};
-                {exception, #payproc_InvalidContractStatus{}} ->
-                    {ok, logic_error('invalidContractStatus', <<"Invalid status">>)};
                 {exception, #payproc_InvalidRecurrentParentPayment{}} ->
                     {ok, logic_error('invalidRecurrentParent', <<"Specified recurrent parent is invalid">>)};
                 {exception, #payproc_InvoiceNotFound{}} ->
@@ -277,8 +275,6 @@ prepare('CreateRefund' = OperationID, Req, Context) ->
                 {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
             {exception, #payproc_InvalidShopStatus{}} ->
                 {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)};
-            {exception, #payproc_InvalidContractStatus{}} ->
-                {ok, logic_error('invalidContractStatus', <<"Invalid status">>)};
             {exception, #payproc_OperationNotPermitted{}} ->
                 {ok, logic_error('operationNotPermitted', <<"Operation not permitted">>)};
             {exception, #payproc_InvalidPaymentStatus{}} ->

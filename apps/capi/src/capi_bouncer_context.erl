@@ -187,12 +187,8 @@ build_webhook_filter({Type, Filter}) ->
         #ctx_v1_WebhookFilter{topic = erlang:atom_to_binary(Type, utf8)}
     ).
 
-build_webhook_filter_details(#webhooker_PartyEventFilter{}, Ctx) ->
-    Ctx;
 build_webhook_filter_details(#webhooker_InvoiceEventFilter{shop_id = ShopID}, Ctx) ->
-    Ctx#ctx_v1_WebhookFilter{shop = 'maybe'(ShopID, fun build_entity/1)};
-build_webhook_filter_details(#webhooker_WalletEventFilter{}, Ctx) ->
-    Ctx.
+    Ctx#ctx_v1_WebhookFilter{shop = 'maybe'(ShopID, fun build_entity/1)}.
 
 %%
 

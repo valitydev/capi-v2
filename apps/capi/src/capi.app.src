@@ -30,7 +30,6 @@
         bouncer_client,
         token_keeper_client,
         party_client,
-        magista_proto,
         opentelemetry_api,
         opentelemetry_exporter,
         opentelemetry

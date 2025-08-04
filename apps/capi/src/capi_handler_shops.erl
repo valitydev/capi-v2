@@ -50,12 +50,14 @@ prepare('GetShopByIDForParty' = OperationID, Req, Context) ->
     Process = fun() ->
         case capi_party:get_shop(PartyID, ShopID, Context) of
             {ok, Shop} ->
-                {ok, {200, #{}, decode_shop(Shop)}};
+                {ok, {200, #{}, decode_shop(ShopID, Shop)}};
             {error, not_found} ->
                 {ok, general_error(404, <<"Shop not found">>)}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
+prepare('GetShopAccount' = _OperationID, _Req, _Context) ->
+    {error, noimpl};
 prepare('ActivateShopForParty', _Req, _Context) ->
     {error, noimpl};
 prepare('SuspendShopForParty', _Req, _Context) ->
@@ -70,7 +72,7 @@ get_shops_for_party(#domain_PartyConfig{shops = ShopRefs}, Context) ->
         fun(ShopRef, Acc) ->
             case capi_domain:get_ext({shop_config, ShopRef}, capi_domain:head(), Context) of
                 {ok, Shop} ->
-                    [decode_shop(Shop) | Acc];
+                    [decode_shop(ShopRef#domain_ShopConfigRef.id, Shop) | Acc];
                 {error, not_found} ->
                     Acc
             end
@@ -90,21 +92,17 @@ restrict_shops(Shops, Restrictions) ->
         Shops
     ).
 
-decode_shop(Shop) ->
-    Currency = get_shop_currency(Shop),
+decode_shop(ShopID, Shop) ->
     genlib_map:compact(#{
-        <<"id">> => Shop#domain_ShopConfig.id,
-        <<"createdAt">> => Shop#domain_ShopConfig.created_at,
-        <<"isBlocked">> => capi_handler_decoder_party:is_blocked(Shop#domain_ShopConfig.blocking),
+        <<"id">> => ShopID,
+        <<"isBlocked">> => capi_handler_decoder_party:is_blocked(Shop#domain_ShopConfig.block),
         <<"isSuspended">> => capi_handler_decoder_party:is_suspended(Shop#domain_ShopConfig.suspension),
-        <<"currency">> => Currency,
+        <<"currency">> => get_shop_currency(Shop#domain_ShopConfig.account),
         <<"categoryID">> => capi_handler_decoder_utils:decode_category_ref(Shop#domain_ShopConfig.category),
-        <<"details">> => capi_handler_decoder_party:decode_shop_details(Shop#domain_ShopConfig.details),
+        <<"details">> => capi_handler_decoder_party:decode_shop_details(Shop),
         <<"location">> => capi_handler_decoder_party:decode_shop_location(Shop#domain_ShopConfig.location),
         <<"contractID">> => genlib:to_binary(Shop#domain_ShopConfig.terms#domain_TermSetHierarchyRef.id)
     }).
 
-get_shop_currency(#domain_ShopConfig{currency_configs = Configs}) when is_map(Configs) ->
-    %% TODO: fix it when add multi currency support
-    [Currency | _] = maps:keys(Configs),
+get_shop_currency(#domain_ShopAccount{currency = Currency}) ->
     capi_handler_decoder_utils:decode_currency(Currency).

@@ -168,10 +168,6 @@ get_invoice_payment_methods_by_tpl_id_ok_test(Config) ->
             {invoice_templating, fun
                 ('ComputeTerms', _) -> {ok, ?TERM_SET};
                 ('Get', _) -> {ok, ?INVOICE_TPL}
-            end},
-            {party_management, fun
-                ('GetRevision', _) -> {ok, ?INTEGER};
-                ('Checkout', _) -> {ok, ?PARTY}
             end}
         ],
         Config
