@@ -6,7 +6,6 @@
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
 -include_lib("damsel/include/dmsl_user_interaction_thrift.hrl").
--include_lib("magista_proto/include/magista_magista_thrift.hrl").
 
 -define(RECORD_UPDATE(FieldIndex, Value, Record), erlang:setelement(FieldIndex, Record, Value)).
 
@@ -84,6 +83,7 @@
 
 -define(INVOICE(ID, EID, OwnerID), #domain_Invoice{
     id = ID,
+    domain_revision = ?INTEGER,
     created_at = ?TIMESTAMP,
     status = ?INVOICE_STATUS(unpaid),
     due = ?TIMESTAMP,
@@ -422,23 +422,19 @@
 -define(SUSPENTION, {active, #domain_Active{since = ?TIMESTAMP}}).
 
 -define(SHOP(Currency), #domain_ShopConfig{
-    id = ?STRING,
-    created_at = ?TIMESTAMP,
-    blocking = ?BLOCKING,
+    name = ?STRING,
+    block = ?BLOCKING,
     suspension = ?SUSPENTION,
-    details = ?SHOP_DETAILS,
-    location = ?SHOP_LOCATION,
-    category = #domain_CategoryRef{id = ?INTEGER},
-    currency_configs = #{
-        #domain_CurrencyRef{symbolic_code = Currency} => #domain_ShopCurrencyConfig{
-            currency = #domain_CurrencyRef{symbolic_code = Currency},
-            settlement = ?INTEGER,
-            guarantee = ?INTEGER
-        }
-    },
     payment_institution = #domain_PaymentInstitutionRef{id = ?INTEGER},
     terms = #domain_TermSetHierarchyRef{id = ?INTEGER},
-    party_id = ?STRING
+    account = #domain_ShopAccount{
+        currency = #domain_CurrencyRef{symbolic_code = Currency},
+        settlement = ?INTEGER,
+        guarantee = ?INTEGER
+    },
+    party_id = ?STRING,
+    location = ?SHOP_LOCATION,
+    category = #domain_CategoryRef{id = ?INTEGER}
 }).
 
 -define(SHOP, ?SHOP(?RUB)).
@@ -448,23 +444,21 @@
 -define(SHOP_DETAILS, #domain_Details{name = ?STRING}).
 
 -define(PARTY, #domain_PartyConfig{
-    id = ?STRING,
-    contact_info = #domain_PartyContactInfo{registration_email = ?STRING},
-    created_at = ?TIMESTAMP,
-    blocking = ?BLOCKING,
+    name = <<"PARTY">>,
+    block = ?BLOCKING,
     suspension = ?SUSPENTION,
     shops = [],
-    wallets = []
+    wallets = [],
+    contact_info = #domain_PartyContactInfo{registration_email = ?STRING}
 }).
 
 -define(PARTY_WITH_SHOPS, #domain_PartyConfig{
-    id = ?STRING,
-    contact_info = #domain_PartyContactInfo{registration_email = ?STRING},
-    created_at = ?TIMESTAMP,
-    blocking = ?BLOCKING,
+    name = <<"PARTY_WITH_SHOPS">>,
+    block = ?BLOCKING,
     suspension = ?SUSPENTION,
     shops = [#domain_ShopConfigRef{id = ?STRING}],
-    wallets = []
+    wallets = [],
+    contact_info = #domain_PartyContactInfo{registration_email = ?STRING}
 }).
 
 -define(ADJUSTMENT, #domain_InvoicePaymentAdjustment{
@@ -475,13 +469,6 @@
     reason = ?STRING,
     new_cash_flow = [],
     old_cash_flow_inverse = []
-}).
-
--define(PAYOUT_TOOL(ID, ToolInfo), #domain_PayoutTool{
-    id = ID,
-    created_at = ?TIMESTAMP,
-    currency = #domain_CurrencyRef{symbolic_code = ?RUB},
-    payout_tool_info = ToolInfo
 }).
 
 -define(PAYMENT_INSTITUTION_ACCOUNT,
@@ -653,36 +640,6 @@
     {failed, #domain_InvoicePaymentFailed{failure = {failure, #domain_Failure{code = <<"error_code">>}}}}
 ).
 
--define(STAT_RESPONSE_REFUNDS, #magista_StatRefundResponse{
-    refunds = [
-        ?STAT_REFUND({pending, #domain_InvoicePaymentRefundPending{}}),
-        ?STAT_REFUND({succeeded, #domain_InvoicePaymentRefundSucceeded{}}),
-        ?STAT_REFUND(
-            {failed, #domain_InvoicePaymentRefundFailed{
-                failure = {operation_timeout, #domain_OperationTimeout{}}
-            }}
-        )
-    ],
-    continuation_token = ?STRING
-}).
-
--define(STAT_REFUND(Status), #magista_StatRefund{
-    id = ?STRING,
-    payment_id = ?STRING,
-    invoice_id = ?STRING,
-    owner_id = ?STRING,
-    shop_id = ?STRING,
-    status = Status,
-    created_at = ?TIMESTAMP,
-    amount = ?INTEGER,
-    fee = ?INTEGER,
-    currency_symbolic_code = ?RUB,
-    reason = ?STRING,
-    cart = ?INVOICE_CART,
-    external_id = ?STRING,
-    status_changed_at = ?TIMESTAMP
-}).
-
 -define(ALL_OBJECTS, #{
     {category, #domain_CategoryRef{id = ?INTEGER}} =>
         {category, #domain_CategoryObject{
@@ -725,8 +682,6 @@
                 name = ?STRING,
                 description = ?STRING,
                 system_account_set = {value, #domain_SystemAccountSetRef{id = ?INTEGER}},
-                default_contract_template = {value, #domain_ContractTemplateRef{id = ?INTEGER}},
-                providers = {value, []},
                 inspector = {value, #domain_InspectorRef{id = ?INTEGER}},
                 realm = test,
                 residences = [rus]
@@ -949,24 +904,6 @@
                     id = {payment_terminal, #domain_PaymentServiceRef{id = <<"euroset">>}}
                 }
             ])}
-}).
-
--define(PAYOUT, ?PAYOUT(?PI_ACCOUNT_TOOL, ?STRING)).
--define(PAYOUT(ToolID), ?PAYOUT(ToolID, ?STRING)).
-
--define(PAYOUT(ToolID, PartyID), #payouts_Payout{
-    payout_id = ?STRING,
-    created_at = ?TIMESTAMP,
-    party_id = PartyID,
-    shop_id = ?STRING,
-    status = {paid, #payouts_PayoutPaid{}},
-    cash_flow = [],
-    payout_tool_id = ToolID,
-    amount = ?INTEGER,
-    fee = ?INTEGER,
-    currency = #payouts_CurrencyRef{
-        symbolic_code = ?RUB
-    }
 }).
 
 -define(TEST_PAYMENT_TOKEN, ?STRING).

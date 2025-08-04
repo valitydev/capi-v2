@@ -5,7 +5,7 @@
 -export([decode_shop_location/1]).
 -export([decode_shop_details/1]).
 -export([decode_contact_info/1]).
--export([decode_party/1]).
+-export([decode_party/2]).
 -export([is_blocked/1]).
 -export([is_suspended/1]).
 -export([decode_residence/1]).
@@ -21,12 +21,7 @@ decode_shop_location({url, Location}) ->
     }.
 
 -spec decode_shop_details(capi_handler_encoder:encode_data()) -> capi_handler_decoder_utils:decode_data().
-decode_shop_details(#domain_ShopDetails{name = Name, description = Description}) ->
-    genlib_map:compact(#{
-        <<"name">> => Name,
-        <<"description">> => Description
-    });
-decode_shop_details(#domain_Details{name = Name, description = Description}) ->
+decode_shop_details(#domain_ShopConfig{name = Name, description = Description}) ->
     genlib_map:compact(#{
         <<"name">> => Name,
         <<"description">> => Description
@@ -60,8 +55,9 @@ decode_contact_info(#domain_ContactInfo{
         <<"documentId">> => DocumentId
     }).
 
--spec decode_party(capi_handler_encoder:encode_data()) -> capi_handler_decoder_utils:decode_data().
-decode_party(#domain_PartyConfig{id = PartyID, blocking = Blocking, suspension = Suspension}) ->
+-spec decode_party(capi_party:party_id(), capi_handler_encoder:encode_data()) ->
+    capi_handler_decoder_utils:decode_data().
+decode_party(PartyID, #domain_PartyConfig{block = Blocking, suspension = Suspension}) ->
     #{
         <<"id">> => PartyID,
         <<"isBlocked">> => is_blocked(Blocking),

@@ -25,7 +25,7 @@ prepare('GetPartyByID' = OperationID, Req, Context) ->
     Process = fun() ->
         case capi_party:get_party(PartyID, Context) of
             {ok, Party} ->
-                DecodedParty = capi_handler_decoder_party:decode_party(Party),
+                DecodedParty = capi_handler_decoder_party:decode_party(PartyID, Party),
                 {ok, {200, #{}, DecodedParty}};
             {error, not_found} ->
                 {ok, general_error(404, <<"Party not found">>)}

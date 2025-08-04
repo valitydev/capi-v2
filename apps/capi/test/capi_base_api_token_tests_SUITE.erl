@@ -49,7 +49,6 @@
     create_payment_with_changed_cost_ok_test/1,
     create_refund/1,
     create_refund_blocked_error/1,
-    create_refund_expired_error/1,
     create_partial_refund/1,
     create_partial_refund_without_currency/1,
     get_refund_by_id/1,
@@ -75,7 +74,6 @@
     get_category_by_ref_ok_test/1,
     get_payment_institutions/1,
     get_payment_institution_by_ref/1,
-    get_payment_institution_payment_terms/1,
     get_service_provider_by_id/1,
     check_no_payment_by_external_id_test/1,
     check_no_internal_id_for_external_id_test/1,
@@ -155,7 +153,6 @@ groups() ->
             retrieve_refund_by_external_id_for_party_test,
             create_refund,
             create_refund_blocked_error,
-            create_refund_expired_error,
             create_partial_refund,
             create_partial_refund_without_currency,
             get_chargebacks,
@@ -174,7 +171,6 @@ groups() ->
 
             get_payment_institutions,
             get_payment_institution_by_ref,
-            get_payment_institution_payment_terms,
             get_service_provider_by_id,
 
             get_category_by_ref_ok_test,
@@ -879,33 +875,6 @@ create_refund_blocked_error(Config) ->
     ),
     {error, {400, _}} = capi_client_payments:create_refund(?config(context, Config), Req, ?STRING, ?STRING).
 
--spec create_refund_expired_error(config()) -> _.
-create_refund_expired_error(Config) ->
-    BenderKey = <<"bender_key">>,
-    Req = #{<<"reason">> => ?STRING},
-    _ = capi_ct_helper:mock_services(
-        [
-            {invoicing, fun
-                ('Get', _) ->
-                    Invoice = ?PAYPROC_INVOICE,
-                    {ok, Invoice#payproc_Invoice{payments = [?PAYPROC_PAYMENT]}};
-                ('RefundPayment', {?STRING, _, _}) ->
-                    {throwing, #payproc_InvalidContractStatus{status = {expired, #domain_ContractExpired{}}}}
-            end},
-            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(BenderKey) end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_payment_op_ctx(
-        <<"CreateRefund">>,
-        ?STRING,
-        ?STRING,
-        ?STRING,
-        ?STRING,
-        Config
-    ),
-    {error, {400, _}} = capi_client_payments:create_refund(?config(context, Config), Req, ?STRING, ?STRING).
-
 -spec create_partial_refund(config()) -> _.
 create_partial_refund(Config) ->
     BenderKey = <<"bender_key">>,
@@ -1569,18 +1538,6 @@ get_payment_institutions(Config) ->
 get_payment_institution_by_ref(Config) ->
     _ = capi_ct_helper_bouncer:mock_assert_op_ctx(<<"GetPaymentInstitutionByRef">>, Config),
     {ok, _} = capi_client_payment_institutions:get_payment_institution_by_ref(?config(context, Config), ?INTEGER).
-
--spec get_payment_institution_payment_terms(config()) -> _.
-get_payment_institution_payment_terms(Config) ->
-    _ = capi_ct_helper:mock_services(
-        [
-            {party_management, fun('ComputePaymentInstitutionTerms', _) -> {ok, ?TERM_SET} end}
-        ],
-        Config
-    ),
-    _ = capi_ct_helper_bouncer:mock_assert_op_ctx(<<"GetPaymentInstitutionPaymentTerms">>, Config),
-    {ok, _} =
-        capi_client_payment_institutions:get_payment_institution_payment_terms(?config(context, Config), ?INTEGER).
 
 -spec get_service_provider_by_id(config()) -> _.
 get_service_provider_by_id(Config) ->
