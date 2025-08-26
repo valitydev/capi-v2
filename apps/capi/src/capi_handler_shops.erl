@@ -21,18 +21,16 @@ prepare('GetShopsForParty' = OperationID, Req, Context) ->
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
     Process = fun() ->
-        case capi_party:get_party(PartyID, Context) of
-            {ok, Party} ->
-                Shops = get_shops_for_party(Party, Context),
+        case get_shops_for_party(PartyID, Context) of
+            {ok, Shops} ->
                 {ok, {200, #{}, Shops}};
             {error, not_found} ->
                 {ok, general_error(404, <<"Party not found">>)}
         end
     end,
     ProcessRestricted = fun(Restrictions) ->
-        case capi_party:get_party(PartyID, Context) of
-            {ok, Party} ->
-                Shops = get_shops_for_party(Party, Context),
+        case get_shops_for_party(PartyID, Context) of
+            {ok, Shops} ->
                 RestrictedShops = restrict_shops(Shops, Restrictions),
                 {ok, {200, #{}, RestrictedShops}};
             {error, not_found} ->
@@ -67,20 +65,17 @@ prepare(_OperationID, _Req, _Context) ->
 
 %%
 
-get_shops_for_party(#domain_PartyConfig{shops = ShopRefs}, Context) ->
-    Shops = lists:foldl(
-        fun(ShopRef, Acc) ->
-            case capi_domain:get_ext({shop_config, ShopRef}, capi_domain:head(), Context) of
-                {ok, Shop} ->
-                    [decode_shop(ShopRef#domain_ShopConfigRef.id, Shop) | Acc];
-                {error, not_found} ->
-                    Acc
-            end
-        end,
-        [],
-        ShopRefs
-    ),
-    lists:reverse(Shops).
+get_shops_for_party(PartyID, Context) ->
+    case capi_party:get_shops(PartyID, Context) of
+        {ok, ShopsWithIDs} ->
+            {ok,
+                lists:map(
+                    fun({ShopID, Shop}) -> decode_shop(ShopID, Shop) end,
+                    ShopsWithIDs
+                )};
+        {error, not_found} ->
+            {error, not_found}
+    end.
 
 restrict_shops(Shops, Restrictions) ->
     RestrictedShopIDs = capi_bouncer_restrictions:get_restricted_shop_ids(Restrictions),

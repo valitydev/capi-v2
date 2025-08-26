@@ -90,8 +90,8 @@
     details = ?DETAILS,
     cost = ?CASH,
     context = ?CONTENT,
-    shop_id = ?STRING,
-    owner_id = OwnerID,
+    shop_ref = #domain_ShopConfigRef{id = ?STRING},
+    party_ref = #domain_PartyConfigRef{id = OwnerID},
     template_id = ?STRING,
     external_id = EID
 }).
@@ -157,15 +157,15 @@
             id = ?STRING,
             target =
                 {shop, #domain_AllocationTransactionTargetShop{
-                    owner_id = ?STRING,
-                    shop_id = ?STRING
+                    party_ref = #domain_PartyConfigRef{id = ?STRING},
+                    shop_ref = #domain_ShopConfigRef{id = ?STRING}
                 }},
             amount = ?CASH,
             body = #domain_AllocationTransactionBodyTotal{
                 fee_target =
                     {shop, #domain_AllocationTransactionTargetShop{
-                        owner_id = ?STRING,
-                        shop_id = ?STRING
+                        party_ref = #domain_PartyConfigRef{id = ?STRING},
+                        shop_ref = #domain_ShopConfigRef{id = ?STRING}
                     }},
                 total = ?CASH,
                 fee_amount = ?CASH,
@@ -203,8 +203,8 @@
         }},
     product = ?STRING,
     context = ?CONTENT,
-    shop_id = ?STRING,
-    owner_id = ?STRING,
+    shop_ref = #domain_ShopConfigRef{id = ?STRING},
+    party_ref = #domain_PartyConfigRef{id = ?STRING},
     invoice_lifetime = ?LIFETIME_INTERVAL
 }).
 
@@ -432,7 +432,7 @@
         settlement = ?INTEGER,
         guarantee = ?INTEGER
     },
-    party_id = ?STRING,
+    party_ref = #domain_PartyConfigRef{id = ?STRING},
     location = ?SHOP_LOCATION,
     category = #domain_CategoryRef{id = ?INTEGER}
 }).
@@ -447,8 +447,6 @@
     name = <<"PARTY">>,
     block = ?BLOCKING,
     suspension = ?SUSPENTION,
-    shops = [],
-    wallets = [],
     contact_info = #domain_PartyContactInfo{registration_email = ?STRING}
 }).
 
@@ -456,8 +454,6 @@
     name = <<"PARTY_WITH_SHOPS">>,
     block = ?BLOCKING,
     suspension = ?SUSPENTION,
-    shops = [#domain_ShopConfigRef{id = ?STRING}],
-    wallets = [],
     contact_info = #domain_PartyContactInfo{registration_email = ?STRING}
 }).
 
@@ -483,10 +479,10 @@
 
 -define(WEBHOOK, #webhooker_Webhook{
     id = ?INTEGER,
-    party_id = ?STRING,
+    party_ref = #domain_PartyConfigRef{id = ?STRING},
     event_filter =
         {invoice, #webhooker_InvoiceEventFilter{
-            shop_id = ?STRING,
+            shop_ref = #domain_ShopConfigRef{id = ?STRING},
             types = ordsets:from_list([
                 {created, #webhooker_InvoiceCreated{}},
 

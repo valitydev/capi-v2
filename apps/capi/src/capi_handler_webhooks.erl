@@ -1,7 +1,7 @@
 -module(capi_handler_webhooks).
 
 -include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
--include_lib("damsel/include/dmsl_payproc_thrift.hrl").
+-include_lib("damsel/include/dmsl_domain_thrift.hrl").
 
 -behaviour(capi_handler).
 
@@ -50,7 +50,9 @@ prepare(OperationID, #{'partyID' := PartyID}, Context) when
     end,
     Process = fun() ->
         Webhooks = capi_utils:unwrap(
-            capi_handler_utils:service_call({webhook_manager, 'GetList', {PartyID}}, Context)
+            capi_handler_utils:service_call(
+                {webhook_manager, 'GetList', {#domain_PartyConfigRef{id = PartyID}}}, Context
+            )
         ),
         {ok, {200, #{}, [decode_webhook(V) || V <- Webhooks]}}
     end,
@@ -126,7 +128,7 @@ prepare(_OperationID, _Req, _Context) ->
 validate_webhook_params(#webhooker_WebhookParams{event_filter = EventFilter}) ->
     validate_event_filter(EventFilter).
 
-validate_event_filter({invoice, #webhooker_InvoiceEventFilter{shop_id = ShopID}}) ->
+validate_event_filter({invoice, #webhooker_InvoiceEventFilter{shop_ref = #domain_ShopConfigRef{id = ShopID}}}) ->
     validate_event_filter_shop(ShopID).
 
 validate_event_filter_shop(ShopID) when ShopID /= undefined ->
@@ -160,14 +162,14 @@ delete_webhook(WebhookID, Context) ->
 
 encode_webhook_params(PartyID, #{<<"scope">> := Scope, <<"url">> := URL}) ->
     #webhooker_WebhookParams{
-        party_id = PartyID,
+        party_ref = #domain_PartyConfigRef{id = PartyID},
         url = URL,
         event_filter = encode_webhook_scope(Scope)
     }.
 
 encode_webhook_scope(#{<<"topic">> := <<"InvoicesTopic">>, <<"shopID">> := ShopID, <<"eventTypes">> := EventTypes}) ->
     {invoice, #webhooker_InvoiceEventFilter{
-        shop_id = ShopID,
+        shop_ref = #domain_ShopConfigRef{id = ShopID},
         types = ordsets:from_list([encode_invoice_event_type(V) || V <- EventTypes])
     }}.
 
@@ -239,7 +241,9 @@ decode_webhook(Hook) ->
         <<"publicKey">> => Hook#webhooker_Webhook.pub_key
     }.
 
-decode_event_filter({invoice, #webhooker_InvoiceEventFilter{shop_id = ShopID, types = EventTypes}}) ->
+decode_event_filter(
+    {invoice, #webhooker_InvoiceEventFilter{shop_ref = #domain_ShopConfigRef{id = ShopID}, types = EventTypes}}
+) ->
     genlib_map:compact(#{
         <<"topic">> => <<"InvoicesTopic">>,
         <<"shopID">> => ShopID,

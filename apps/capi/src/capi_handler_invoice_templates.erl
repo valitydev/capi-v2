@@ -153,7 +153,7 @@ prepare('CreateInvoiceWithTemplate' = OperationID, Req, Context) ->
     Process = fun() ->
         capi_handler:respond_if_undefined(InvoiceTpl, general_error(404, <<"Invoice template not found">>)),
         InvoiceParams = maps:get('InvoiceParamsWithTemplate', Req),
-        PartyID = InvoiceTpl#domain_InvoiceTemplate.owner_id,
+        PartyID = InvoiceTpl#domain_InvoiceTemplate.party_ref#domain_PartyConfigRef.id,
         try create_invoice(PartyID, InvoiceTplID, InvoiceParams, Context, OperationID) of
             {ok, #'payproc_Invoice'{invoice = Invoice}} ->
                 {ok, {201, #{}, capi_handler_decoder_invoicing:make_invoice_and_token(Invoice, Context)}};
@@ -251,8 +251,8 @@ encode_invoice_tpl_create_params(InvoiceTemplateID, PartyID, Params) ->
     Product = get_product_from_tpl_details(Details),
     #payproc_InvoiceTemplateCreateParams{
         template_id = InvoiceTemplateID,
-        party_id = PartyID,
-        shop_id = genlib_map:get(<<"shopID">>, Params),
+        party_id = #domain_PartyConfigRef{id = PartyID},
+        shop_id = #domain_ShopConfigRef{id = genlib_map:get(<<"shopID">>, Params)},
         invoice_lifetime = encode_lifetime(Params),
         product = Product,
         name = genlib_map:get(<<"name">>, Params),
@@ -372,7 +372,7 @@ decode_invoice_tpl(InvoiceTpl) ->
     #domain_LifetimeInterval{days = DD, months = MM, years = YY} = InvoiceTpl#domain_InvoiceTemplate.invoice_lifetime,
     genlib_map:compact(#{
         <<"id">> => InvoiceTpl#domain_InvoiceTemplate.id,
-        <<"shopID">> => InvoiceTpl#domain_InvoiceTemplate.shop_id,
+        <<"shopID">> => InvoiceTpl#domain_InvoiceTemplate.shop_ref#domain_ShopConfigRef.id,
         <<"name">> => InvoiceTpl#domain_InvoiceTemplate.name,
         <<"description">> => InvoiceTpl#domain_InvoiceTemplate.description,
         <<"createdAt">> => InvoiceTpl#domain_InvoiceTemplate.created_at,

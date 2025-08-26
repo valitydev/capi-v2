@@ -4,6 +4,7 @@
 
 -export([get_party/2]).
 -export([get_shop/3]).
+-export([get_shops/2]).
 
 -export_type([party_id/0]).
 
@@ -33,15 +34,25 @@ checkout(PartyID, Revision, Context) ->
 
 -spec get_shop(party_id(), shop_id(), processing_context()) -> {ok, shop()} | {error, not_found}.
 get_shop(PartyID, ShopID, Context) ->
-    case get_party(PartyID, Context) of
-        {ok, #domain_PartyConfig{shops = ShopRefs}} ->
-            Ref = #domain_ShopConfigRef{id = ShopID},
-            case lists:member(Ref, ShopRefs) of
-                true ->
-                    capi_domain:get_ext({shop_config, Ref}, capi_domain:head(), Context);
-                false ->
-                    {error, not_found}
-            end;
+    PartyRef = #domain_PartyConfigRef{id = PartyID},
+    ShopRef = #domain_ShopConfigRef{id = ShopID},
+    case capi_domain:get_ext({shop_config, ShopRef}, get_party_revision(), Context) of
+        {ok, #domain_ShopConfig{party_ref = PartyRef} = Shop} -> {ok, Shop};
+        _ -> {error, not_found}
+    end.
+
+-spec get_shops(party_id(), processing_context()) -> {ok, [{shop_id(), shop()}]} | {error, not_found}.
+get_shops(PartyID, Context) ->
+    PartyRef = #domain_PartyConfigRef{id = PartyID},
+    case capi_domain:get_with_related({party_config, PartyRef}, get_party_revision(), Context) of
+        {ok, _, ReferencedBy, _} ->
+            F = fun
+                ({shop_config, #domain_ShopConfigObject{ref = #domain_ShopConfigRef{id = ShopID}, data = Shop}}) ->
+                    {true, {ShopID, Shop}};
+                (_) ->
+                    false
+            end,
+            {ok, lists:filtermap(F, ReferencedBy)};
         {error, not_found} ->
             {error, not_found}
     end.

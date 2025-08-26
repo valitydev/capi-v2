@@ -121,16 +121,16 @@ get_party_id(Context) ->
 -spec issue_access_token(token_source(), processing_context()) -> map().
 issue_access_token(#domain_Invoice{} = Invoice, ProcessingContext) ->
     TokenSpec = #{
-        party => Invoice#domain_Invoice.owner_id,
+        party => Invoice#domain_Invoice.party_ref#domain_PartyConfigRef.id,
         scope => {invoice, Invoice#domain_Invoice.id},
-        shop => Invoice#domain_Invoice.shop_id
+        shop => Invoice#domain_Invoice.shop_ref#domain_ShopConfigRef.id
     },
     issue_access_token(TokenSpec, ProcessingContext);
 issue_access_token(#domain_InvoiceTemplate{} = InvoiceTpl, ProcessingContext) ->
     TokenSpec = #{
-        party => InvoiceTpl#domain_InvoiceTemplate.owner_id,
+        party => InvoiceTpl#domain_InvoiceTemplate.party_ref#domain_PartyConfigRef.id,
         scope => {invoice_template, InvoiceTpl#domain_InvoiceTemplate.id},
-        shop => InvoiceTpl#domain_InvoiceTemplate.shop_id
+        shop => InvoiceTpl#domain_InvoiceTemplate.shop_ref#domain_ShopConfigRef.id
     },
     issue_access_token(TokenSpec, ProcessingContext);
 issue_access_token(TokenSpec, ProcessingContext) ->
@@ -269,16 +269,16 @@ run_if_party_accessible(UserID, PartyID, Fun) ->
 -spec emplace_token_provider_data(entity(), list(), processing_context()) -> list().
 emplace_token_provider_data(#domain_Invoice{} = Invoice, PaymentMethods, Context) ->
     InvoiceID = Invoice#domain_Invoice.id,
-    PartyID = Invoice#domain_Invoice.owner_id,
-    ShopID = Invoice#domain_Invoice.shop_id,
+    PartyID = Invoice#domain_Invoice.party_ref#domain_PartyConfigRef.id,
+    ShopID = Invoice#domain_Invoice.shop_ref#domain_ShopConfigRef.id,
     TokenProviderData = maps:merge(
         #{<<"orderID">> => InvoiceID},
         construct_token_provider_data(PartyID, ShopID, Context)
     ),
     emplace_token_provider_data(PaymentMethods, TokenProviderData);
 emplace_token_provider_data(#domain_InvoiceTemplate{} = InvoiceTemplate, PaymentMethods, Context) ->
-    PartyID = InvoiceTemplate#domain_InvoiceTemplate.owner_id,
-    ShopID = InvoiceTemplate#domain_InvoiceTemplate.shop_id,
+    PartyID = InvoiceTemplate#domain_InvoiceTemplate.party_ref#domain_PartyConfigRef.id,
+    ShopID = InvoiceTemplate#domain_InvoiceTemplate.shop_ref#domain_ShopConfigRef.id,
     TokenProviderData = construct_token_provider_data(PartyID, ShopID, Context),
     emplace_token_provider_data(PaymentMethods, TokenProviderData).
 

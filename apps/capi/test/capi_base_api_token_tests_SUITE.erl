@@ -291,7 +291,9 @@ create_invoice_rand_amount_ok_test(Config) ->
 create_invoice_autorization_error_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
-            {invoicing, fun('Create', {#payproc_InvoiceParams{party_id = <<"WrongPartyID">>}}) ->
+            {invoicing, fun(
+                'Create', {#payproc_InvoiceParams{party_id = #domain_PartyConfigRef{id = <<"WrongPartyID">>}}}
+            ) ->
                 {throwing, #payproc_PartyNotFound{}}
             end},
             {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
@@ -396,7 +398,9 @@ create_invoice_access_token_ok_test(Config) ->
 create_invoice_template_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
-            {invoice_templating, fun('Create', {#payproc_InvoiceTemplateCreateParams{party_id = ?STRING}}) ->
+            {invoice_templating, fun(
+                'Create', {#payproc_InvoiceTemplateCreateParams{party_id = #domain_PartyConfigRef{id = ?STRING}}}
+            ) ->
                 {ok, ?INVOICE_TPL}
             end},
             {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
@@ -428,7 +432,9 @@ create_invoice_template_ok_test(Config) ->
 create_invoice_template_w_randomization_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
-            {invoice_templating, fun('Create', {#payproc_InvoiceTemplateCreateParams{party_id = ?STRING}}) ->
+            {invoice_templating, fun(
+                'Create', {#payproc_InvoiceTemplateCreateParams{party_id = #domain_PartyConfigRef{id = ?STRING}}}
+            ) ->
                 {ok,
                     ?RECORD_UPDATE(
                         #domain_InvoiceTemplate.mutations,
@@ -492,7 +498,7 @@ create_invoice_template_autorization_error_test(Config) ->
         [
             {invoice_templating, fun(
                 'Create',
-                {#payproc_InvoiceTemplateCreateParams{party_id = <<"WrongPartyID">>}}
+                {#payproc_InvoiceTemplateCreateParams{party_id = #domain_PartyConfigRef{id = <<"WrongPartyID">>}}}
             ) ->
                 {throwing, #payproc_PartyNotFound{}}
             end},
@@ -1635,7 +1641,6 @@ get_trade_blocs_test(Config) ->
 
 -spec different_ip_header(config()) -> _.
 different_ip_header(Config) ->
-    _ = capi_ct_helper:mock_services([{party_management, fun('GetShop', _) -> {ok, ?SHOP} end}], Config),
     IPAddress = <<"192.168.4.2">>,
     _ = capi_ct_helper_bouncer:mock_assert_requester_ctx(
         IPAddress,

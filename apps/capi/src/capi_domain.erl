@@ -10,6 +10,7 @@
 -export([get/2]).
 -export([get/3]).
 -export([get_ext/3]).
+-export([get_with_related/3]).
 -export([get_objects_by_type/2]).
 -export([encode_enum/2]).
 -export([encode_enum/3]).
@@ -114,6 +115,32 @@ get_ext(Ref, Revision, Context) ->
 
 extract_data({_Tag, {_Name, _Ref, Data}}) ->
     Data.
+
+-spec get_with_related(ref(), revision(), processing_context() | undefined) ->
+    {
+        ok,
+        dmt_client:domain_object(),
+        ReferencedBy :: [dmt_client:domain_object()],
+        ReferencesTo :: [dmt_client:domain_object()]
+    }
+    | {error, not_found}.
+get_with_related(Ref, Revision, Context) ->
+    try
+        Opts = make_opts(Context),
+        #domain_conf_v2_VersionedObjectWithReferences{
+            object = #domain_conf_v2_VersionedObject{object = Object},
+            referenced_by = ReferencedBy,
+            references_to = ReferencesTo
+        } =
+            dmt_client:checkout_object_with_references(Revision, Ref, Opts),
+        Unwrapper = fun(#domain_conf_v2_VersionedObject{object = O}) -> O end,
+        {ok, Object, lists:map(Unwrapper, ReferencedBy), lists:map(Unwrapper, ReferencesTo)}
+    catch
+        error:version_not_found ->
+            {error, not_found};
+        throw:#domain_conf_v2_ObjectNotFound{} ->
+            {error, not_found}
+    end.
 
 -spec encode_enum(Type :: atom(), binary()) -> {ok, atom()} | {error, unknown_atom | unknown_variant}.
 encode_enum(Type, Binary) ->

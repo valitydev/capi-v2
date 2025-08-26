@@ -135,8 +135,8 @@ build_invoice_ctx(Invoice, _WoodyCtx) ->
 build_invoice_ctx(#payproc_Invoice{invoice = Invoice, payments = Payments}) ->
     #ctx_v1_Invoice{
         id = Invoice#domain_Invoice.id,
-        party = build_entity(Invoice#domain_Invoice.owner_id),
-        shop = build_entity(Invoice#domain_Invoice.shop_id),
+        party = build_entity(Invoice#domain_Invoice.party_ref#domain_PartyConfigRef.id),
+        shop = build_entity(Invoice#domain_Invoice.shop_ref#domain_ShopConfigRef.id),
         payments = build_set(lists:map(fun build_payment_ctx/1, Payments))
     }.
 
@@ -160,10 +160,12 @@ build_invoice_template_ctx(ID, WoodyCtx) when is_binary(ID) ->
 build_invoice_template_ctx(InvoiceTemplate, _WoodyCtx) ->
     build_invoice_template_ctx(InvoiceTemplate).
 
-build_invoice_template_ctx(#domain_InvoiceTemplate{id = ID, owner_id = OwnerID, shop_id = ShopID}) ->
+build_invoice_template_ctx(#domain_InvoiceTemplate{
+    id = ID, party_ref = #domain_PartyConfigRef{id = PartyID}, shop_ref = #domain_ShopConfigRef{id = ShopID}
+}) ->
     #ctx_v1_InvoiceTemplate{
         id = ID,
-        party = build_entity(OwnerID),
+        party = build_entity(PartyID),
         shop = build_entity(ShopID)
     }.
 
@@ -174,7 +176,11 @@ build_webhook_ctx(ID, WoodyCtx) when is_integer(ID) ->
 build_webhook_ctx(Webhook, _WoodyCtx) ->
     build_webhook_ctx(Webhook).
 
-build_webhook_ctx(#webhooker_Webhook{id = ID, party_id = PartyID, event_filter = Filter}) ->
+build_webhook_ctx(#webhooker_Webhook{
+    id = ID,
+    party_ref = #domain_PartyConfigRef{id = PartyID},
+    event_filter = Filter
+}) ->
     #ctx_v1_Webhook{
         id = integer_to_binary(ID),
         party = build_entity(PartyID),
@@ -187,7 +193,7 @@ build_webhook_filter({Type, Filter}) ->
         #ctx_v1_WebhookFilter{topic = erlang:atom_to_binary(Type, utf8)}
     ).
 
-build_webhook_filter_details(#webhooker_InvoiceEventFilter{shop_id = ShopID}, Ctx) ->
+build_webhook_filter_details(#webhooker_InvoiceEventFilter{shop_ref = #domain_ShopConfigRef{id = ShopID}}, Ctx) ->
     Ctx#ctx_v1_WebhookFilter{shop = 'maybe'(ShopID, fun build_entity/1)}.
 
 %%

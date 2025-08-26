@@ -480,7 +480,7 @@ decode_invoice(Invoice) ->
         #{
             <<"id">> => Invoice#domain_Invoice.id,
             <<"externalID">> => Invoice#domain_Invoice.external_id,
-            <<"shopID">> => Invoice#domain_Invoice.shop_id,
+            <<"shopID">> => Invoice#domain_Invoice.shop_ref#domain_ShopConfigRef.id,
             <<"createdAt">> => Invoice#domain_Invoice.created_at,
             <<"dueDate">> => Invoice#domain_Invoice.due,
             <<"amount">> => Amount,

@@ -51,13 +51,28 @@ init_suite(Module, Config, CapiEnv) ->
             {
                 'RepositoryClient',
                 {dmsl_domain_conf_v2_thrift, 'RepositoryClient'},
-                fun('CheckoutObject', {{version, ?INTEGER}, ObjectRef}) ->
-                    case maps:get(ObjectRef, ?ALL_OBJECTS, undefined) of
-                        undefined ->
-                            woody_error:raise(business, #domain_conf_v2_ObjectNotFound{});
-                        Object ->
-                            {ok, dmt_wrap_object(Object)}
-                    end
+                fun
+                    ('CheckoutObject', {{version, ?INTEGER}, ObjectRef}) ->
+                        case maps:get(ObjectRef, ?ALL_OBJECTS, undefined) of
+                            undefined ->
+                                woody_error:raise(business, #domain_conf_v2_ObjectNotFound{});
+                            Object ->
+                                {ok, dmt_wrap_object(Object)}
+                        end;
+                    %% NOTE Mocks function only for party with shops referencing it
+                    ('CheckoutObjectWithReferences', {{version, ?INTEGER}, {party_config, PartyRef} = ObjectRef}) ->
+                        case maps:get(ObjectRef, ?ALL_OBJECTS, undefined) of
+                            undefined ->
+                                woody_error:raise(business, #domain_conf_v2_ObjectNotFound{});
+                            Object ->
+                                {ok, #domain_conf_v2_VersionedObjectWithReferences{
+                                    object = dmt_wrap_object(Object),
+                                    referenced_by = ordsets:from_list(
+                                        filter_only_party_shops(PartyRef, ?ALL_OBJECTS)
+                                    ),
+                                    references_to = []
+                                }}
+                        end
                 end
             },
             {
@@ -365,3 +380,17 @@ dmt_wrap_object(Object) ->
         },
         object = Object
     }.
+
+filter_only_party_shops(PartyRef, AllObjects) ->
+    Filter = fun
+        (
+            {_,
+                {shop_config, #domain_ShopConfigObject{
+                    data = #domain_ShopConfig{party_ref = P}
+                }} = O}
+        ) when P =:= PartyRef ->
+            {true, dmt_wrap_object(O)};
+        (_) ->
+            false
+    end,
+    lists:filtermap(Filter, maps:to_list(AllObjects)).
