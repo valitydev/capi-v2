@@ -25,12 +25,12 @@ struct InvoiceTemplateCreateParams {
 }
 
 struct AccessToken {
-  1: required string payload
+    1: required string payload
 }
 
 struct InvoiceTemplateAndToken {
-  1: required domain.InvoiceTemplate invoice_template
-  2: required AccessToken invoice_template_access_token
+    1: required domain.InvoiceTemplate invoice_template
+    2: required AccessToken invoice_template_access_token
 }
 
 service InvoiceTemplating {
