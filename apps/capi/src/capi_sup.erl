@@ -32,11 +32,34 @@ init([]) ->
     AdditionalRoutes = [{'_', [erl_health_handle:get_route(HealthCheck), get_prometheus_route()]}],
     SwaggerHandlerOpts = genlib_app:env(?APP, swagger_handler_opts, #{}),
     SwaggerSpec = capi_swagger_server:child_spec(AdditionalRoutes, LogicHandler, SwaggerHandlerOpts),
+    WoodyChildSPec = get_woody_child_spec(),
     {ok,
         {
             {one_for_all, 0, 1},
-            [LechiffreSpec, SwaggerSpec, PartyClientSpec]
+            [LechiffreSpec, SwaggerSpec, PartyClientSpec, WoodyChildSPec]
         }}.
+
+get_woody_child_spec() ->
+    {ok, IP} = inet:parse_address(genlib_app:env(capi_woody_server, ip, "::")),
+    EventHandlerOpts = genlib_app:env(capi_woody_server, scoper_event_handler_options, #{}),
+    woody_server:child_spec(
+        ?MODULE,
+        #{
+            ip => IP,
+            port => genlib_app:env(capi_woody_server, port, 8022),
+            transport_opts => genlib_app:env(capi_woody_server, transport_opts, #{}),
+            protocol_opts => genlib_app:env(capi_woody_server, protocol_opts, #{}),
+            event_handler => {scoper_woody_event_handler, EventHandlerOpts},
+            handlers => [
+                %% TODO Proper path
+                {"/v2/extensions/invoice_templating", {
+                    {capi_ext_thrift, 'InvoiceTemplating'}, {capi_handler_invoice_templates, #{}}
+                }}
+            ],
+            additional_routes => [],
+            shutdown_timeout => genlib_app:env(?MODULE, shutdown_timeout, 0)
+        }
+    ).
 
 -spec get_logic_handler_info(capi_handler:handler_opts()) ->
     {Handler :: swag_server:logic_handler(_), [Spec :: supervisor:child_spec()] | []}.

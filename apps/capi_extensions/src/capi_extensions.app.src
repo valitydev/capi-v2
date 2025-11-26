@@ -1,0 +1,10 @@
+{application, capi_extensions, [
+    {description, "CAPI extensions definitions"},
+    {vsn, "1"},
+    {applications, [
+        kernel,
+        stdlib,
+        damsel
+    ]},
+    {maintainers, []}
+]}.
