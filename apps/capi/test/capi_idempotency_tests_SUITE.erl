@@ -469,8 +469,9 @@ create_invoice_template_ok_test(Config) ->
 -spec create_invoice_template_with_woody_ok_test(config()) -> _.
 create_invoice_template_with_woody_ok_test(Config) ->
     BenderKey = <<"create_invoice_template_with_woody_ok_test_bender_key">>,
+    ExternalID = genlib:unique(),
     CreateParams = #ext_InvoiceTemplateCreateParams{
-        external_id = genlib:unique(),
+        external_id = ExternalID,
         party_id = #domain_PartyConfigRef{id = <<"2">>},
         shop_id = #domain_ShopConfigRef{id = <<"1">>},
         invoice_lifetime = #domain_LifetimeInterval{days = ?INTEGER, months = ?INTEGER, years = ?INTEGER},
@@ -494,6 +495,18 @@ create_invoice_template_with_woody_ok_test(Config) ->
             }},
         context = ?CONTENT
     },
+    SwagReq = #{
+        <<"externalID">> => ExternalID,
+        <<"shopID">> => <<"1">>,
+        <<"lifetime">> => #{
+            <<"days">> => ?INTEGER,
+            <<"months">> => ?INTEGER,
+            <<"years">> => ?INTEGER
+        },
+        <<"partyID">> => <<"2">>,
+        <<"details">> => ?INVOICE_TMPL_DETAILS_PARAMS,
+        <<"description">> => <<"Sample text">>
+    },
     Result = capi_ct_helper_bender:with_storage(
         fun(StorageID) ->
             _ = capi_ct_helper:mock_services(
@@ -510,6 +523,7 @@ create_invoice_template_with_woody_ok_test(Config) ->
                 ],
                 Config
             ),
+            %% Two thrift calls
             [
                 with_feature_storage(fun() ->
                     woody_client:call({{capi_ext_thrift, 'InvoiceTemplating'}, 'Create', {Params}}, #{
@@ -521,20 +535,40 @@ create_invoice_template_with_woody_ok_test(Config) ->
                     CreateParams,
                     CreateParams#ext_InvoiceTemplateCreateParams{description = <<"whatever">>}
                 ]
-            ]
+            ] ++
+                %% And one swag request
+                [
+                    with_feature_storage(fun() ->
+                        capi_client_invoice_templates:create(?config(context, Config), SwagReq)
+                    end)
+                ]
         end
     ),
-    [
-        {{ok, #ext_InvoiceTemplateAndToken{invoice_template = Template1}}, UnusedParams1},
-        {{ok, #ext_InvoiceTemplateAndToken{invoice_template = Template2}}, UnusedParams2}
-    ] = Result,
-    ?assertEqual(Template1, Template2),
-    ?assertEqual(UnusedParams1, UnusedParams2),
     %% NOTE Since thrift parameters are decoded into the feature set only with
     %% fields present in the schema, no other fields should be tracked as unused
     %% by `capi_ct_features_reader_event_handler` and its storage.
     %% NOTE See `capi_handler_invoice_templates:decode_to_feature_container/1`.
-    ?assertEqual([], UnusedParams1).
+    ?assertMatch(
+        [
+            {
+                {ok, #ext_InvoiceTemplateAndToken{invoice_template = #domain_InvoiceTemplate{id = ID} = Template}},
+                [] = UnusedParams
+            },
+            {
+                {ok, #ext_InvoiceTemplateAndToken{invoice_template = Template}},
+                UnusedParams
+            },
+            {
+                {ok, #{<<"invoiceTemplate">> := #{<<"id">> := ID}}},
+                [
+                    [<<"description">>],
+                    [<<"externalID">>],
+                    [<<"partyID">>]
+                ] = _OtherUnusedParams
+            }
+        ],
+        Result
+    ).
 
 -spec create_invoice_template_fail_test(config()) -> _.
 create_invoice_template_fail_test(Config) ->
