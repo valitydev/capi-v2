@@ -336,30 +336,33 @@ encode_details_to_feature_container({cart, #domain_InvoiceCart{lines = Lines}}) 
 encode_cart_lines_to_feature_container([]) ->
     throw(invoice_cart_empty);
 encode_cart_lines_to_feature_container(Lines) ->
-    {Currency, Cart} = lists:foldl(
+    {Cart, Currency} = lists:foldl(
         fun(
             #domain_InvoiceLine{
                 product = Product,
                 quantity = Quantity,
-                price = #domain_Cash{amount = Amount, currency = #domain_CurrencyRef{symbolic_code = Currency}},
+                price = #domain_Cash{amount = Amount, currency = #domain_CurrencyRef{symbolic_code = Curr}},
                 metadata = Metadata
             },
-            {_, Items}
+            {Items, _}
         ) ->
-            {Currency, [
-                genlib_map:compact(#{
-                    <<"product">> => Product,
-                    <<"quantity">> => Quantity,
-                    <<"price">> => Amount,
-                    <<"taxMode">> => encode_tax_metadata_to_feature_container(Metadata)
-                })
-                | Items
-            ]}
+            {
+                [
+                    genlib_map:compact(#{
+                        <<"product">> => Product,
+                        <<"quantity">> => Quantity,
+                        <<"price">> => Amount,
+                        <<"taxMode">> => encode_tax_metadata_to_feature_container(Metadata)
+                    })
+                    | Items
+                ],
+                Curr
+            }
         end,
         {[], undefined},
         Lines
     ),
-    {Currency, lists:reverse(Cart)}.
+    {lists:reverse(Cart), Currency}.
 
 encode_price_to_feature_container({unlim, #domain_InvoiceTemplateCostUnlimited{}}) ->
     #{<<"costType">> => <<"InvoiceTemplateLineCostUnlim">>};
