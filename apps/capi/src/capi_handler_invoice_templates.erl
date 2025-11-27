@@ -217,31 +217,32 @@ prepare(_OperationID, _Req, _Context) ->
 
 -spec handle_function(woody:func(), woody:args(), woody_context:ctx(), _) ->
     {ok, term()} | no_return().
-handle_function('Create', {InvoiceTemplateParams}, WoodyContext, _Opts) ->
+handle_function(Function, Args, WoodyContext, Opts) ->
     scoper:scope(
         invoice_templating,
         fun() ->
-            try
-                %% NOTE Use same operation ID as the original in swagger/JSON API
-                InvoiceTemplateID = generate_thrift_invoice_template_id(
-                    'CreateInvoiceTemplate', InvoiceTemplateParams, WoodyContext
-                ),
-                CallArgs = {encode_thrift_invoice_tpl_create_params(InvoiceTemplateID, InvoiceTemplateParams)},
-                capi_woody_client:call_service(invoice_templating, 'Create', CallArgs, WoodyContext)
-            of
-                {ok, InvoiceTpl} ->
-                    {ok, make_thrift_invoice_tpl_and_token(InvoiceTpl, WoodyContext)};
+            try handle_function_(Function, Args, WoodyContext, Opts) of
+                {ok, _} = Result ->
+                    Result;
+                {exception, #payproc_InvoiceTemplateNotFound{} = Exception} ->
+                    woody_error:raise(business, Exception);
+                {exception, #payproc_InvoiceTemplateRemoved{} = Exception} ->
+                    woody_error:raise(business, Exception);
+                {exception, #payproc_PartyNotFound{} = Exception} ->
+                    woody_error:raise(business, Exception);
+                {exception, #payproc_ShopNotFound{} = Exception} ->
+                    woody_error:raise(business, Exception);
+                {exception, #payproc_InvalidPartyStatus{} = Exception} ->
+                    woody_error:raise(business, Exception);
+                {exception, #payproc_InvalidShopStatus{} = Exception} ->
+                    woody_error:raise(business, Exception);
                 {exception, #base_InvalidRequest{errors = Errors}} ->
-                    woody_error:raise(business, #ext_InvalidRequest{errors = Errors});
-                {exception, #payproc_PartyNotFound{}} ->
-                    woody_error:raise(business, #ext_InvalidRequest{errors = [<<"Party not found">>]});
-                {exception, #payproc_ShopNotFound{}} ->
-                    woody_error:raise(business, #ext_InvalidRequest{errors = [<<"Shop not found">>]});
-                {exception, #payproc_InvalidPartyStatus{}} ->
-                    woody_error:raise(business, #ext_InvalidRequest{errors = [<<"Invalid party status">>]});
-                {exception, #payproc_InvalidShopStatus{}} ->
-                    woody_error:raise(business, #ext_InvalidRequest{errors = [<<"Invalid shop status">>]})
+                    woody_error:raise(business, #ext_InvalidRequest{errors = Errors})
             catch
+                throw:(#payproc_InvoiceTemplateNotFound{} = Exception) ->
+                    woody_error:raise(business, Exception);
+                throw:(#payproc_InvoiceTemplateRemoved{} = Exception) ->
+                    woody_error:raise(business, Exception);
                 throw:invoice_cart_empty ->
                     woody_error:raise(business, #ext_InvalidRequest{errors = [<<"Wrong size. Path to item: cart">>]});
                 throw:zero_invoice_lifetime ->
@@ -253,6 +254,26 @@ handle_function('Create', {InvoiceTemplateParams}, WoodyContext, _Opts) ->
             end
         end
     ).
+
+handle_function_('Create', {InvoiceTemplateParams}, WoodyContext, _Opts) ->
+    %% NOTE Use same operation ID as the original in swagger/JSON API
+    InvoiceTemplateID = generate_thrift_invoice_template_id(
+        'CreateInvoiceTemplate', InvoiceTemplateParams, WoodyContext
+    ),
+    CallArgs = {encode_thrift_invoice_tpl_create_params(InvoiceTemplateID, InvoiceTemplateParams)},
+    case capi_woody_client:call_service(invoice_templating, 'Create', CallArgs, WoodyContext) of
+        {ok, InvoiceTpl} ->
+            {ok, make_thrift_invoice_tpl_and_token(InvoiceTpl, WoodyContext)};
+        Passthrough ->
+            Passthrough
+    end;
+handle_function_('Get', {InvoiceTemplateID}, WoodyContext, _Opts) ->
+    capi_woody_client:call_service(invoice_templating, 'Get', {InvoiceTemplateID}, WoodyContext);
+handle_function_('Update', {InvoiceTemplateID, InvoiceTemplateParams}, WoodyContext, _Opts) ->
+    Params = encode_thrift_invoice_tpl_update_params(InvoiceTemplateParams),
+    capi_woody_client:call_service(invoice_templating, 'Update', {InvoiceTemplateID, Params}, WoodyContext);
+handle_function_('Delete', {InvoiceTemplateID}, WoodyContext, _Opts) ->
+    capi_woody_client:call_service(invoice_templating, 'Delete', {InvoiceTemplateID}, WoodyContext).
 
 mask_invoice_template_notfound(Resolution) ->
     % ED-206
@@ -430,6 +451,29 @@ encode_invoice_tpl_update_params(Params) ->
         context = encode_optional_context(Params),
         mutations = capi_mutation:encode_amount_randomization_params(genlib_map:get(<<"randomizeAmount">>, Params))
     }.
+
+encode_thrift_invoice_tpl_update_params(#ext_InvoiceTemplateUpdateParams{
+    invoice_lifetime = InvoiceLifetime,
+    name = Name,
+    description = Description,
+    details = Details,
+    context = Context
+}) ->
+    ok = assert_cart_is_not_empty(Details),
+    Product = get_product_from_tpl_details(Details),
+    #payproc_InvoiceTemplateUpdateParams{
+        invoice_lifetime = InvoiceLifetime,
+        product = Product,
+        name = Name,
+        description = Description,
+        details = Details,
+        context = Context
+    }.
+
+assert_cart_is_not_empty({cart, #domain_InvoiceCart{lines = []}}) ->
+    throw(invoice_cart_empty);
+assert_cart_is_not_empty(_) ->
+    ok.
 
 make_invoice_tpl_and_token(InvoiceTpl, ProcessingContext) ->
     #{

@@ -24,6 +24,15 @@ struct InvoiceTemplateCreateParams {
     8: required domain.InvoiceContext context
 }
 
+// Based on `payment_processing.InvoiceTemplateUpdateParams`
+struct InvoiceTemplateUpdateParams {
+    1: optional domain.LifetimeInterval invoice_lifetime
+    2: optional string name
+    3: optional string description
+    4: optional domain.InvoiceTemplateDetails details
+    5: optional domain.InvoiceContext context
+}
+
 struct AccessToken {
     1: required string payload
 }
@@ -42,5 +51,28 @@ service InvoiceTemplating {
             3: payment_processing.ShopNotFound ex3,
             4: payment_processing.InvalidShopStatus ex4,
             5: InvalidRequest ex5
+        )
+
+    domain.InvoiceTemplate Get (2: domain.InvoiceTemplateID id)
+        throws (
+            1: payment_processing.InvoiceTemplateNotFound ex1,
+            2: payment_processing.InvoiceTemplateRemoved ex2
+        )
+
+    domain.InvoiceTemplate Update (2: domain.InvoiceTemplateID id, 3: InvoiceTemplateUpdateParams params)
+        throws (
+            1: payment_processing.InvoiceTemplateNotFound ex1,
+            2: payment_processing.InvoiceTemplateRemoved ex2,
+            3: payment_processing.InvalidPartyStatus ex3,
+            4: payment_processing.InvalidShopStatus ex4,
+            5: InvalidRequest ex5
+        )
+
+    void Delete (2: domain.InvoiceTemplateID id)
+        throws (
+            1: payment_processing.InvoiceTemplateNotFound ex1,
+            2: payment_processing.InvoiceTemplateRemoved ex2,
+            3: payment_processing.InvalidPartyStatus ex3,
+            4: payment_processing.InvalidShopStatus ex4
         )
 }
