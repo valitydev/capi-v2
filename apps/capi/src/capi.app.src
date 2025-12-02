@@ -30,7 +30,6 @@
         bouncer_client,
         token_keeper_client,
         party_client,
-        capi_extensions,
         opentelemetry_api,
         opentelemetry_exporter,
         opentelemetry

@@ -53,7 +53,7 @@ get_woody_child_spec() ->
             handlers => [
                 %% TODO Proper path
                 {"/v2/extensions/invoice_templating", {
-                    {capi_ext_thrift, 'InvoiceTemplating'}, {capi_handler_invoice_templates, #{}}
+                    {dmsl_api_ext_thrift, 'InvoiceTemplating'}, {capi_handler_invoice_templates, #{}}
                 }}
             ],
             additional_routes => [],

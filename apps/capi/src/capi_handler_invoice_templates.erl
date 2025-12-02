@@ -3,7 +3,7 @@
 -include_lib("damsel/include/dmsl_base_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
--include_lib("capi_extensions/include/capi_ext_thrift.hrl").
+-include_lib("damsel/include/dmsl_api_ext_thrift.hrl").
 
 -behaviour(capi_handler).
 -export([prepare/3]).
@@ -237,18 +237,18 @@ handle_function(Function, Args, WoodyContext, Opts) ->
                 {exception, #payproc_InvalidShopStatus{} = Exception} ->
                     woody_error:raise(business, Exception);
                 {exception, #base_InvalidRequest{errors = Errors}} ->
-                    woody_error:raise(business, #ext_InvalidRequest{errors = Errors})
+                    woody_error:raise(business, #base_InvalidRequest{errors = Errors})
             catch
                 throw:(#payproc_InvoiceTemplateNotFound{} = Exception) ->
                     woody_error:raise(business, Exception);
                 throw:(#payproc_InvoiceTemplateRemoved{} = Exception) ->
                     woody_error:raise(business, Exception);
                 throw:invoice_cart_empty ->
-                    woody_error:raise(business, #ext_InvalidRequest{errors = [<<"Wrong size. Path to item: cart">>]});
+                    woody_error:raise(business, #base_InvalidRequest{errors = [<<"Wrong size. Path to item: cart">>]});
                 throw:zero_invoice_lifetime ->
-                    woody_error:raise(business, #ext_InvalidRequest{errors = [<<"Lifetime cannot be zero">>]});
+                    woody_error:raise(business, #base_InvalidRequest{errors = [<<"Lifetime cannot be zero">>]});
                 throw:{external_id_conflict, _ID, _UsedExternalID, _Schema} ->
-                    woody_error:raise(business, #ext_InvalidRequest{
+                    woody_error:raise(business, #base_InvalidRequest{
                         errors = [<<"This 'externalID' has been used by another request">>]
                     })
             end
@@ -311,7 +311,7 @@ generate_invoice_template_id(OperationID, TemplateParams, PartyID, #{woody_conte
 
 generate_thrift_invoice_template_id(
     OperationID,
-    #ext_InvoiceTemplateCreateParams{external_id = ExternalID, party_id = #domain_PartyConfigRef{id = PartyID}} =
+    #api_ext_InvoiceTemplateCreateParams{external_id = ExternalID, party_id = #domain_PartyConfigRef{id = PartyID}} =
         TemplateParams,
     WoodyContext
 ) ->
@@ -322,7 +322,7 @@ generate_thrift_invoice_template_id(
     ),
     capi_bender:gen_snowflake(IdempKey, Identity, WoodyContext).
 
-decode_to_feature_container(#ext_InvoiceTemplateCreateParams{
+decode_to_feature_container(#api_ext_InvoiceTemplateCreateParams{
     shop_id = #domain_ShopConfigRef{id = ShopID},
     invoice_lifetime = #domain_LifetimeInterval{days = DD, months = MM, years = YY},
     details = Details
@@ -452,7 +452,7 @@ encode_invoice_tpl_update_params(Params) ->
         mutations = capi_mutation:encode_amount_randomization_params(genlib_map:get(<<"randomizeAmount">>, Params))
     }.
 
-encode_thrift_invoice_tpl_update_params(#ext_InvoiceTemplateUpdateParams{
+encode_thrift_invoice_tpl_update_params(#api_ext_InvoiceTemplateUpdateParams{
     invoice_lifetime = InvoiceLifetime,
     name = Name,
     description = Description,
@@ -481,7 +481,7 @@ make_invoice_tpl_and_token(InvoiceTpl, ProcessingContext) ->
         <<"invoiceTemplateAccessToken">> => capi_handler_utils:issue_access_token(InvoiceTpl, ProcessingContext)
     }.
 
-encode_thrift_invoice_tpl_create_params(InvoiceTemplateID, #ext_InvoiceTemplateCreateParams{
+encode_thrift_invoice_tpl_create_params(InvoiceTemplateID, #api_ext_InvoiceTemplateCreateParams{
     party_id = PartyID,
     shop_id = ShopID,
     invoice_lifetime = InvoiceLifetime,
@@ -510,9 +510,9 @@ make_thrift_invoice_tpl_and_token(InvoiceTpl, WoodyContext) ->
         shop => InvoiceTpl#domain_InvoiceTemplate.shop_ref#domain_ShopConfigRef.id
     },
     TokenPayload = capi_auth:issue_access_token(TokenSpec, WoodyContext),
-    #ext_InvoiceTemplateAndToken{
+    #api_ext_InvoiceTemplateAndToken{
         invoice_template = InvoiceTpl,
-        invoice_template_access_token = #ext_AccessToken{payload = TokenPayload}
+        invoice_template_access_token = #api_ext_AccessToken{payload = TokenPayload}
     }.
 
 encode_invoice_tpl_details(#{<<"templateType">> := <<"InvoiceTemplateSingleLine">>} = Details) ->

@@ -7,7 +7,7 @@
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 %% -include_lib("damsel/include/dmsl_base_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
--include_lib("capi_extensions/include/capi_ext_thrift.hrl").
+-include_lib("damsel/include/dmsl_api_ext_thrift.hrl").
 
 -export([all/0]).
 -export([groups/0]).
@@ -94,7 +94,7 @@ end_per_testcase(_Name, C) ->
 
 -spec create_invoice_template_ok_test(config()) -> _.
 create_invoice_template_ok_test(Config) ->
-    Params = #ext_InvoiceTemplateCreateParams{
+    Params = #api_ext_InvoiceTemplateCreateParams{
         external_id = ?STRING,
         party_id = #domain_PartyConfigRef{id = <<"2">>},
         shop_id = #domain_ShopConfigRef{id = <<"1">>},
@@ -135,11 +135,11 @@ create_invoice_template_ok_test(Config) ->
         Config
     ),
     ?assertMatch(
-        {ok, #ext_InvoiceTemplateAndToken{
+        {ok, #api_ext_InvoiceTemplateAndToken{
             invoice_template = #domain_InvoiceTemplate{id = InvoiceTemplateID},
-            invoice_template_access_token = #ext_AccessToken{payload = ?API_TOKEN}
+            invoice_template_access_token = #api_ext_AccessToken{payload = ?API_TOKEN}
         }},
-        woody_client:call({{capi_ext_thrift, 'InvoiceTemplating'}, 'Create', {Params}}, #{
+        woody_client:call({{dmsl_api_ext_thrift, 'InvoiceTemplating'}, 'Create', {Params}}, #{
             url => "http://localhost:8022/v2/extensions/invoice_templating",
             event_handler => scoper_woody_event_handler
         })
@@ -147,7 +147,7 @@ create_invoice_template_ok_test(Config) ->
 
 -spec update_invoice_template_ok_test(config()) -> _.
 update_invoice_template_ok_test(Config) ->
-    Params = #ext_InvoiceTemplateUpdateParams{
+    Params = #api_ext_InvoiceTemplateUpdateParams{
         invoice_lifetime = #domain_LifetimeInterval{days = ?INTEGER, months = ?INTEGER, years = ?INTEGER},
         description = <<"Sample text">>,
         details =
@@ -188,7 +188,7 @@ update_invoice_template_ok_test(Config) ->
     ),
     ?assertMatch(
         {ok, #domain_InvoiceTemplate{id = InvoiceTemplateID}},
-        woody_client:call({{capi_ext_thrift, 'InvoiceTemplating'}, 'Update', {InvoiceTemplateID, Params}}, #{
+        woody_client:call({{dmsl_api_ext_thrift, 'InvoiceTemplating'}, 'Update', {InvoiceTemplateID, Params}}, #{
             url => "http://localhost:8022/v2/extensions/invoice_templating",
             event_handler => scoper_woody_event_handler
         })
@@ -207,7 +207,7 @@ get_invoice_template_ok_test(Config) ->
     ),
     ?assertMatch(
         {ok, #domain_InvoiceTemplate{id = InvoiceTemplateID}},
-        woody_client:call({{capi_ext_thrift, 'InvoiceTemplating'}, 'Get', {InvoiceTemplateID}}, #{
+        woody_client:call({{dmsl_api_ext_thrift, 'InvoiceTemplating'}, 'Get', {InvoiceTemplateID}}, #{
             url => "http://localhost:8022/v2/extensions/invoice_templating",
             event_handler => scoper_woody_event_handler
         })
@@ -226,7 +226,7 @@ delete_invoice_template_ok_test(Config) ->
     ),
     ?assertMatch(
         {ok, ok},
-        woody_client:call({{capi_ext_thrift, 'InvoiceTemplating'}, 'Delete', {InvoiceTemplateID}}, #{
+        woody_client:call({{dmsl_api_ext_thrift, 'InvoiceTemplating'}, 'Delete', {InvoiceTemplateID}}, #{
             url => "http://localhost:8022/v2/extensions/invoice_templating",
             event_handler => scoper_woody_event_handler
         })

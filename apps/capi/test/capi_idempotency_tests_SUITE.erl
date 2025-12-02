@@ -7,7 +7,7 @@
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_base_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
--include_lib("capi_extensions/include/capi_ext_thrift.hrl").
+-include_lib("damsel/include/dmsl_api_ext_thrift.hrl").
 
 -export([all/0]).
 -export([groups/0]).
@@ -470,7 +470,7 @@ create_invoice_template_ok_test(Config) ->
 create_invoice_template_with_woody_ok_test(Config) ->
     BenderKey = <<"create_invoice_template_with_woody_ok_test_bender_key">>,
     ExternalID = genlib:unique(),
-    CreateParams = #ext_InvoiceTemplateCreateParams{
+    CreateParams = #api_ext_InvoiceTemplateCreateParams{
         external_id = ExternalID,
         party_id = #domain_PartyConfigRef{id = <<"2">>},
         shop_id = #domain_ShopConfigRef{id = <<"1">>},
@@ -526,14 +526,14 @@ create_invoice_template_with_woody_ok_test(Config) ->
             %% Two thrift calls
             [
                 with_feature_storage(fun() ->
-                    woody_client:call({{capi_ext_thrift, 'InvoiceTemplating'}, 'Create', {Params}}, #{
+                    woody_client:call({{dmsl_api_ext_thrift, 'InvoiceTemplating'}, 'Create', {Params}}, #{
                         url => "http://localhost:8022/v2/extensions/invoice_templating",
                         event_handler => scoper_woody_event_handler
                     })
                 end)
              || Params <- [
                     CreateParams,
-                    CreateParams#ext_InvoiceTemplateCreateParams{description = <<"whatever">>}
+                    CreateParams#api_ext_InvoiceTemplateCreateParams{description = <<"whatever">>}
                 ]
             ] ++
                 %% And one swag request
@@ -551,11 +551,11 @@ create_invoice_template_with_woody_ok_test(Config) ->
     ?assertMatch(
         [
             {
-                {ok, #ext_InvoiceTemplateAndToken{invoice_template = #domain_InvoiceTemplate{id = ID} = Template}},
+                {ok, #api_ext_InvoiceTemplateAndToken{invoice_template = #domain_InvoiceTemplate{id = ID} = Template}},
                 [] = UnusedParams
             },
             {
-                {ok, #ext_InvoiceTemplateAndToken{invoice_template = Template}},
+                {ok, #api_ext_InvoiceTemplateAndToken{invoice_template = Template}},
                 UnusedParams
             },
             {
