@@ -7,6 +7,7 @@
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_base_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
+-include_lib("damsel/include/dmsl_api_ext_thrift.hrl").
 
 -export([all/0]).
 -export([groups/0]).
@@ -30,6 +31,7 @@
 -export([create_invoice_idemp_cart_fail_test/1]).
 -export([create_invoice_idemp_bank_account_fail_test/1]).
 -export([create_invoice_template_ok_test/1]).
+-export([create_invoice_template_with_woody_ok_test/1]).
 -export([create_invoice_template_fail_test/1]).
 -export([create_invoice_with_template_ok_test/1]).
 -export([create_invoice_with_template_fail_test/1]).
@@ -78,6 +80,7 @@ groups() ->
         ]},
         {invoice_template_creation, [], [
             create_invoice_template_ok_test,
+            create_invoice_template_with_woody_ok_test,
             create_invoice_template_fail_test
         ]},
         {invoice_with_template_creation, [], [
@@ -461,6 +464,110 @@ create_invoice_template_ok_test(Config) ->
             [<<"randomizeAmount">>, <<"deviation">>]
         ],
         UnusedParams1
+    ).
+
+-spec create_invoice_template_with_woody_ok_test(config()) -> _.
+create_invoice_template_with_woody_ok_test(Config) ->
+    BenderKey = <<"create_invoice_template_with_woody_ok_test_bender_key">>,
+    ExternalID = genlib:unique(),
+    CreateParams = #api_ext_InvoiceTemplateCreateParams{
+        external_id = ExternalID,
+        party_id = #domain_PartyConfigRef{id = <<"2">>},
+        shop_id = #domain_ShopConfigRef{id = <<"1">>},
+        invoice_lifetime = #domain_LifetimeInterval{days = ?INTEGER, months = ?INTEGER, years = ?INTEGER},
+        description = <<"Sample text">>,
+        details =
+            {cart, #domain_InvoiceCart{
+                lines = [
+                    #domain_InvoiceLine{
+                        product = ?STRING,
+                        quantity = ?INTEGER,
+                        price = ?CASH,
+                        metadata = #{?STRING => {obj, #{}}}
+                    },
+                    #domain_InvoiceLine{
+                        product = ?STRING,
+                        quantity = ?INTEGER,
+                        price = ?CASH,
+                        metadata = #{<<"TaxMode">> => {str, <<"18%">>}}
+                    }
+                ]
+            }},
+        context = ?CONTENT
+    },
+    SwagReq = #{
+        <<"externalID">> => ExternalID,
+        <<"shopID">> => <<"1">>,
+        <<"lifetime">> => #{
+            <<"days">> => ?INTEGER,
+            <<"months">> => ?INTEGER,
+            <<"years">> => ?INTEGER
+        },
+        <<"partyID">> => <<"2">>,
+        <<"details">> => ?INVOICE_TMPL_DETAILS_PARAMS,
+        <<"description">> => <<"Sample text">>
+    },
+    Result = capi_ct_helper_bender:with_storage(
+        fun(StorageID) ->
+            _ = capi_ct_helper:mock_services(
+                [
+                    {invoice_templating, fun(
+                        'Create',
+                        {#payproc_InvoiceTemplateCreateParams{template_id = TemplateID}}
+                    ) ->
+                        {ok, ?INVOICE_TPL(TemplateID)}
+                    end},
+                    {bender, fun('GenerateID', {_Key, _, CtxMsgPack}) ->
+                        capi_ct_helper_bender:get_internal_id(StorageID, BenderKey, CtxMsgPack)
+                    end}
+                ],
+                Config
+            ),
+            %% Two thrift calls
+            [
+                with_feature_storage(fun() ->
+                    woody_client:call({{dmsl_api_ext_thrift, 'InvoiceTemplating'}, 'Create', {Params}}, #{
+                        url => "http://localhost:8022/v2/extensions/invoice_templating",
+                        event_handler => scoper_woody_event_handler
+                    })
+                end)
+             || Params <- [
+                    CreateParams,
+                    CreateParams#api_ext_InvoiceTemplateCreateParams{description = <<"whatever">>}
+                ]
+            ] ++
+                %% And one swag request
+                [
+                    with_feature_storage(fun() ->
+                        capi_client_invoice_templates:create(?config(context, Config), SwagReq)
+                    end)
+                ]
+        end
+    ),
+    %% NOTE Since thrift parameters are decoded into the feature set only with
+    %% fields present in the schema, no other fields should be tracked as unused
+    %% by `capi_ct_features_reader_event_handler` and its storage.
+    %% NOTE See `capi_handler_invoice_templates:decode_to_feature_container/1`.
+    ?assertMatch(
+        [
+            {
+                {ok, #api_ext_InvoiceTemplateAndToken{invoice_template = #domain_InvoiceTemplate{id = ID} = Template}},
+                [] = UnusedParams
+            },
+            {
+                {ok, #api_ext_InvoiceTemplateAndToken{invoice_template = Template}},
+                UnusedParams
+            },
+            {
+                {ok, #{<<"invoiceTemplate">> := #{<<"id">> := ID}}},
+                [
+                    [<<"description">>],
+                    [<<"externalID">>],
+                    [<<"partyID">>]
+                ] = _OtherUnusedParams
+            }
+        ],
+        Result
     ).
 
 -spec create_invoice_template_fail_test(config()) -> _.

@@ -3,10 +3,13 @@
 -include_lib("damsel/include/dmsl_base_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
+-include_lib("damsel/include/dmsl_api_ext_thrift.hrl").
 
 -behaviour(capi_handler).
-
 -export([prepare/3]).
+
+-behaviour(woody_server_thrift_handler).
+-export([handle_function/4]).
 
 -import(capi_handler_utils, [general_error/2, logic_error/2, conflict_error/1, map_service_result/1]).
 
@@ -212,6 +215,66 @@ prepare('GetInvoicePaymentMethodsByTemplateID' = OperationID, Req, Context) ->
 prepare(_OperationID, _Req, _Context) ->
     {error, noimpl}.
 
+-spec handle_function(woody:func(), woody:args(), woody_context:ctx(), _) ->
+    {ok, term()} | no_return().
+handle_function(Function, Args, WoodyContext, Opts) ->
+    scoper:scope(
+        invoice_templating,
+        fun() ->
+            try handle_function_(Function, Args, WoodyContext, Opts) of
+                {ok, _} = Result ->
+                    Result;
+                {exception, #payproc_InvoiceTemplateNotFound{} = Exception} ->
+                    woody_error:raise(business, Exception);
+                {exception, #payproc_InvoiceTemplateRemoved{} = Exception} ->
+                    woody_error:raise(business, Exception);
+                {exception, #payproc_PartyNotFound{} = Exception} ->
+                    woody_error:raise(business, Exception);
+                {exception, #payproc_ShopNotFound{} = Exception} ->
+                    woody_error:raise(business, Exception);
+                {exception, #payproc_InvalidPartyStatus{} = Exception} ->
+                    woody_error:raise(business, Exception);
+                {exception, #payproc_InvalidShopStatus{} = Exception} ->
+                    woody_error:raise(business, Exception);
+                {exception, #base_InvalidRequest{errors = Errors}} ->
+                    woody_error:raise(business, #base_InvalidRequest{errors = Errors})
+            catch
+                throw:(#payproc_InvoiceTemplateNotFound{} = Exception) ->
+                    woody_error:raise(business, Exception);
+                throw:(#payproc_InvoiceTemplateRemoved{} = Exception) ->
+                    woody_error:raise(business, Exception);
+                throw:invoice_cart_empty ->
+                    woody_error:raise(business, #base_InvalidRequest{errors = [<<"Wrong size. Path to item: cart">>]});
+                throw:zero_invoice_lifetime ->
+                    woody_error:raise(business, #base_InvalidRequest{errors = [<<"Lifetime cannot be zero">>]});
+                throw:{external_id_conflict, _ID, _UsedExternalID, _Schema} ->
+                    woody_error:raise(business, #base_InvalidRequest{
+                        errors = [<<"This 'externalID' has been used by another request">>]
+                    })
+            end
+        end
+    ).
+
+handle_function_('Create', {InvoiceTemplateParams}, WoodyContext, _Opts) ->
+    %% NOTE Use same operation ID as the original in swagger/JSON API
+    InvoiceTemplateID = generate_thrift_invoice_template_id(
+        'CreateInvoiceTemplate', InvoiceTemplateParams, WoodyContext
+    ),
+    CallArgs = {encode_thrift_invoice_tpl_create_params(InvoiceTemplateID, InvoiceTemplateParams)},
+    case capi_woody_client:call_service(invoice_templating, 'Create', CallArgs, WoodyContext) of
+        {ok, InvoiceTpl} ->
+            {ok, make_thrift_invoice_tpl_and_token(InvoiceTpl, WoodyContext)};
+        Passthrough ->
+            Passthrough
+    end;
+handle_function_('Get', {InvoiceTemplateID}, WoodyContext, _Opts) ->
+    capi_woody_client:call_service(invoice_templating, 'Get', {InvoiceTemplateID}, WoodyContext);
+handle_function_('Update', {InvoiceTemplateID, InvoiceTemplateParams}, WoodyContext, _Opts) ->
+    Params = encode_thrift_invoice_tpl_update_params(InvoiceTemplateParams),
+    capi_woody_client:call_service(invoice_templating, 'Update', {InvoiceTemplateID, Params}, WoodyContext);
+handle_function_('Delete', {InvoiceTemplateID}, WoodyContext, _Opts) ->
+    capi_woody_client:call_service(invoice_templating, 'Delete', {InvoiceTemplateID}, WoodyContext).
+
 mask_invoice_template_notfound(Resolution) ->
     % ED-206
     % When bouncer says "forbidden" we can't really tell the difference between "forbidden because
@@ -246,7 +309,121 @@ generate_invoice_template_id(OperationID, TemplateParams, PartyID, #{woody_conte
     Identity = capi_bender:make_identity(capi_feature_schemas:invoice_template(), TemplateParams),
     capi_bender:gen_snowflake(IdempKey, Identity, WoodyContext).
 
-encode_invoice_tpl_create_params(InvoiceTemplateID, PartyID, Params) ->
+generate_thrift_invoice_template_id(
+    OperationID,
+    #api_ext_InvoiceTemplateCreateParams{external_id = ExternalID, party_id = #domain_PartyConfigRef{id = PartyID}} =
+        TemplateParams,
+    WoodyContext
+) ->
+    IdempKey = {OperationID, PartyID, ExternalID},
+    Identity = capi_bender:make_identity(
+        capi_feature_schemas:invoice_template(),
+        decode_to_feature_container(TemplateParams)
+    ),
+    capi_bender:gen_snowflake(IdempKey, Identity, WoodyContext).
+
+decode_to_feature_container(#api_ext_InvoiceTemplateCreateParams{
+    shop_id = #domain_ShopConfigRef{id = ShopID},
+    invoice_lifetime = #domain_LifetimeInterval{days = DD, months = MM, years = YY},
+    details = Details
+}) ->
+    #{
+        <<"shopID">> => ShopID,
+        <<"lifetime">> => #{<<"days">> => DD, <<"months">> => MM, <<"years">> => YY},
+        <<"details">> => encode_details_to_feature_container(Details)
+    }.
+
+encode_details_to_feature_container(
+    {product, #domain_InvoiceTemplateProduct{
+        product = Product,
+        price = Price,
+        metadata = Metadata
+    }}
+) ->
+    genlib_map:compact(#{
+        <<"templateType">> => <<"InvoiceTemplateSingleLine">>,
+        <<"product">> => Product,
+        <<"price">> => encode_price_to_feature_container(Price),
+        <<"taxMode">> => encode_tax_metadata_to_feature_container(Metadata)
+    });
+encode_details_to_feature_container({cart, #domain_InvoiceCart{lines = Lines}}) ->
+    {Cart, Currency} = encode_cart_lines_to_feature_container(Lines),
+    #{
+        <<"templateType">> => <<"InvoiceTemplateMultiLine">>,
+        <<"currency">> => Currency,
+        <<"cart">> => Cart
+    }.
+
+encode_cart_lines_to_feature_container([]) ->
+    throw(invoice_cart_empty);
+encode_cart_lines_to_feature_container(Lines) ->
+    {Cart, Currency} = lists:foldl(
+        fun(
+            #domain_InvoiceLine{
+                product = Product,
+                quantity = Quantity,
+                price = #domain_Cash{amount = Amount, currency = #domain_CurrencyRef{symbolic_code = Curr}},
+                metadata = Metadata
+            },
+            {Items, _}
+        ) ->
+            {
+                [
+                    genlib_map:compact(#{
+                        <<"product">> => Product,
+                        <<"quantity">> => Quantity,
+                        <<"price">> => Amount,
+                        <<"taxMode">> => encode_tax_metadata_to_feature_container(Metadata)
+                    })
+                    | Items
+                ],
+                Curr
+            }
+        end,
+        {[], undefined},
+        Lines
+    ),
+    {lists:reverse(Cart), Currency}.
+
+encode_price_to_feature_container({unlim, #domain_InvoiceTemplateCostUnlimited{}}) ->
+    #{<<"costType">> => <<"InvoiceTemplateLineCostUnlim">>};
+encode_price_to_feature_container(
+    {fixed, #domain_Cash{amount = Amount, currency = #domain_CurrencyRef{symbolic_code = Currency}}}
+) ->
+    #{
+        <<"costType">> => <<"InvoiceTemplateLineCostFixed">>,
+        <<"amount">> => Amount,
+        <<"currency">> => Currency
+    };
+encode_price_to_feature_container(
+    {range, #domain_CashRange{
+        lower = {_, #domain_Cash{currency = #domain_CurrencyRef{symbolic_code = Currency}}} = LowerBound,
+        upper = UpperBound
+    }}
+) ->
+    #{
+        <<"costType">> => <<"InvoiceTemplateLineCostRange">>,
+        <<"currency">> => Currency,
+        <<"range">> => #{
+            <<"lowerBound">> => encode_bound_to_feature_container(LowerBound, 1),
+            <<"upperBound">> => encode_bound_to_feature_container(UpperBound, -1)
+        }
+    }.
+
+encode_bound_to_feature_container({inclusive, #domain_Cash{amount = Bound}}, _Delta) ->
+    Bound;
+encode_bound_to_feature_container({exclusive, #domain_Cash{amount = Bound}}, Delta) ->
+    Bound + Delta.
+
+encode_tax_metadata_to_feature_container(#{<<"TaxMode">> := {str, TM}}) ->
+    #{
+        <<"type">> => <<"InvoiceLineTaxVAT">>,
+        <<"rate">> => TM
+    };
+encode_tax_metadata_to_feature_container(#{}) ->
+    undefined.
+
+encode_invoice_tpl_create_params(InvoiceTemplateID, PartyID, Params) when is_map(Params) ->
     Details = encode_invoice_tpl_details(genlib_map:get(<<"details">>, Params)),
     Product = get_product_from_tpl_details(Details),
     #payproc_InvoiceTemplateCreateParams{
@@ -275,10 +452,67 @@ encode_invoice_tpl_update_params(Params) ->
         mutations = capi_mutation:encode_amount_randomization_params(genlib_map:get(<<"randomizeAmount">>, Params))
     }.
 
+encode_thrift_invoice_tpl_update_params(#api_ext_InvoiceTemplateUpdateParams{
+    invoice_lifetime = InvoiceLifetime,
+    name = Name,
+    description = Description,
+    details = Details,
+    context = Context
+}) ->
+    ok = assert_cart_is_not_empty(Details),
+    Product = get_product_from_tpl_details(Details),
+    #payproc_InvoiceTemplateUpdateParams{
+        invoice_lifetime = InvoiceLifetime,
+        product = Product,
+        name = Name,
+        description = Description,
+        details = Details,
+        context = Context
+    }.
+
+assert_cart_is_not_empty({cart, #domain_InvoiceCart{lines = []}}) ->
+    throw(invoice_cart_empty);
+assert_cart_is_not_empty(_) ->
+    ok.
+
 make_invoice_tpl_and_token(InvoiceTpl, ProcessingContext) ->
     #{
         <<"invoiceTemplate">> => decode_invoice_tpl(InvoiceTpl),
         <<"invoiceTemplateAccessToken">> => capi_handler_utils:issue_access_token(InvoiceTpl, ProcessingContext)
+    }.
+
+encode_thrift_invoice_tpl_create_params(InvoiceTemplateID, #api_ext_InvoiceTemplateCreateParams{
+    party_id = PartyID,
+    shop_id = ShopID,
+    invoice_lifetime = InvoiceLifetime,
+    name = Name,
+    description = Description,
+    details = Details,
+    context = Context
+}) ->
+    Product = get_product_from_tpl_details(Details),
+    #payproc_InvoiceTemplateCreateParams{
+        template_id = InvoiceTemplateID,
+        party_id = PartyID,
+        shop_id = ShopID,
+        invoice_lifetime = InvoiceLifetime,
+        product = Product,
+        name = Name,
+        description = Description,
+        details = Details,
+        context = Context
+    }.
+
+make_thrift_invoice_tpl_and_token(InvoiceTpl, WoodyContext) ->
+    TokenSpec = #{
+        party => InvoiceTpl#domain_InvoiceTemplate.party_ref#domain_PartyConfigRef.id,
+        scope => {invoice_template, InvoiceTpl#domain_InvoiceTemplate.id},
+        shop => InvoiceTpl#domain_InvoiceTemplate.shop_ref#domain_ShopConfigRef.id
+    },
+    TokenPayload = capi_auth:issue_access_token(TokenSpec, WoodyContext),
+    #api_ext_InvoiceTemplateAndToken{
+        invoice_template = InvoiceTpl,
+        invoice_template_access_token = #api_ext_AccessToken{payload = TokenPayload}
     }.
 
 encode_invoice_tpl_details(#{<<"templateType">> := <<"InvoiceTemplateSingleLine">>} = Details) ->
