@@ -1,0 +1,141 @@
+{
+  "terminal": {
+    "ref": {
+      "id": 16
+    },
+    "data": {
+      "name": "Gateway_KZT_TD_IN",
+      "description": "Gateway_KZT_TD_IN",
+      "options": [
+        [
+          "terminal_id",
+          "2554"
+        ]
+      ],
+      "risk_coverage": 100,
+      "provider_ref": {
+        "id": 9
+      },
+      "terms": {
+        "payments": {
+          "cash_limit": {
+            "decisions": [
+              {
+                "if_": {
+                  "condition": {
+                    "payment_tool": {
+                      "bank_card": {
+                        "definition": {
+                          "payment_system": {
+                            "payment_system_is": {
+                              "id": "VISA"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "then_": {
+                  "value": {
+                    "upper": {
+                      "inclusive": {
+                        "amount": 43609100,
+                        "currency": {
+                          "symbolic_code": "KZT"
+                        }
+                      }
+                    },
+                    "lower": {
+                      "inclusive": {
+                        "amount": 51300,
+                        "currency": {
+                          "symbolic_code": "KZT"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "if_": {
+                  "condition": {
+                    "payment_tool": {
+                      "bank_card": {
+                        "definition": {
+                          "payment_system": {
+                            "payment_system_is": {
+                              "id": "MASTERCARD"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "then_": {
+                  "value": {
+                    "upper": {
+                      "inclusive": {
+                        "amount": 128262000,
+                        "currency": {
+                          "symbolic_code": "KZT"
+                        }
+                      }
+                    },
+                    "lower": {
+                      "inclusive": {
+                        "amount": 51300,
+                        "currency": {
+                          "symbolic_code": "KZT"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "cash_flow": {
+            "value": [
+              {
+                "source": {
+                  "provider": 0
+                },
+                "destination": {
+                  "merchant": 0
+                },
+                "volume": {
+                  "share": {
+                    "parts": {
+                      "p": 1,
+                      "q": 1
+                    },
+                    "of": 1
+                  }
+                }
+              },
+              {
+                "source": {
+                  "system": 0
+                },
+                "destination": {
+                  "provider": 0
+                },
+                "volume": {
+                  "share": {
+                    "parts": {
+                      "p": 5,
+                      "q": 100
+                    },
+                    "of": 1
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

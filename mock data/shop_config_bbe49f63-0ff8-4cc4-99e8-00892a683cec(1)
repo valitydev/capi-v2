@@ -1,0 +1,43 @@
+{
+  "shop_config": {
+    "ref": {
+      "id": "bbe49f63-0ff8-4cc4-99e8-00892a683cec"
+    },
+    "data": {
+      "name": "KZT ecom",
+      "block": {
+        "unblocked": {
+          "reason": "Prod",
+          "since": "2025-10-17T14:25:03.080Z"
+        }
+      },
+      "suspension": {
+        "active": {
+          "since": "2025-10-17T14:25:05.927Z"
+        }
+      },
+      "payment_institution": {
+        "id": 100
+      },
+      "terms": {
+        "id": 1000
+      },
+      "account": {
+        "currency": {
+          "symbolic_code": "KZT"
+        },
+        "settlement": 12526,
+        "guarantee": 12525
+      },
+      "party_ref": {
+        "id": "95a158c2-343a-40c9-b690-247dbee3fa40"
+      },
+      "location": {
+        "url": "1"
+      },
+      "category": {
+        "id": 8999
+      }
+    }
+  }
+}

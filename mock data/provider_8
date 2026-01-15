@@ -1,0 +1,337 @@
+{
+  "provider": {
+    "ref": {
+      "id": 8
+    },
+    "data": {
+      "name": "Maguapay TEST payment provider",
+      "description": "Maguapay TEST payment provider",
+      "proxy": {
+        "ref": {
+          "id": 51
+        },
+        "additional": [
+          [
+            "ACCOUNT",
+            "EUR-sandbox"
+          ],
+          [
+            "FAILED_URL",
+            "https://checkout.empayre.com/v1/finish-interaction.html"
+          ],
+          [
+            "MERCHANT_KEY",
+            "EMP_Tech"
+          ],
+          [
+            "MERCHANT_SITE",
+            "https://empayre.com"
+          ],
+          [
+            "SECRET",
+            "r6055VRu43wKlpBP66QSg2A2Fduus10v"
+          ],
+          [
+            "STAGE",
+            "ONE"
+          ],
+          [
+            "max_time_polling",
+            "3600"
+          ]
+        ]
+      },
+      "realm": 1,
+      "accounts": [
+        [
+          {
+            "symbolic_code": "KZT"
+          },
+          {
+            "settlement": 56429
+          }
+        ]
+      ],
+      "terms": {
+        "payments": {
+          "currencies": {
+            "value": [
+              {
+                "symbolic_code": "KZT"
+              }
+            ]
+          },
+          "categories": {
+            "value": [
+              {
+                "id": 8999
+              }
+            ]
+          },
+          "payment_methods": {
+            "value": [
+              {
+                "id": {
+                  "bank_card": {
+                    "payment_system": {
+                      "id": "MASTERCARD"
+                    },
+                    "is_cvv_empty": false
+                  }
+                }
+              },
+              {
+                "id": {
+                  "bank_card": {
+                    "payment_system": {
+                      "id": "VISA"
+                    },
+                    "is_cvv_empty": false
+                  }
+                }
+              }
+            ]
+          },
+          "cash_limit": {
+            "decisions": [
+              {
+                "if_": {
+                  "condition": {
+                    "currency_is": {
+                      "symbolic_code": "KZT"
+                    }
+                  }
+                },
+                "then_": {
+                  "value": {
+                    "upper": {
+                      "inclusive": {
+                        "amount": 1000000000,
+                        "currency": {
+                          "symbolic_code": "KZT"
+                        }
+                      }
+                    },
+                    "lower": {
+                      "inclusive": {
+                        "amount": 100,
+                        "currency": {
+                          "symbolic_code": "KZT"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "cash_flow": {
+            "value": [
+              {
+                "source": {
+                  "provider": 0
+                },
+                "destination": {
+                  "merchant": 0
+                },
+                "volume": {
+                  "share": {
+                    "parts": {
+                      "p": 1,
+                      "q": 1
+                    },
+                    "of": 1
+                  }
+                }
+              },
+              {
+                "source": {
+                  "system": 0
+                },
+                "destination": {
+                  "provider": 0
+                },
+                "volume": {
+                  "share": {
+                    "parts": {
+                      "p": 1,
+                      "q": 100
+                    },
+                    "of": 1
+                  }
+                }
+              }
+            ]
+          },
+          "refunds": {
+            "cash_flow": {
+              "value": [
+                {
+                  "source": {
+                    "merchant": 0
+                  },
+                  "destination": {
+                    "provider": 0
+                  },
+                  "volume": {
+                    "share": {
+                      "parts": {
+                        "p": 1,
+                        "q": 1
+                      },
+                      "of": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "partial_refunds": {
+              "cash_limit": {
+                "decisions": [
+                  {
+                    "if_": {
+                      "condition": {
+                        "currency_is": {
+                          "symbolic_code": "KZT"
+                        }
+                      }
+                    },
+                    "then_": {
+                      "value": {
+                        "upper": {
+                          "inclusive": {
+                            "amount": 1000000000,
+                            "currency": {
+                              "symbolic_code": "KZT"
+                            }
+                          }
+                        },
+                        "lower": {
+                          "inclusive": {
+                            "amount": 100,
+                            "currency": {
+                              "symbolic_code": "KZT"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "chargebacks": {
+            "cash_flow": {
+              "value": [
+                {
+                  "source": {
+                    "system": 0
+                  },
+                  "destination": {
+                    "provider": 0
+                  },
+                  "volume": {
+                    "fixed": {
+                      "cash": {
+                        "amount": 2629900,
+                        "currency": {
+                          "symbolic_code": "KZT"
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "recurrent_paytools": {
+          "cash_value": {
+            "decisions": [
+              {
+                "if_": {
+                  "condition": {
+                    "currency_is": {
+                      "symbolic_code": "KZT"
+                    }
+                  }
+                },
+                "then_": {
+                  "value": {
+                    "amount": 200000,
+                    "currency": {
+                      "symbolic_code": "KZT"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "categories": {
+            "value": [
+              {
+                "id": 8999
+              }
+            ]
+          },
+          "payment_methods": {
+            "value": [
+              {
+                "id": {
+                  "bank_card": {
+                    "payment_system": {
+                      "id": "MASTERCARD"
+                    },
+                    "is_cvv_empty": false
+                  }
+                }
+              },
+              {
+                "id": {
+                  "bank_card": {
+                    "payment_system": {
+                      "id": "MASTERCARD"
+                    },
+                    "is_cvv_empty": true
+                  }
+                }
+              },
+              {
+                "id": {
+                  "bank_card": {
+                    "payment_system": {
+                      "id": "VISA"
+                    },
+                    "is_cvv_empty": false
+                  }
+                }
+              },
+              {
+                "id": {
+                  "bank_card": {
+                    "payment_system": {
+                      "id": "VISA"
+                    },
+                    "is_cvv_empty": true
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "cascade_behaviour": {
+        "mapped_errors": {
+          "error_signatures": [
+            "authorization_failed",
+            "preauthorization_failed"
+          ]
+        }
+      },
+      "route_fd_overrides": {
+        "enabled": true
+      }
+    }
+  }
+}
