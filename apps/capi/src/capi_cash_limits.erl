@@ -41,15 +41,16 @@ compute_shop_terms(TermsRef, Revision, Context) ->
     end.
 
 aggregate_terminal_limits(TerminalRefs, Currency, Context) ->
-    lists:foldl(
+    {PaymentAcc, PartialRefundAcc} = lists:foldl(
         fun(TerminalRef, {PaymentAcc, PartialRefundAcc}) ->
             {Payment, PartialRefund} = get_terminal_limits(TerminalRef, Currency, Context),
             log_terminal_terms(TerminalRef, Payment, PartialRefund),
-            {intersect_optional(PaymentAcc, Payment), intersect_optional(PartialRefundAcc, PartialRefund)}
+            {union_optional(PaymentAcc, Payment), union_optional(PartialRefundAcc, PartialRefund)}
         end,
-        {undefined, undefined},
+        {init, init},
         TerminalRefs
-    ).
+    ),
+    {normalize_union(PaymentAcc), normalize_union(PartialRefundAcc)}.
 
 get_terminal_limits(TerminalRef, Currency, Context) ->
     case capi_domain:get({terminal, TerminalRef}, Context) of
@@ -168,6 +169,19 @@ intersect_optional(#{currency := Currency} = R1, #{currency := Currency} = R2) -
 intersect_optional(_R1, _R2) ->
     undefined.
 
+union_optional(undefined, _Range) ->
+    undefined;
+union_optional(_Range, undefined) ->
+    undefined;
+union_optional(init, Range) ->
+    Range;
+union_optional(Range, init) ->
+    Range;
+union_optional(#{currency := Currency} = R1, #{currency := Currency} = R2) ->
+    union_ranges(R1, R2);
+union_optional(_R1, _R2) ->
+    undefined.
+
 intersect_ranges(#{lower := Lower1, upper := Upper1} = R1, #{lower := Lower2, upper := Upper2}) ->
     Lower = max_lower(Lower1, Lower2),
     Upper = min_upper(Upper1, Upper2),
@@ -178,6 +192,12 @@ intersect_ranges(#{lower := Lower1, upper := Upper1} = R1, #{lower := Lower2, up
             undefined
     end.
 
+union_ranges(#{lower := Lower1, upper := Upper1} = R1, #{lower := Lower2, upper := Upper2}) ->
+    Lower = min_lower(Lower1, Lower2),
+    Upper = max_upper(Upper1, Upper2),
+    R1#{lower => Lower, upper => Upper}.
+
+
 max_lower({Type1, Amount1}, {_Type2, Amount2}) when Amount1 > Amount2 ->
     {Type1, Amount1};
 max_lower({_Type1, Amount1}, {Type2, Amount2}) when Amount2 > Amount1 ->
@@ -186,6 +206,16 @@ max_lower({Type1, Amount}, {Type2, Amount}) ->
     case Type1 =:= exclusive orelse Type2 =:= exclusive of
         true -> {exclusive, Amount};
         false -> {inclusive, Amount}
+    end.
+
+min_lower({Type1, Amount1}, {_Type2, Amount2}) when Amount1 < Amount2 ->
+    {Type1, Amount1};
+min_lower({_Type1, Amount1}, {Type2, Amount2}) when Amount2 < Amount1 ->
+    {Type2, Amount2};
+min_lower({Type1, Amount}, {Type2, Amount}) ->
+    case Type1 =:= inclusive orelse Type2 =:= inclusive of
+        true -> {inclusive, Amount};
+        false -> {exclusive, Amount}
     end.
 
 min_upper({Type1, Amount1}, {_Type2, Amount2}) when Amount1 < Amount2 ->
@@ -198,12 +228,27 @@ min_upper({Type1, Amount}, {Type2, Amount}) ->
         false -> {inclusive, Amount}
     end.
 
+max_upper({Type1, Amount1}, {_Type2, Amount2}) when Amount1 > Amount2 ->
+    {Type1, Amount1};
+max_upper({_Type1, Amount1}, {Type2, Amount2}) when Amount2 > Amount1 ->
+    {Type2, Amount2};
+max_upper({Type1, Amount}, {Type2, Amount}) ->
+    case Type1 =:= inclusive orelse Type2 =:= inclusive of
+        true -> {inclusive, Amount};
+        false -> {exclusive, Amount}
+    end.
+
 valid_range({_, LowerAmount}, {_, UpperAmount}) when LowerAmount < UpperAmount ->
     true;
 valid_range({inclusive, Amount}, {inclusive, Amount}) ->
     true;
 valid_range(_, _) ->
     false.
+
+normalize_union(init) ->
+    undefined;
+normalize_union(Value) ->
+    Value.
 
 pick_refund_limit(undefined, undefined) ->
     undefined;

@@ -141,8 +141,8 @@ terminal_intersection_test() ->
     PartialRefund = maps:get(<<"partialRefund">>, Result),
     ?assertEqual(Payment, PartialRefund),
     ?assertEqual(<<"RUB">>, maps:get(<<"currency">>, Payment)),
-     ?assertEqual(#{<<"amount">> => 300, <<"inclusive">> => true}, maps:get(<<"lowerBound">>, Payment)),
-     ?assertEqual(#{<<"amount">> => 500, <<"inclusive">> => true}, maps:get(<<"upperBound">>, Payment)).
+    ?assertEqual(#{<<"amount">> => 200, <<"inclusive">> => true}, maps:get(<<"lowerBound">>, Payment)),
+    ?assertEqual(#{<<"amount">> => 700, <<"inclusive">> => true}, maps:get(<<"upperBound">>, Payment)).
 
 -spec real_config_limits_test() -> ok.
 real_config_limits_test() ->
@@ -235,8 +235,8 @@ real_config_limits_test() ->
     Payment = maps:get(<<"payment">>, Result),
     PartialRefund = maps:get(<<"partialRefund">>, Result),
     ?assertEqual(<<"KZT">>, maps:get(<<"currency">>, Payment)),
-    ?assertEqual(#{<<"amount">> => 51300, <<"inclusive">> => true}, maps:get(<<"lowerBound">>, Payment)),
-    ?assertEqual(#{<<"amount">> => 43609100, <<"inclusive">> => true}, maps:get(<<"upperBound">>, Payment)),
+    ?assertEqual(#{<<"amount">> => 10000, <<"inclusive">> => true}, maps:get(<<"lowerBound">>, Payment)),
+    ?assertEqual(#{<<"amount">> => 120000000, <<"inclusive">> => true}, maps:get(<<"upperBound">>, Payment)),
     ?assertEqual(Payment, PartialRefund).
  
 -spec mk_shop(
