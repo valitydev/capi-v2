@@ -48,7 +48,23 @@ prepare('GetShopByIDForParty' = OperationID, Req, Context) ->
     Process = fun() ->
         case capi_party:get_shop(PartyID, ShopID, Context) of
             {ok, Shop} ->
-                {ok, {200, #{}, decode_shop(ShopID, Shop, PartyID, Context, true)}};
+                {ok, {200, #{}, decode_shop(ShopID, Shop)}};
+            {error, not_found} ->
+                {ok, general_error(404, <<"Shop not found">>)}
+        end
+    end,
+    {ok, #{authorize => Authorize, process => Process}};
+prepare('GetShopCashLimitsForParty' = OperationID, Req, Context) ->
+    PartyID = maps:get('partyID', Req),
+    ShopID = maps:get('shopID', Req),
+    Authorize = fun() ->
+        Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
+        {ok, capi_auth:authorize_operation(Prototypes, Context)}
+    end,
+    Process = fun() ->
+        case capi_cash_limits:get_shop_limits(PartyID, ShopID, Context) of
+            {ok, Limits} ->
+                {ok, {200, #{}, Limits}};
             {error, not_found} ->
                 {ok, general_error(404, <<"Shop not found">>)}
         end
@@ -70,7 +86,7 @@ get_shops_for_party(PartyID, Context) ->
         {ok, ShopsWithIDs} ->
             {ok,
                 lists:map(
-                    fun({ShopID, Shop}) -> decode_shop(ShopID, Shop, PartyID, Context, false) end,
+                    fun({ShopID, Shop}) -> decode_shop(ShopID, Shop) end,
                     ShopsWithIDs
                 )};
         {error, not_found} ->
@@ -87,8 +103,7 @@ restrict_shops(Shops, Restrictions) ->
         Shops
     ).
 
-decode_shop(ShopID, Shop, PartyID, Context, IncludeLimits) ->
-    Limits = maybe_get_cash_limits(IncludeLimits, PartyID, ShopID, Context),
+decode_shop(ShopID, Shop) ->
     genlib_map:compact(#{
         <<"id">> => ShopID,
         <<"isBlocked">> => capi_handler_decoder_party:is_blocked(Shop#domain_ShopConfig.block),
@@ -97,19 +112,8 @@ decode_shop(ShopID, Shop, PartyID, Context, IncludeLimits) ->
         <<"categoryID">> => capi_handler_decoder_utils:decode_category_ref(Shop#domain_ShopConfig.category),
         <<"details">> => capi_handler_decoder_party:decode_shop_details(Shop),
         <<"location">> => capi_handler_decoder_party:decode_shop_location(Shop#domain_ShopConfig.location),
-        <<"contractID">> => genlib:to_binary(Shop#domain_ShopConfig.terms#domain_TermSetHierarchyRef.id),
-        <<"cashLimits">> => Limits
+        <<"contractID">> => genlib:to_binary(Shop#domain_ShopConfig.terms#domain_TermSetHierarchyRef.id)
     }).
-
-maybe_get_cash_limits(false, _PartyID, _ShopID, _Context) ->
-    undefined;
-maybe_get_cash_limits(true, PartyID, ShopID, Context) ->
-    case capi_cash_limits:get_shop_limits(PartyID, ShopID, Context) of
-        {ok, Limits} when Limits =/= #{} ->
-            Limits;
-        _ ->
-            undefined
-    end.
 
 get_shop_currency(#domain_ShopAccount{currency = Currency}) ->
     capi_handler_decoder_utils:decode_currency(Currency).
