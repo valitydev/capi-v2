@@ -18,27 +18,16 @@ get_shop_limits(PartyID, ShopID, Context) ->
             Currency = Shop#domain_ShopConfig.account#domain_ShopAccount.currency,
             Revision = capi_domain:head(),
             ShopTerms = get_shop_terms(Shop#domain_ShopConfig.terms, Revision, Context),
-            TerminalRefs = get_payment_terminal_refs(Shop#domain_ShopConfig.payment_institution, Context),
             ShopMethods = extract_payment_methods(ShopTerms),
-            TerminalMethods = extract_terminal_payment_methods(TerminalRefs, Context),
-            Methods = intersect_methods(ShopMethods, TerminalMethods),
-            Limits = lists:foldl(
-                fun(Method, Acc) ->
-                    ShopPayment = extract_payment_limit(ShopTerms, Currency, Method),
-                    ShopPartialRefund = extract_partial_refund_limit(ShopTerms, Currency, Method),
-                    {TermPayment, TermPartialRefund} = aggregate_terminal_limits(
-                        TerminalRefs,
-                        Currency,
-                        Method,
-                        Context
-                    ),
-                    Payment = intersect_optional(ShopPayment, TermPayment),
-                    PartialRefund = intersect_optional(ShopPartialRefund, TermPartialRefund),
-                    EffectiveLimit = pick_refund_limit(Payment, PartialRefund),
-                    Acc ++ encode_limits(Currency, Method, EffectiveLimit)
+            ShopLimit = extract_shop_limit(ShopTerms, Currency),
+            TerminalRefs = get_payment_terminal_refs(Shop#domain_ShopConfig.payment_institution, Context),
+            TermLimit = aggregate_terminal_limits(TerminalRefs, Currency, Context),
+            EffectiveLimit = intersect_optional(ShopLimit, TermLimit),
+            Limits = lists:flatmap(
+                fun(ShopMethod) ->
+                    encode_limits(Currency, ShopMethod, EffectiveLimit)
                 end,
-                [],
-                Methods
+                ShopMethods
             ),
             {ok, Limits}
     end.
@@ -51,33 +40,119 @@ get_shop_terms(TermsRef, Revision, Context) ->
             undefined
     end.
 
-aggregate_terminal_limits(TerminalRefs, Currency, Method, Context) ->
-    {PaymentAcc, PartialRefundAcc} = lists:foldl(
-        fun(TerminalRef, {PaymentAcc, PartialRefundAcc}) ->
-            {Payment, PartialRefund} = get_terminal_limits(TerminalRef, Currency, Method, Context),
-            log_terminal_terms(TerminalRef, Payment, PartialRefund),
-            {union_optional(PaymentAcc, Payment), union_optional(PartialRefundAcc, PartialRefund)}
-        end,
-        {init, init},
-        TerminalRefs
-    ),
-    {normalize_union(PaymentAcc), normalize_union(PartialRefundAcc)}.
+extract_payment_methods(#domain_TermSet{
+    payments = #domain_PaymentsServiceTerms{payment_methods = {value, PaymentMethodRefs}}
+}) ->
+    lists:usort([ID || #domain_PaymentMethodRef{id = {ID, _}} <- PaymentMethodRefs]);
+extract_payment_methods(_) ->
+    [].
 
-get_terminal_limits(TerminalRef, Currency, Method, Context) ->
-    case capi_domain:get({terminal, TerminalRef}, Context) of
-        {ok, #domain_TerminalObject{data = #domain_Terminal{provider_ref = ProviderRef, terms = TerminalTerms}}} ->
-            ProviderTerms = get_provider_terms(ProviderRef, Context),
-            Payment = intersect_optional(
-                extract_payment_limit(ProviderTerms, Currency, Method),
-                extract_payment_limit(TerminalTerms, Currency, Method)
-            ),
-            PartialRefund = intersect_optional(
-                extract_partial_refund_limit(ProviderTerms, Currency, Method),
-                extract_partial_refund_limit(TerminalTerms, Currency, Method)
-            ),
-            {Payment, PartialRefund};
+extract_shop_limit(undefined, _Currency) ->
+    undefined;
+extract_shop_limit(#domain_TermSet{payments = undefined}, _Currency) ->
+    undefined;
+extract_shop_limit(#domain_TermSet{payments = Payments}, Currency) ->
+    PaymentSelector = Payments#domain_PaymentsServiceTerms.cash_limit,
+    PartialRefundSelector =
+        case Payments#domain_PaymentsServiceTerms.refunds of
+            undefined ->
+                undefined;
+            #domain_PaymentRefundsServiceTerms{partial_refunds = undefined} ->
+                undefined;
+            #domain_PaymentRefundsServiceTerms{partial_refunds = PartialRefunds} ->
+                PartialRefunds#domain_PartialRefundsServiceTerms.cash_limit
+        end,
+    Payment = range_from_selector(PaymentSelector, Currency),
+    PartialRefund = range_from_selector(PartialRefundSelector, Currency),
+    pick_refund_limit(Payment, PartialRefund).
+
+get_payment_terminal_refs(PiRef, Context) ->
+    case capi_domain:get_payment_institution(PiRef, Context) of
+        {ok, #domain_PaymentInstitution{payment_routing_rules = Rules}} ->
+            lists:usort(collect_ruleset_terminals(Rules, Context));
         _ ->
-            {undefined, undefined}
+            []
+    end.
+
+collect_ruleset_terminals(undefined, _Context) ->
+    [];
+collect_ruleset_terminals(#domain_RoutingRules{policies = PoliciesRef}, Context) ->
+    collect_ruleset_terminals(PoliciesRef, Context, sets:new()).
+
+collect_ruleset_terminals(#domain_RoutingRulesetRef{} = Ref, Context, Seen) ->
+    case sets:is_element(Ref, Seen) of
+        true ->
+            [];
+        false ->
+            Seen1 = sets:add_element(Ref, Seen),
+            case capi_domain:get({routing_rules, Ref}, Context) of
+                {ok, #domain_RoutingRulesObject{data = Ruleset}} ->
+                    collect_ruleset_terminals(Ruleset, Context, Seen1);
+                _ ->
+                    []
+            end
+    end;
+collect_ruleset_terminals(#domain_RoutingRuleset{decisions = Decisions}, Context, Seen) ->
+    collect_terminals_from_decisions(Decisions, Context, Seen).
+
+collect_terminals_from_decisions({candidates, Candidates}, _Context, _Seen) ->
+    [C#domain_RoutingCandidate.terminal || C <- Candidates];
+collect_terminals_from_decisions({delegates, Delegates}, Context, Seen) ->
+    lists:flatmap(
+        fun(#domain_RoutingDelegate{ruleset = Ref}) ->
+            collect_ruleset_terminals(Ref, Context, Seen)
+        end,
+        Delegates
+    ).
+
+aggregate_terminal_limits([], _Currency, _Context) ->
+    undefined;
+aggregate_terminal_limits([TerminalRef | TerminalRefs], Currency, Context) ->
+    Limit0 = get_terminal_limit(TerminalRef, Currency, Context),
+    log_terminal_terms(TerminalRef, Limit0),
+    lists:foldl(
+        fun(TerminalRef1, LimitAcc) ->
+            Limit = get_terminal_limit(TerminalRef1, Currency, Context),
+            log_terminal_terms(TerminalRef1, Limit),
+            union_optional(LimitAcc, Limit)
+        end,
+        Limit0,
+        TerminalRefs
+    ).
+
+log_terminal_terms(TerminalRef, Limit) ->
+    logger:debug(
+        "Cash limits for terminal ~p: limit=~p",
+        [TerminalRef, Limit]
+    ).
+
+get_terminal_limit(TerminalRef, Currency, Context) ->
+    case get_and_check_terminal(TerminalRef, Context) of
+        {ok, #domain_Terminal{provider_ref = ProviderRef, terms = TerminalTerms}} ->
+            TerminalLimit = extract_provider_limit(TerminalTerms, Currency),
+            case TerminalLimit of
+                undefined ->
+                    ProviderTerms = get_provider_terms(ProviderRef, Context),
+                    extract_provider_limit(ProviderTerms, Currency);
+                _ ->
+                    TerminalLimit
+            end;
+        _ ->
+            undefined
+    end.
+
+get_and_check_terminal(TerminalRef, Context) ->
+    case capi_domain:get({terminal, TerminalRef}, Context) of
+        {ok, #domain_TerminalObject{data = #domain_Terminal{terms = Terms} = Terminal}} ->
+            #domain_ProvisionTermSet{payments = #domain_PaymentsProvisionTerms{cash_limit = CashLimit}} = Terms,
+            case CashLimit of
+                {decisions, _} ->
+                    undefined;
+                _ ->
+                    {ok, Terminal}
+            end;
+        _ ->
+            undefined
     end.
 
 get_provider_terms(ProviderRef, Context) ->
@@ -88,123 +163,64 @@ get_provider_terms(ProviderRef, Context) ->
             undefined
     end.
 
-extract_payment_limit(undefined, _Currency, _Method) ->
+extract_provider_limit(undefined, _Currency) ->
     undefined;
-extract_payment_limit(#domain_TermSet{payments = undefined}, _Currency, _Method) ->
+extract_provider_limit(#domain_ProvisionTermSet{payments = undefined}, _Currency) ->
     undefined;
-extract_payment_limit(#domain_TermSet{payments = Payments}, Currency, Method) ->
-    Selector = Payments#domain_PaymentsServiceTerms.cash_limit,
-    range_from_selector(Selector, Currency, Method);
-extract_payment_limit(#domain_ProvisionTermSet{payments = undefined}, _Currency, _Method) ->
-    undefined;
-extract_payment_limit(#domain_ProvisionTermSet{payments = Payments}, Currency, Method) ->
-    Selector = Payments#domain_PaymentsProvisionTerms.cash_limit,
-    range_from_selector(Selector, Currency, Method).
-
-extract_partial_refund_limit(undefined, _Currency, _Method) ->
-    undefined;
-extract_partial_refund_limit(#domain_TermSet{payments = undefined}, _Currency, _Method) ->
-    undefined;
-extract_partial_refund_limit(#domain_TermSet{payments = Payments}, Currency, Method) ->
-    Refunds = Payments#domain_PaymentsServiceTerms.refunds,
-    partial_refund_limit_from_refunds(Refunds, Currency, Method);
-extract_partial_refund_limit(#domain_ProvisionTermSet{payments = undefined}, _Currency, _Method) ->
-    undefined;
-extract_partial_refund_limit(#domain_ProvisionTermSet{payments = Payments}, Currency, Method) ->
-    Refunds = Payments#domain_PaymentsProvisionTerms.refunds,
-    partial_refund_limit_from_refunds(Refunds, Currency, Method).
-
-partial_refund_limit_from_refunds(undefined, _Currency, _Method) ->
-    undefined;
-partial_refund_limit_from_refunds(#domain_PaymentRefundsServiceTerms{partial_refunds = undefined}, _Currency, _Method) ->
-    undefined;
-partial_refund_limit_from_refunds(
-    #domain_PaymentRefundsServiceTerms{partial_refunds = PartialRefunds}, Currency, Method
-) ->
-    Selector = PartialRefunds#domain_PartialRefundsServiceTerms.cash_limit,
-    range_from_selector(Selector, Currency, Method);
-partial_refund_limit_from_refunds(
-    #domain_PaymentRefundsProvisionTerms{partial_refunds = undefined}, _Currency, _Method
-) ->
-    undefined;
-partial_refund_limit_from_refunds(
-    #domain_PaymentRefundsProvisionTerms{partial_refunds = PartialRefunds}, Currency, Method
-) ->
-    Selector = PartialRefunds#domain_PartialRefundsProvisionTerms.cash_limit,
-    range_from_selector(Selector, Currency, Method).
-
-range_from_selector(undefined, _Currency, _Method) ->
-    undefined;
-range_from_selector(Selector, Currency, Method) ->
-    Ranges = ranges_from_selector(Selector, Currency, Method),
-    intersect_all(Ranges).
-
-ranges_from_selector({value, #domain_CashRange{} = Range}, Currency, _Method) ->
-    normalize_range(Range, Currency);
-ranges_from_selector({decisions, Decisions}, Currency, Method) when is_list(Decisions) ->
-    lists:flatmap(
-        fun(#domain_CashLimitDecision{if_ = Predicate, then_ = Then}) ->
-            case predicate_matches_method(Predicate, Method) of
-                true ->
-                    ranges_from_selector(Then, Currency, Method);
-                false ->
-                    []
-            end
+extract_provider_limit(#domain_ProvisionTermSet{payments = Payments}, Currency) ->
+    PaymentSelector = Payments#domain_PaymentsProvisionTerms.cash_limit,
+    PartialRefundSelector =
+        case Payments#domain_PaymentsProvisionTerms.refunds of
+            undefined ->
+                undefined;
+            #domain_PaymentRefundsProvisionTerms{partial_refunds = undefined} ->
+                undefined;
+            #domain_PaymentRefundsProvisionTerms{partial_refunds = PartialRefunds} ->
+                PartialRefunds#domain_PartialRefundsProvisionTerms.cash_limit
         end,
-        Decisions
-    );
-ranges_from_selector(_, _Currency, _Method) ->
-    [].
+    Payment = range_from_selector(PaymentSelector, Currency),
+    PartialRefund = range_from_selector(PartialRefundSelector, Currency),
+    pick_refund_limit(Payment, PartialRefund).
+
+range_from_selector({value, #domain_CashRange{} = Range}, Currency) ->
+    normalize_range(Range, Currency);
+range_from_selector(_, _Currency) ->
+    undefined.
 
 normalize_range(#domain_CashRange{lower = Lower, upper = Upper}, #domain_CurrencyRef{symbolic_code = CurrencyCode}) ->
-    case {extract_bound(Lower), extract_bound(Upper)} of
-        {{ok, {LowerType, LowerAmount, CurrencyCode}}, {ok, {UpperType, UpperAmount, CurrencyCode}}} ->
-            [
-                #{
-                    currency => CurrencyCode,
-                    lower => {LowerType, LowerAmount},
-                    upper => {UpperType, UpperAmount}
-                }
-            ];
+    {LowerAmount, LowerCode} = extract_bound(Lower),
+    {UpperAmount, UpperCode} = extract_bound(Upper),
+    case {LowerCode, UpperCode} of
+        {CurrencyCode, CurrencyCode} ->
+            #{
+                currency => CurrencyCode,
+                lower => LowerAmount,
+                upper => UpperAmount
+            };
         _ ->
-            []
-    end;
-normalize_range(_Range, _Currency) ->
-    [].
+            undefined
+    end.
 
 extract_bound({inclusive, #domain_Cash{amount = Amount, currency = #domain_CurrencyRef{symbolic_code = Code}}}) ->
-    {ok, {inclusive, Amount, Code}};
+    {Amount, Code};
 extract_bound({exclusive, #domain_Cash{amount = Amount, currency = #domain_CurrencyRef{symbolic_code = Code}}}) ->
-    {ok, {exclusive, Amount, Code}};
-extract_bound(_) ->
-    error.
+    {Amount, Code}.
 
-intersect_all([]) ->
+pick_refund_limit(undefined, undefined) ->
     undefined;
-intersect_all([Range | Rest]) ->
-    lists:foldl(fun intersect_optional/2, Range, Rest).
+pick_refund_limit(Payment, undefined) ->
+    Payment;
+pick_refund_limit(undefined, PartialRefund) ->
+    PartialRefund;
+pick_refund_limit(Payment, PartialRefund) ->
+    intersect_optional(Payment, PartialRefund).
 
 intersect_optional(undefined, Range) ->
     Range;
 intersect_optional(Range, undefined) ->
     Range;
 intersect_optional(#{currency := Currency} = R1, #{currency := Currency} = R2) ->
-    intersect_ranges(R1, R2);
-intersect_optional(_R1, _R2) ->
-    undefined.
-
-union_optional(undefined, _Range) ->
-    undefined;
-union_optional(_Range, undefined) ->
-    undefined;
-union_optional(init, Range) ->
-    Range;
-union_optional(Range, init) ->
-    Range;
-union_optional(#{currency := Currency} = R1, #{currency := Currency} = R2) ->
-    union_ranges(R1, R2);
-union_optional(_R1, _R2) ->
-    undefined.
+    intersect_ranges(R1, R2).
 
 intersect_ranges(#{lower := Lower1, upper := Upper1} = R1, #{lower := Lower2, upper := Upper2}) ->
     Lower = max_lower(Lower1, Lower2),
@@ -216,71 +232,50 @@ intersect_ranges(#{lower := Lower1, upper := Upper1} = R1, #{lower := Lower2, up
             undefined
     end.
 
+union_optional(undefined, Range) ->
+    Range;
+union_optional(Range, undefined) ->
+    Range;
+union_optional(#{currency := Currency} = R1, #{currency := Currency} = R2) ->
+    union_ranges(R1, R2).
+
 union_ranges(#{lower := Lower1, upper := Upper1} = R1, #{lower := Lower2, upper := Upper2}) ->
     Lower = min_lower(Lower1, Lower2),
     Upper = max_upper(Upper1, Upper2),
     R1#{lower => Lower, upper => Upper}.
 
-max_lower({Type1, Amount1}, {_Type2, Amount2}) when Amount1 > Amount2 ->
-    {Type1, Amount1};
-max_lower({_Type1, Amount1}, {Type2, Amount2}) when Amount2 > Amount1 ->
-    {Type2, Amount2};
-max_lower({Type1, Amount}, {Type2, Amount}) ->
-    case Type1 =:= exclusive orelse Type2 =:= exclusive of
-        true -> {exclusive, Amount};
-        false -> {inclusive, Amount}
-    end.
+max_lower(Amount1, Amount2) when Amount1 > Amount2 ->
+    Amount1;
+max_lower(Amount1, Amount2) when Amount2 > Amount1 ->
+    Amount2;
+max_lower(Amount, Amount) ->
+    Amount.
 
-min_lower({Type1, Amount1}, {_Type2, Amount2}) when Amount1 < Amount2 ->
-    {Type1, Amount1};
-min_lower({_Type1, Amount1}, {Type2, Amount2}) when Amount2 < Amount1 ->
-    {Type2, Amount2};
-min_lower({Type1, Amount}, {Type2, Amount}) ->
-    case Type1 =:= inclusive orelse Type2 =:= inclusive of
-        true -> {inclusive, Amount};
-        false -> {exclusive, Amount}
-    end.
+min_lower(Amount1, Amount2) when Amount1 < Amount2 ->
+    Amount1;
+min_lower(Amount1, Amount2) when Amount2 < Amount1 ->
+    Amount2;
+min_lower(Amount, Amount) ->
+    Amount.
 
-min_upper({Type1, Amount1}, {_Type2, Amount2}) when Amount1 < Amount2 ->
-    {Type1, Amount1};
-min_upper({_Type1, Amount1}, {Type2, Amount2}) when Amount2 < Amount1 ->
-    {Type2, Amount2};
-min_upper({Type1, Amount}, {Type2, Amount}) ->
-    case Type1 =:= exclusive orelse Type2 =:= exclusive of
-        true -> {exclusive, Amount};
-        false -> {inclusive, Amount}
-    end.
+max_upper(Amount1, Amount2) when Amount1 > Amount2 ->
+    Amount1;
+max_upper(Amount1, Amount2) when Amount2 > Amount1 ->
+    Amount2;
+max_upper(Amount, Amount) ->
+    Amount.
 
-max_upper({Type1, Amount1}, {_Type2, Amount2}) when Amount1 > Amount2 ->
-    {Type1, Amount1};
-max_upper({_Type1, Amount1}, {Type2, Amount2}) when Amount2 > Amount1 ->
-    {Type2, Amount2};
-max_upper({Type1, Amount}, {Type2, Amount}) ->
-    case Type1 =:= inclusive orelse Type2 =:= inclusive of
-        true -> {inclusive, Amount};
-        false -> {exclusive, Amount}
-    end.
+min_upper(Amount1, Amount2) when Amount1 < Amount2 ->
+    Amount1;
+min_upper(Amount1, Amount2) when Amount2 < Amount1 ->
+    Amount2;
+min_upper(Amount, Amount) ->
+    Amount.
 
-valid_range({_, LowerAmount}, {_, UpperAmount}) when LowerAmount < UpperAmount ->
-    true;
-valid_range({inclusive, Amount}, {inclusive, Amount}) ->
+valid_range(LowerAmount, UpperAmount) when LowerAmount =< UpperAmount ->
     true;
 valid_range(_, _) ->
     false.
-
-normalize_union(init) ->
-    undefined;
-normalize_union(Value) ->
-    Value.
-
-pick_refund_limit(undefined, undefined) ->
-    undefined;
-pick_refund_limit(Payment, undefined) ->
-    Payment;
-pick_refund_limit(undefined, PartialRefund) ->
-    PartialRefund;
-pick_refund_limit(Payment, PartialRefund) ->
-    intersect_optional(Payment, PartialRefund).
 
 encode_limits(Currency, Method, Range) ->
     CurrencyCode = capi_handler_decoder_utils:decode_currency(Currency),
@@ -300,137 +295,11 @@ encode_range(CurrencyCode, #{lower := Lower, upper := Upper}) ->
         <<"upperBound">> => encode_bound(Upper)
     }.
 
-encode_bound({Type, Amount}) ->
+encode_bound(Amount) ->
     #{
         <<"amount">> => Amount,
-        <<"inclusive">> => Type =:= inclusive
+        <<"inclusive">> => true
     }.
-
-get_payment_terminal_refs(PiRef, Context) ->
-    case capi_domain:get_payment_institution(PiRef, Context) of
-        {ok, #domain_PaymentInstitution{payment_routing_rules = Rules}} ->
-            lists:usort(collect_ruleset_terminals(Rules, Context));
-        _ ->
-            []
-    end.
-
-collect_ruleset_terminals(undefined, _Context) ->
-    [];
-collect_ruleset_terminals(#domain_RoutingRules{policies = PoliciesRef}, Context) ->
-    collect_ruleset_terminals(PoliciesRef, Context, sets:new());
-collect_ruleset_terminals(_, _Context) ->
-    [].
-
-collect_ruleset_terminals(#domain_RoutingRulesetRef{} = Ref, Context, Seen) ->
-    case sets:is_element(Ref, Seen) of
-        true ->
-            [];
-        false ->
-            Seen1 = sets:add_element(Ref, Seen),
-            case capi_domain:get({routing_rules, Ref}, Context) of
-                {ok, #domain_RoutingRulesObject{data = Ruleset}} ->
-                    collect_ruleset_terminals(Ruleset, Context, Seen1);
-                _ ->
-                    []
-            end
-    end;
-collect_ruleset_terminals(#domain_RoutingRuleset{decisions = Decisions}, Context, Seen) ->
-    collect_terminals_from_decisions(Decisions, Context, Seen);
-collect_ruleset_terminals(_, _Context, _Seen) ->
-    [].
-
-collect_terminals_from_decisions({candidates, Candidates}, _Context, _Seen) ->
-    [C#domain_RoutingCandidate.terminal || C <- Candidates];
-collect_terminals_from_decisions({delegates, Delegates}, Context, Seen) ->
-    lists:flatmap(
-        fun(#domain_RoutingDelegate{ruleset = Ref}) ->
-            collect_ruleset_terminals(Ref, Context, Seen)
-        end,
-        Delegates
-    );
-collect_terminals_from_decisions(_, _Context, _Seen) ->
-    [].
-
-log_terminal_terms(TerminalRef, Payment, PartialRefund) ->
-    logger:debug(
-        "Cash limits for terminal ~p: payment=~p partial_refund=~p",
-        [TerminalRef, Payment, PartialRefund]
-    ).
-
-extract_payment_methods(undefined) ->
-    undefined;
-extract_payment_methods(#domain_TermSet{payments = undefined}) ->
-    undefined;
-extract_payment_methods(#domain_TermSet{payments = Payments}) ->
-    payment_methods_from_selector(Payments#domain_PaymentsServiceTerms.payment_methods);
-extract_payment_methods(#domain_ProvisionTermSet{payments = undefined}) ->
-    undefined;
-extract_payment_methods(#domain_ProvisionTermSet{payments = Payments}) ->
-    payment_methods_from_selector(Payments#domain_PaymentsProvisionTerms.payment_methods).
-
-payment_methods_from_selector(undefined) ->
-    undefined;
-payment_methods_from_selector({value, PaymentMethodRefs}) ->
-    lists:usort([payment_method_kind(Ref) || Ref <- PaymentMethodRefs]);
-payment_methods_from_selector(_) ->
-    [].
-
-payment_method_kind(#domain_PaymentMethodRef{id = {bank_card, _}}) ->
-    bank_card;
-payment_method_kind(#domain_PaymentMethodRef{id = {payment_terminal, _}}) ->
-    payment_terminal;
-payment_method_kind(#domain_PaymentMethodRef{id = {digital_wallet, _}}) ->
-    digital_wallet;
-payment_method_kind(#domain_PaymentMethodRef{id = {crypto_currency, _}}) ->
-    crypto_currency;
-payment_method_kind(#domain_PaymentMethodRef{id = {mobile, _}}) ->
-    mobile.
-
-extract_terminal_payment_methods(TerminalRefs, Context) ->
-    Methods = lists:foldl(
-        fun(TerminalRef, Acc) ->
-            case capi_domain:get({terminal, TerminalRef}, Context) of
-                {ok, #domain_TerminalObject{data = #domain_Terminal{provider_ref = ProviderRef, terms = TerminalTerms}}} ->
-                    ProviderTerms = get_provider_terms(ProviderRef, Context),
-                    ProviderMethods = extract_payment_methods(ProviderTerms),
-                    TerminalMethods = extract_payment_methods(TerminalTerms),
-                    TerminalAllowed = intersect_methods(ProviderMethods, TerminalMethods),
-                    lists:usort(Acc ++ TerminalAllowed);
-                _ ->
-                    Acc
-            end
-        end,
-        [],
-        TerminalRefs
-    ),
-    Methods.
-
-intersect_methods(undefined, undefined) ->
-    [];
-intersect_methods(undefined, Methods) ->
-    Methods;
-intersect_methods(Methods, undefined) ->
-    Methods;
-intersect_methods(Methods1, Methods2) ->
-    lists:usort([M || M <- Methods1, lists:member(M, Methods2)]).
-
-predicate_matches_method({constant, true}, _Method) ->
-    true;
-predicate_matches_method({constant, false}, _Method) ->
-    false;
-predicate_matches_method({condition, {payment_tool, {bank_card, _}}}, bank_card) ->
-    true;
-predicate_matches_method({condition, {payment_terminal, _}}, payment_terminal) ->
-    true;
-predicate_matches_method({condition, {digital_wallet, _}}, digital_wallet) ->
-    true;
-predicate_matches_method({condition, {crypto_currency, _}}, crypto_currency) ->
-    true;
-predicate_matches_method({condition, {mobile_commerce, _}}, mobile) ->
-    true;
-predicate_matches_method(_Predicate, _Method) ->
-    %% TODO handle complex predicates (all_of/any_of/is_not)
-    false.
 
 encode_payment_method(bank_card) ->
     #{<<"method">> => <<"BankCard">>};

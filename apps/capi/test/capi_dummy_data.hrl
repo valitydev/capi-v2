@@ -12,6 +12,7 @@
 -define(STRING, <<"TEST">>).
 -define(RUB, <<"RUB">>).
 -define(USD, <<"USD">>).
+-define(KZT, <<"KZT">>).
 -define(BANKID_RU, <<"PUTIN">>).
 -define(BANKID_US, <<"TRAMP">>).
 -define(WALLET_TOOL, <<"TOOL">>).
@@ -29,6 +30,17 @@
 -define(TEST_RULESET_ID, <<"test/api">>).
 -define(API_TOKEN, <<"letmein">>).
 -define(EMAIL, <<"test@test.ru">>).
+
+-define(KZT_PARTY_ID, <<"95a158c2-343a-40c9-b690-247dbee3fa40">>).
+-define(KZT_SHOP_ID, <<"bbe49f63-0ff8-4cc4-99e8-00892a683cec">>).
+-define(KZT_PI_ID, 100).
+-define(KZT_TERMS_ID, 1000).
+-define(KZT_RULESET_ID, 1059).
+-define(KZT_PROHIBITIONS_ID, 1060).
+-define(KZT_PROVIDER_8_ID, 8).
+-define(KZT_PROVIDER_9_ID, 9).
+-define(KZT_TERMINAL_15_ID, 15).
+-define(KZT_TERMINAL_16_ID, 16).
 
 -define(RATIONAL, #base_Rational{p = ?INTEGER, q = ?INTEGER}).
 
@@ -748,6 +760,357 @@
                                 }}
                         }}
                 }
+            }
+        }},
+
+    {payment_institution, #domain_PaymentInstitutionRef{id = ?KZT_PI_ID}} =>
+        {payment_institution, #domain_PaymentInstitutionObject{
+            ref = #domain_PaymentInstitutionRef{id = ?KZT_PI_ID},
+            data = #domain_PaymentInstitution{
+                name = ?STRING,
+                description = ?STRING,
+                system_account_set = {value, #domain_SystemAccountSetRef{id = ?INTEGER}},
+                inspector = {value, #domain_InspectorRef{id = ?INTEGER}},
+                realm = test,
+                residences = [rus],
+                payment_routing_rules = #domain_RoutingRules{
+                    policies = #domain_RoutingRulesetRef{id = ?KZT_RULESET_ID},
+                    prohibitions = #domain_RoutingRulesetRef{id = ?KZT_PROHIBITIONS_ID}
+                }
+            }
+        }},
+
+    {routing_rules, #domain_RoutingRulesetRef{id = ?KZT_RULESET_ID}} =>
+        {routing_rules, #domain_RoutingRulesObject{
+            ref = #domain_RoutingRulesetRef{id = ?KZT_RULESET_ID},
+            data = #domain_RoutingRuleset{
+                name = ?STRING,
+                decisions =
+                    {candidates, [
+                        #domain_RoutingCandidate{
+                            allowed = {constant, true},
+                            terminal = #domain_TerminalRef{id = ?KZT_TERMINAL_15_ID}
+                        },
+                        #domain_RoutingCandidate{
+                            allowed = {constant, true},
+                            terminal = #domain_TerminalRef{id = ?KZT_TERMINAL_16_ID}
+                        }
+                    ]}
+            }
+        }},
+
+    {routing_rules, #domain_RoutingRulesetRef{id = ?KZT_PROHIBITIONS_ID}} =>
+        {routing_rules, #domain_RoutingRulesObject{
+            ref = #domain_RoutingRulesetRef{id = ?KZT_PROHIBITIONS_ID},
+            data = #domain_RoutingRuleset{
+                name = ?STRING,
+                decisions = {candidates, []}
+            }
+        }},
+
+    {provider, #domain_ProviderRef{id = ?KZT_PROVIDER_8_ID}} =>
+        {provider, #domain_ProviderObject{
+            ref = #domain_ProviderRef{id = ?KZT_PROVIDER_8_ID},
+            data = #domain_Provider{
+                name = ?STRING,
+                description = ?STRING,
+                proxy = #domain_Proxy{ref = #domain_ProxyRef{id = ?INTEGER}, additional = #{}},
+                realm = test,
+                terms =
+                    #domain_ProvisionTermSet{
+                        payments =
+                            #domain_PaymentsProvisionTerms{
+                                payment_methods =
+                                    {value, [
+                                        #domain_PaymentMethodRef{
+                                            id =
+                                                {bank_card, #domain_BankCardPaymentMethod{
+                                                    payment_system = #domain_PaymentSystemRef{id = <<"MASTERCARD">>},
+                                                    is_cvv_empty = false
+                                                }}
+                                        },
+                                        #domain_PaymentMethodRef{
+                                            id =
+                                                {bank_card, #domain_BankCardPaymentMethod{
+                                                    payment_system = #domain_PaymentSystemRef{id = <<"VISA">>},
+                                                    is_cvv_empty = false
+                                                }}
+                                        }
+                                    ]},
+                                cash_limit =
+                                    {decisions, [
+                                        #domain_CashLimitDecision{
+                                            if_ = {constant, true},
+                                            then_ =
+                                                {value, #domain_CashRange{
+                                                    lower =
+                                                        {inclusive, #domain_Cash{
+                                                            amount = 100,
+                                                            currency =
+                                                                #domain_CurrencyRef{symbolic_code = ?KZT}
+                                                        }},
+                                                    upper =
+                                                        {inclusive, #domain_Cash{
+                                                            amount = 1000000000,
+                                                            currency =
+                                                                #domain_CurrencyRef{symbolic_code = ?KZT}
+                                                        }}
+                                                }}
+                                        }
+                                    ]},
+                                refunds =
+                                    #domain_PaymentRefundsProvisionTerms{
+                                        cash_flow = {value, []},
+                                        partial_refunds =
+                                            #domain_PartialRefundsProvisionTerms{
+                                                cash_limit =
+                                                    {decisions, [
+                                                        #domain_CashLimitDecision{
+                                                            if_ = {constant, true},
+                                                            then_ =
+                                                                {value, #domain_CashRange{
+                                                                    lower =
+                                                                        {inclusive, #domain_Cash{
+                                                                            amount = 100,
+                                                                            currency =
+                                                                                #domain_CurrencyRef{
+                                                                                    symbolic_code = ?KZT
+                                                                                }
+                                                                        }},
+                                                                    upper =
+                                                                        {inclusive, #domain_Cash{
+                                                                            amount = 1000000000,
+                                                                            currency =
+                                                                                #domain_CurrencyRef{
+                                                                                    symbolic_code = ?KZT
+                                                                                }
+                                                                        }}
+                                                                }}
+                                                        }
+                                                    ]}
+                                            }
+                                    }
+                            }
+                    }
+            }
+        }},
+
+    {provider, #domain_ProviderRef{id = ?KZT_PROVIDER_9_ID}} =>
+        {provider, #domain_ProviderObject{
+            ref = #domain_ProviderRef{id = ?KZT_PROVIDER_9_ID},
+            data = #domain_Provider{
+                name = ?STRING,
+                description = ?STRING,
+                proxy = #domain_Proxy{ref = #domain_ProxyRef{id = ?INTEGER}, additional = #{}},
+                realm = test,
+                terms =
+                    #domain_ProvisionTermSet{
+                        payments =
+                            #domain_PaymentsProvisionTerms{
+                                payment_methods =
+                                    {value, [
+                                        #domain_PaymentMethodRef{
+                                            id =
+                                                {bank_card, #domain_BankCardPaymentMethod{
+                                                    payment_system = #domain_PaymentSystemRef{id = <<"MASTERCARD">>},
+                                                    is_cvv_empty = false
+                                                }}
+                                        },
+                                        #domain_PaymentMethodRef{
+                                            id =
+                                                {bank_card, #domain_BankCardPaymentMethod{
+                                                    payment_system = #domain_PaymentSystemRef{id = <<"VISA">>},
+                                                    is_cvv_empty = false
+                                                }}
+                                        }
+                                    ]},
+                                cash_limit =
+                                    {value, #domain_CashRange{
+                                        lower =
+                                            {inclusive, #domain_Cash{
+                                                amount = 100,
+                                                currency = #domain_CurrencyRef{symbolic_code = ?KZT}
+                                            }},
+                                        upper =
+                                            {inclusive, #domain_Cash{
+                                                amount = 1000000000,
+                                                currency = #domain_CurrencyRef{symbolic_code = ?KZT}
+                                            }}
+                                    }},
+                                refunds =
+                                    #domain_PaymentRefundsProvisionTerms{
+                                        cash_flow = {value, []},
+                                        partial_refunds =
+                                            #domain_PartialRefundsProvisionTerms{
+                                                cash_limit =
+                                                    {value, #domain_CashRange{
+                                                        lower =
+                                                            {inclusive, #domain_Cash{
+                                                                amount = 100,
+                                                                currency =
+                                                                    #domain_CurrencyRef{
+                                                                        symbolic_code = ?KZT
+                                                                    }
+                                                            }},
+                                                        upper =
+                                                            {inclusive, #domain_Cash{
+                                                                amount = 100000000,
+                                                                currency =
+                                                                    #domain_CurrencyRef{
+                                                                        symbolic_code = ?KZT
+                                                                    }
+                                                            }}
+                                                    }}
+                                            }
+                                    }
+                            }
+                    }
+            }
+        }},
+
+    {terminal, #domain_TerminalRef{id = ?KZT_TERMINAL_15_ID}} =>
+        {terminal, #domain_TerminalObject{
+            ref = #domain_TerminalRef{id = ?KZT_TERMINAL_15_ID},
+            data = #domain_Terminal{
+                name = ?STRING,
+                description = ?STRING,
+                provider_ref = #domain_ProviderRef{id = ?KZT_PROVIDER_8_ID},
+                terms =
+                    #domain_ProvisionTermSet{
+                        payments =
+                            #domain_PaymentsProvisionTerms{
+                                payment_methods =
+                                    {value, [
+                                        #domain_PaymentMethodRef{
+                                            id =
+                                                {bank_card, #domain_BankCardPaymentMethod{
+                                                    payment_system = #domain_PaymentSystemRef{id = <<"MASTERCARD">>},
+                                                    is_cvv_empty = false
+                                                }}
+                                        },
+                                        #domain_PaymentMethodRef{
+                                            id =
+                                                {bank_card, #domain_BankCardPaymentMethod{
+                                                    payment_system = #domain_PaymentSystemRef{id = <<"VISA">>},
+                                                    is_cvv_empty = false
+                                                }}
+                                        }
+                                    ]},
+                                cash_limit =
+                                    {value, #domain_CashRange{
+                                        lower =
+                                            {inclusive, #domain_Cash{
+                                                amount = 10000,
+                                                currency = #domain_CurrencyRef{symbolic_code = ?KZT}
+                                            }},
+                                        upper =
+                                            {inclusive, #domain_Cash{
+                                                amount = 120000000,
+                                                currency = #domain_CurrencyRef{symbolic_code = ?KZT}
+                                            }}
+                                    }}
+                            }
+                    }
+            }
+        }},
+
+    {terminal, #domain_TerminalRef{id = ?KZT_TERMINAL_16_ID}} =>
+        {terminal, #domain_TerminalObject{
+            ref = #domain_TerminalRef{id = ?KZT_TERMINAL_16_ID},
+            data = #domain_Terminal{
+                name = ?STRING,
+                description = ?STRING,
+                provider_ref = #domain_ProviderRef{id = ?KZT_PROVIDER_9_ID},
+                terms =
+                    #domain_ProvisionTermSet{
+                        payments =
+                            #domain_PaymentsProvisionTerms{
+                                cash_limit =
+                                    {decisions, [
+                                        #domain_CashLimitDecision{
+                                            if_ = {constant, true},
+                                            then_ =
+                                                {value, #domain_CashRange{
+                                                    lower =
+                                                        {inclusive, #domain_Cash{
+                                                            amount = 51300,
+                                                            currency =
+                                                                #domain_CurrencyRef{symbolic_code = ?KZT}
+                                                        }},
+                                                    upper =
+                                                        {inclusive, #domain_Cash{
+                                                            amount = 43609100,
+                                                            currency =
+                                                                #domain_CurrencyRef{symbolic_code = ?KZT}
+                                                        }}
+                                                }}
+                                        },
+                                        #domain_CashLimitDecision{
+                                            if_ = {constant, true},
+                                            then_ =
+                                                {value, #domain_CashRange{
+                                                    lower =
+                                                        {inclusive, #domain_Cash{
+                                                            amount = 51300,
+                                                            currency =
+                                                                #domain_CurrencyRef{symbolic_code = ?KZT}
+                                                        }},
+                                                    upper =
+                                                        {inclusive, #domain_Cash{
+                                                            amount = 128262000,
+                                                            currency =
+                                                                #domain_CurrencyRef{symbolic_code = ?KZT}
+                                                        }}
+                                                }}
+                                        }
+                                    ]}
+                            }
+                    }
+            }
+        }},
+
+    {term_set_hierarchy, #domain_TermSetHierarchyRef{id = ?KZT_TERMS_ID}} =>
+        {term_set_hierarchy, #domain_TermSetHierarchyObject{
+            ref = #domain_TermSetHierarchyRef{id = ?KZT_TERMS_ID},
+            data = #domain_TermSetHierarchy{
+                term_set =
+                    #domain_TermSet{
+                        payments =
+                            #domain_PaymentsServiceTerms{
+                                payment_methods =
+                                    {value,
+                                        ordsets:from_list([
+                                            #domain_PaymentMethodRef{
+                                                id =
+                                                    {bank_card, #domain_BankCardPaymentMethod{
+                                                        payment_system = #domain_PaymentSystemRef{
+                                                            id = <<"VISA">>
+                                                        }
+                                                    }}
+                                            }
+                                        ])}
+                            }
+                    }
+            }
+        }},
+
+    {shop_config, #domain_ShopConfigRef{id = ?KZT_SHOP_ID}} =>
+        {shop_config, #domain_ShopConfigObject{
+            ref = #domain_ShopConfigRef{id = ?KZT_SHOP_ID},
+            data = #domain_ShopConfig{
+                name = ?STRING,
+                block = ?BLOCKING,
+                suspension = ?SUSPENTION,
+                payment_institution = #domain_PaymentInstitutionRef{id = ?KZT_PI_ID},
+                terms = #domain_TermSetHierarchyRef{id = ?KZT_TERMS_ID},
+                account = #domain_ShopAccount{
+                    currency = #domain_CurrencyRef{symbolic_code = ?KZT},
+                    settlement = ?INTEGER,
+                    guarantee = ?INTEGER
+                },
+                party_ref = #domain_PartyConfigRef{id = ?KZT_PARTY_ID},
+                location = ?SHOP_LOCATION,
+                category = #domain_CategoryRef{id = ?INTEGER}
             }
         }}
 }).
