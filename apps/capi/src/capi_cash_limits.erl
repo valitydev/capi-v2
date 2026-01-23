@@ -13,10 +13,6 @@
 
 -spec get_shop_limits(binary(), binary(), processing_context()) -> {ok, [map()]} | {error, not_found}.
 get_shop_limits(PartyID, ShopID, Context) ->
-    logger:debug(
-        "Cash limits computed from raw DMT selectors without varset for party=~p shop=~p",
-        [PartyID, ShopID]
-    ),
     case capi_party:get_shop(PartyID, ShopID, Context) of
         {error, not_found} ->
             {error, not_found};
@@ -49,7 +45,7 @@ get_shop_terms(TermsRef, Revision, Context) ->
 extract_payment_methods(#domain_TermSet{
     payments = #domain_PaymentsServiceTerms{payment_methods = {value, PaymentMethodRefs}}
 }) ->
-    lists:usort([ID || #domain_PaymentMethodRef{id = {ID, _}} <- PaymentMethodRefs]);
+    lists:usort([Type || #domain_PaymentMethodRef{id = {Type, _ID}} <- PaymentMethodRefs]);
 extract_payment_methods(_) ->
     [].
 
