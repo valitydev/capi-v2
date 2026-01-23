@@ -1,4 +1,10 @@
 -module(capi_cash_limits).
+%
+% ВАЖНО: расчет сделан с допущениями и НЕ покрывает ряд кейсов:
+% - selectors {decisions, _} для shop/provider/terminal не обрабатываются
+% - exclusive bounds приводятся к inclusive (границы теряют строгость)
+% - терминалы с cash_limit=decisions полностью игнорируются (нет fallback на provider)
+% - при отсутствии payment_methods ответ пустой, даже если лимит посчитан
 
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -export([get_shop_limits/3]).
@@ -223,8 +229,8 @@ intersect_optional(#{currency := Currency} = R1, #{currency := Currency} = R2) -
     intersect_ranges(R1, R2).
 
 intersect_ranges(#{lower := Lower1, upper := Upper1} = R1, #{lower := Lower2, upper := Upper2}) ->
-    Lower = max_lower(Lower1, Lower2),
-    Upper = min_upper(Upper1, Upper2),
+    Lower = max(Lower1, Lower2),
+    Upper = min(Upper1, Upper2),
     case valid_range(Lower, Upper) of
         true ->
             R1#{lower => Lower, upper => Upper};
@@ -240,39 +246,11 @@ union_optional(#{currency := Currency} = R1, #{currency := Currency} = R2) ->
     union_ranges(R1, R2).
 
 union_ranges(#{lower := Lower1, upper := Upper1} = R1, #{lower := Lower2, upper := Upper2}) ->
-    Lower = min_lower(Lower1, Lower2),
-    Upper = max_upper(Upper1, Upper2),
+    Lower = min(Lower1, Lower2),
+    Upper = max(Upper1, Upper2),
     R1#{lower => Lower, upper => Upper}.
 
-max_lower(Amount1, Amount2) when Amount1 > Amount2 ->
-    Amount1;
-max_lower(Amount1, Amount2) when Amount2 > Amount1 ->
-    Amount2;
-max_lower(Amount, Amount) ->
-    Amount.
-
-min_lower(Amount1, Amount2) when Amount1 < Amount2 ->
-    Amount1;
-min_lower(Amount1, Amount2) when Amount2 < Amount1 ->
-    Amount2;
-min_lower(Amount, Amount) ->
-    Amount.
-
-max_upper(Amount1, Amount2) when Amount1 > Amount2 ->
-    Amount1;
-max_upper(Amount1, Amount2) when Amount2 > Amount1 ->
-    Amount2;
-max_upper(Amount, Amount) ->
-    Amount.
-
-min_upper(Amount1, Amount2) when Amount1 < Amount2 ->
-    Amount1;
-min_upper(Amount1, Amount2) when Amount2 < Amount1 ->
-    Amount2;
-min_upper(Amount, Amount) ->
-    Amount.
-
-valid_range(LowerAmount, UpperAmount) when LowerAmount =< UpperAmount ->
+valid_range(LowerAmount, UpperAmount) when LowerAmount < UpperAmount ->
     true;
 valid_range(_, _) ->
     false.
