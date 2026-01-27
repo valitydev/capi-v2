@@ -64,6 +64,7 @@
     get_shops_for_party_restricted_ok_test/1,
     get_shop_by_id_for_party_error_test/1,
     get_shops_for_party_error_test/1,
+    real_config_limits_test/1,
     create_webhook_ok_test/1,
     create_webhook_limit_exceeded_test/1,
     get_webhooks/1,
@@ -143,6 +144,7 @@ groups() ->
             get_shops_for_party_ok_test,
             get_shops_for_party_restricted_ok_test,
             get_shops_for_party_error_test,
+            real_config_limits_test,
 
             create_payment_ok_test,
             create_payment_with_changed_cost_ok_test,
@@ -1228,6 +1230,15 @@ get_shops_for_party_error_test(Config) ->
         {error, {404, _}},
         capi_client_shops:get_shops_for_party(?config(context, Config), <<"WrongPartyID">>)
     ).
+
+-spec real_config_limits_test(config()) -> ok.
+real_config_limits_test(Config) ->
+    Context = ?config(context, Config),
+    {ok, [Result]} = capi_cash_limits:get_shop_limits(?KZT_PARTY_ID, ?KZT_SHOP_ID, Context),
+    ?assertEqual(#{<<"method">> => <<"BankCard">>}, maps:get(<<"paymentMethod">>, Result)),
+    ?assertEqual(<<"KZT">>, maps:get(<<"currency">>, Result)),
+    ?assertEqual(#{<<"amount">> => 10000, <<"inclusive">> => true}, maps:get(<<"lowerBound">>, Result)),
+    ?assertEqual(#{<<"amount">> => 120000000, <<"inclusive">> => true}, maps:get(<<"upperBound">>, Result)).
 
 -spec create_webhook_ok_test(config()) -> _.
 create_webhook_ok_test(Config) ->

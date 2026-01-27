@@ -54,6 +54,22 @@ prepare('GetShopByIDForParty' = OperationID, Req, Context) ->
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
+prepare('GetShopCashLimitsForParty' = OperationID, Req, Context) ->
+    PartyID = maps:get('partyID', Req),
+    ShopID = maps:get('shopID', Req),
+    Authorize = fun() ->
+        Prototypes = [{operation, #{id => OperationID, party => PartyID, shop => ShopID}}],
+        {ok, capi_auth:authorize_operation(Prototypes, Context)}
+    end,
+    Process = fun() ->
+        case capi_cash_limits:get_shop_limits(PartyID, ShopID, Context) of
+            {ok, Limits} ->
+                {ok, {200, #{}, Limits}};
+            {error, not_found} ->
+                {ok, general_error(404, <<"Shop not found">>)}
+        end
+    end,
+    {ok, #{authorize => Authorize, process => Process}};
 prepare('GetShopAccount' = _OperationID, _Req, _Context) ->
     {error, noimpl};
 prepare('ActivateShopForParty', _Req, _Context) ->
