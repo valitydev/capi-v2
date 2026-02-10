@@ -7,6 +7,7 @@
 % - при отсутствии payment_methods ответ пустой, даже если лимит посчитан
 
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
+-include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -export([get_shop_limits/3]).
 
 -type processing_context() :: capi_handler:processing_context().
@@ -22,7 +23,13 @@ get_shop_limits(PartyID, ShopID, Context) ->
             ShopTerms = get_shop_terms(Shop#domain_ShopConfig.terms, Revision, Context),
             ShopMethods = extract_payment_methods(ShopTerms),
             ShopLimit = extract_shop_limit(ShopTerms, Currency),
-            TerminalRefs = get_payment_terminal_refs(Shop#domain_ShopConfig.payment_institution, Context),
+            TerminalRefs =
+                get_payment_terminal_refs(
+                    Shop#domain_ShopConfig.payment_institution,
+                    PartyID,
+                    ShopID,
+                    Context
+                ),
             TermLimit = aggregate_terminal_limits(TerminalRefs, Currency, Context),
             EffectiveLimit = intersect_optional(ShopLimit, TermLimit),
             Limits = lists:flatmap(
@@ -68,43 +75,34 @@ extract_shop_limit(#domain_TermSet{payments = Payments}, Currency) ->
     PartialRefund = range_from_selector(PartialRefundSelector, Currency),
     pick_refund_limit(Payment, PartialRefund).
 
-get_payment_terminal_refs(PiRef, Context) ->
+get_payment_terminal_refs(PiRef, PartyID, ShopID, Context) ->
     case capi_domain:get_payment_institution(PiRef, Context) of
         {ok, #domain_PaymentInstitution{payment_routing_rules = Rules}} ->
-            lists:usort(collect_ruleset_terminals(Rules, Context));
+            case compute_routing_ruleset(Rules, PartyID, ShopID, Context) of
+                {ok, #domain_RoutingRuleset{decisions = {candidates, Candidates}}} ->
+                    lists:usort([C#domain_RoutingCandidate.terminal || C <- Candidates]);
+                _ ->
+                    []
+            end;
         _ ->
             []
     end.
 
-collect_ruleset_terminals(undefined, _Context) ->
-    [];
-collect_ruleset_terminals(#domain_RoutingRules{policies = PoliciesRef}, Context) ->
-    collect_ruleset_terminals(PoliciesRef, Context, sets:new()).
-
-collect_ruleset_terminals(#domain_RoutingRulesetRef{} = Ref, Context, Seen) ->
-    case sets:is_element(Ref, Seen) of
-        true ->
-            [];
-        false ->
-            Seen1 = sets:add_element(Ref, Seen),
-            case capi_domain:get({routing_rules, Ref}, Context) of
-                {ok, #domain_RoutingRulesObject{data = Ruleset}} ->
-                    collect_ruleset_terminals(Ruleset, Context, Seen1);
-                _ ->
-                    []
-            end
-    end;
-collect_ruleset_terminals(#domain_RoutingRuleset{decisions = Decisions}, Context, Seen) ->
-    collect_terminals_from_decisions(Decisions, Context, Seen).
-
-collect_terminals_from_decisions({candidates, Candidates}, _Context, _Seen) ->
-    [C#domain_RoutingCandidate.terminal || C <- Candidates];
-collect_terminals_from_decisions({delegates, Delegates}, Context, Seen) ->
-    lists:flatmap(
-        fun(#domain_RoutingDelegate{ruleset = Ref}) ->
-            collect_ruleset_terminals(Ref, Context, Seen)
-        end,
-        Delegates
+compute_routing_ruleset(undefined, _PartyID, _ShopID, _Context) ->
+    undefined;
+compute_routing_ruleset(#domain_RoutingRules{policies = RulesetRef}, PartyID, ShopID, Context) ->
+    Revision = capi_domain:head(),
+    Varset = #payproc_Varset{
+        party_ref = #domain_PartyConfigRef{id = PartyID},
+        shop_id = ShopID
+    },
+    #{party_client := Client, party_client_context := PartyClientContext} = Context,
+    party_client_thrift:compute_routing_ruleset(
+        RulesetRef,
+        Revision,
+        Varset,
+        Client,
+        PartyClientContext
     ).
 
 aggregate_terminal_limits([], _Currency, _Context) ->
@@ -146,12 +144,11 @@ get_terminal_limit(TerminalRef, Currency, Context) ->
 get_and_check_terminal(TerminalRef, Context) ->
     case capi_domain:get({terminal, TerminalRef}, Context) of
         {ok, #domain_TerminalObject{data = #domain_Terminal{terms = Terms} = Terminal}} ->
-            #domain_ProvisionTermSet{payments = #domain_PaymentsProvisionTerms{cash_limit = CashLimit}} = Terms,
-            case CashLimit of
-                {decisions, _} ->
-                    undefined;
+            case Terms of
+                #domain_ProvisionTermSet{payments = #domain_PaymentsProvisionTerms{cash_limit = {value, _}}} ->
+                    {ok, Terminal};
                 _ ->
-                    {ok, Terminal}
+                    undefined
             end;
         _ ->
             undefined
@@ -276,7 +273,10 @@ encode_bound(Amount) ->
     }.
 
 encode_payment_method(bank_card) ->
-    #{<<"method">> => <<"BankCard">>};
+    #{
+        <<"method">> => <<"BankCard">>,
+        <<"paymentSystems">> => []
+    };
 encode_payment_method(payment_terminal) ->
     #{<<"method">> => <<"PaymentTerminal">>};
 encode_payment_method(digital_wallet) ->
