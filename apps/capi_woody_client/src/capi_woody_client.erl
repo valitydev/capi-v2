@@ -78,7 +78,9 @@ get_service_modname(invoicing) ->
 get_service_modname(invoice_templating) ->
     {dmsl_payproc_thrift, 'InvoiceTemplating'};
 get_service_modname(webhook_manager) ->
-    {dmsl_webhooker_thrift, 'WebhookManager'}.
+    {dmsl_webhooker_thrift, 'WebhookManager'};
+get_service_modname(customer_management) ->
+    {dmsl_customer_thrift, 'CustomerManagement'}.
 
 get_service_deadline(ServiceName) ->
     ServiceDeadlines = genlib_app:env(?MODULE, service_deadlines, #{}),

@@ -103,6 +103,7 @@ get_handlers() ->
     [
         capi_handler_categories,
         capi_handler_countries,
+        capi_handler_customers,
         capi_handler_invoice_templates,
         capi_handler_invoices,
         capi_handler_parties,
@@ -308,6 +309,7 @@ set_context_meta(Context) ->
 -spec set_request_meta(operation_id(), request_data()) -> ok.
 set_request_meta(OperationID, Req) ->
     InterestParams = [
+        'customerID',
         'invoiceID',
         'invoiceTemplateID',
         'webhookID',

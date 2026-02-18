@@ -6,6 +6,7 @@
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
 -include_lib("damsel/include/dmsl_user_interaction_thrift.hrl").
+-include_lib("damsel/include/dmsl_customer_thrift.hrl").
 
 -define(RECORD_UPDATE(FieldIndex, Value, Record), erlang:setelement(FieldIndex, Record, Value)).
 
@@ -1367,6 +1368,46 @@
     <<"cart">> => [
         #{<<"product">> => ?STRING, <<"quantity">> => ?INTEGER, <<"price">> => ?INTEGER}
     ]
+}).
+
+%% Customer
+
+-define(CUSTOMER, #customer_Customer{
+    id = ?STRING,
+    party_ref = #domain_PartyConfigRef{id = ?STRING},
+    created_at = ?TIMESTAMP,
+    status = {active, #customer_CustomerActive{}},
+    contact_info = ?CONTACT_INFO,
+    metadata = {obj, #{<<"key">> => {str, <<"value">>}}}
+}).
+
+-define(CUSTOMER_STATE, #customer_CustomerState{
+    customer = ?CUSTOMER,
+    bank_card_refs = [],
+    payment_refs = []
+}).
+
+-define(CUSTOMER_PAYMENT, #customer_CustomerPayment{
+    invoice_id = ?STRING,
+    payment_id = ?STRING,
+    created_at = ?TIMESTAMP
+}).
+
+-define(CUSTOMER_PAYMENTS_RESPONSE, #customer_CustomerPaymentsResponse{
+    payments = [?CUSTOMER_PAYMENT],
+    continuation_token = undefined
+}).
+
+-define(BANK_CARD_INFO, #customer_BankCardInfo{
+    id = ?STRING,
+    card_mask = <<"424242******4242">>,
+    created_at = ?TIMESTAMP,
+    recurrent_providers = []
+}).
+
+-define(CUSTOMER_BANK_CARDS_RESPONSE, #customer_CustomerBankCardsResponse{
+    bank_cards = [?BANK_CARD_INFO],
+    continuation_token = undefined
 }).
 
 -endif.

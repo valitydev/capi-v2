@@ -30,7 +30,8 @@
     payment => entity_id(),
     refund => entity_id(),
     invoice_template => entity_id(),
-    webhook => entity_id()
+    webhook => entity_id(),
+    customer => entity_id()
 }.
 
 -type prototype_payproc() :: #{
