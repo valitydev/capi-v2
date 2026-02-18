@@ -74,7 +74,9 @@ prepare('GetCustomerByID' = OperationID, Req, Context) ->
     ResultCustomerState = get_customer_state(CustomerID, Context),
     Authorize = fun() ->
         Prototypes = [
-            {operation, #{id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID}}
+            {operation, #{
+                id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID
+            }}
         ],
         Resolution = mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context)),
         {ok, Resolution}
@@ -90,7 +92,9 @@ prepare('DeleteCustomer' = OperationID, Req, Context) ->
     ResultCustomerState = get_customer_state(CustomerID, Context),
     Authorize = fun() ->
         Prototypes = [
-            {operation, #{id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID}}
+            {operation, #{
+                id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID
+            }}
         ],
         Resolution = mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context)),
         {ok, Resolution}
@@ -111,7 +115,9 @@ prepare('CreateCustomerAccessToken' = OperationID, Req, Context) ->
     ResultCustomerState = get_customer_state(CustomerID, Context),
     Authorize = fun() ->
         Prototypes = [
-            {operation, #{id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID}}
+            {operation, #{
+                id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID
+            }}
         ],
         Resolution = mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context)),
         {ok, Resolution}
@@ -128,7 +134,9 @@ prepare('GetCustomerPayments' = OperationID, Req, Context) ->
     ResultCustomerState = get_customer_state(CustomerID, Context),
     Authorize = fun() ->
         Prototypes = [
-            {operation, #{id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID}}
+            {operation, #{
+                id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID
+            }}
         ],
         Resolution = mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context)),
         {ok, Resolution}
@@ -155,7 +163,9 @@ prepare('GetCustomerBankCards' = OperationID, Req, Context) ->
     ResultCustomerState = get_customer_state(CustomerID, Context),
     Authorize = fun() ->
         Prototypes = [
-            {operation, #{id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID}}
+            {operation, #{
+                id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID
+            }}
         ],
         Resolution = mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context)),
         {ok, Resolution}

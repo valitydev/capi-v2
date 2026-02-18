@@ -202,10 +202,12 @@ get_customer_by_external_id_not_found_test(Config) ->
 -spec delete_customer_ok_test(config()) -> _.
 delete_customer_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
-        [{customer_management, fun
-            ('Get', _) -> {ok, ?CUSTOMER_STATE};
-            ('Delete', _) -> {ok, ok}
-        end}],
+        [
+            {customer_management, fun
+                ('Get', _) -> {ok, ?CUSTOMER_STATE};
+                ('Delete', _) -> {ok, ok}
+            end}
+        ],
         Config
     ),
     _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"DeleteCustomer">>, ?STRING, Config),
@@ -224,10 +226,12 @@ create_customer_access_token_ok_test(Config) ->
 -spec get_customer_payments_ok_test(config()) -> _.
 get_customer_payments_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
-        [{customer_management, fun
-            ('Get', _) -> {ok, ?CUSTOMER_STATE};
-            ('GetPayments', _) -> {ok, ?CUSTOMER_PAYMENTS_RESPONSE}
-        end}],
+        [
+            {customer_management, fun
+                ('Get', _) -> {ok, ?CUSTOMER_STATE};
+                ('GetPayments', _) -> {ok, ?CUSTOMER_PAYMENTS_RESPONSE}
+            end}
+        ],
         Config
     ),
     _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetCustomerPayments">>, ?STRING, Config),
@@ -241,10 +245,12 @@ get_customer_payments_ok_test(Config) ->
 -spec get_customer_bank_cards_ok_test(config()) -> _.
 get_customer_bank_cards_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
-        [{customer_management, fun
-            ('Get', _) -> {ok, ?CUSTOMER_STATE};
-            ('GetBankCards', _) -> {ok, ?CUSTOMER_BANK_CARDS_RESPONSE}
-        end}],
+        [
+            {customer_management, fun
+                ('Get', _) -> {ok, ?CUSTOMER_STATE};
+                ('GetBankCards', _) -> {ok, ?CUSTOMER_BANK_CARDS_RESPONSE}
+            end}
+        ],
         Config
     ),
     _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetCustomerBankCards">>, ?STRING, Config),
