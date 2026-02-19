@@ -131,6 +131,7 @@
 -define(PAYPROC_INVOICE(Payments), ?PAYPROC_INVOICE(?INVOICE, Payments)).
 
 -define(PAYPROC_INVOICE(Invoice, Payments), #payproc_Invoice{
+    latest_event_id = ?INTEGER,
     invoice = Invoice,
     payments = Payments
 }).
@@ -142,6 +143,7 @@
 -define(PAYPROC_INVOICE_WITH_ID(ID, EID), ?PAYPROC_INVOICE_WITH_ID(ID, EID, ?STRING)).
 
 -define(PAYPROC_INVOICE_WITH_ID(ID, EID, OwnerID), #payproc_Invoice{
+    latest_event_id = ?INTEGER,
     invoice = ?INVOICE(ID, EID, OwnerID),
     payments = []
 }).
