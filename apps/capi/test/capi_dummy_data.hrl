@@ -39,8 +39,10 @@
 -define(KZT_PROHIBITIONS_ID, 1060).
 -define(KZT_PROVIDER_8_ID, 8).
 -define(KZT_PROVIDER_9_ID, 9).
+-define(KZT_PROVIDER_10_ID, 10).
 -define(KZT_TERMINAL_15_ID, 15).
 -define(KZT_TERMINAL_16_ID, 16).
+-define(KZT_TERMINAL_17_ID, 17).
 
 -define(RATIONAL, #base_Rational{p = ?INTEGER, q = ?INTEGER}).
 
@@ -968,6 +970,49 @@
             }
         }},
 
+    %% Провайдер с global_allow=false — для теста блокировки терминала
+    {provider, #domain_ProviderRef{id = ?KZT_PROVIDER_10_ID}} =>
+        {provider, #domain_ProviderObject{
+            ref = #domain_ProviderRef{id = ?KZT_PROVIDER_10_ID},
+            data = #domain_Provider{
+                name = ?STRING,
+                description = ?STRING,
+                proxy = #domain_Proxy{ref = #domain_ProxyRef{id = ?INTEGER}, additional = #{}},
+                realm = test,
+                terms =
+                    #domain_ProvisionTermSet{
+                        payments =
+                            #domain_PaymentsProvisionTerms{
+                                allow = {constant, true},
+                                global_allow = {constant, false},
+                                payment_methods =
+                                    {value, [
+                                        #domain_PaymentMethodRef{
+                                            id =
+                                                {bank_card, #domain_BankCardPaymentMethod{
+                                                    payment_system = #domain_PaymentSystemRef{id = <<"VISA">>},
+                                                    is_cvv_empty = false
+                                                }}
+                                        }
+                                    ]},
+                                cash_limit =
+                                    {value, #domain_CashRange{
+                                        lower =
+                                            {inclusive, #domain_Cash{
+                                                amount = 50000,
+                                                currency = #domain_CurrencyRef{symbolic_code = ?KZT}
+                                            }},
+                                        upper =
+                                            {inclusive, #domain_Cash{
+                                                amount = 50000000,
+                                                currency = #domain_CurrencyRef{symbolic_code = ?KZT}
+                                            }}
+                                    }}
+                            }
+                    }
+            }
+        }},
+
     {terminal, #domain_TerminalRef{id = ?KZT_TERMINAL_15_ID}} =>
         {terminal, #domain_TerminalObject{
             ref = #domain_TerminalRef{id = ?KZT_TERMINAL_15_ID},
@@ -1064,6 +1109,48 @@
                                                 }}
                                         }
                                     ]}
+                            }
+                    }
+            }
+        }},
+
+    %% Терминал с провайдером global_allow=false — для теста блокировки
+    {terminal, #domain_TerminalRef{id = ?KZT_TERMINAL_17_ID}} =>
+        {terminal, #domain_TerminalObject{
+            ref = #domain_TerminalRef{id = ?KZT_TERMINAL_17_ID},
+            data = #domain_Terminal{
+                name = ?STRING,
+                description = ?STRING,
+                provider_ref = #domain_ProviderRef{id = ?KZT_PROVIDER_10_ID},
+                terms =
+                    #domain_ProvisionTermSet{
+                        payments =
+                            #domain_PaymentsProvisionTerms{
+                                allow = {constant, true},
+                                global_allow = {constant, true},
+                                payment_methods =
+                                    {value, [
+                                        #domain_PaymentMethodRef{
+                                            id =
+                                                {bank_card, #domain_BankCardPaymentMethod{
+                                                    payment_system = #domain_PaymentSystemRef{id = <<"VISA">>},
+                                                    is_cvv_empty = false
+                                                }}
+                                        }
+                                    ]},
+                                cash_limit =
+                                    {value, #domain_CashRange{
+                                        lower =
+                                            {inclusive, #domain_Cash{
+                                                amount = 50000,
+                                                currency = #domain_CurrencyRef{symbolic_code = ?KZT}
+                                            }},
+                                        upper =
+                                            {inclusive, #domain_Cash{
+                                                amount = 50000000,
+                                                currency = #domain_CurrencyRef{symbolic_code = ?KZT}
+                                            }}
+                                    }}
                             }
                     }
             }
