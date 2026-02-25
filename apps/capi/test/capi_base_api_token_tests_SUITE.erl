@@ -65,6 +65,8 @@
     get_shop_by_id_for_party_error_test/1,
     get_shops_for_party_error_test/1,
     get_shop_limits_for_party_ok_test/1,
+    get_shop_limits_candidate_allowed_false_test/1,
+    get_shop_limits_provider_blocks_terminal_test/1,
     create_webhook_ok_test/1,
     create_webhook_limit_exceeded_test/1,
     get_webhooks/1,
@@ -145,6 +147,8 @@ groups() ->
             get_shops_for_party_restricted_ok_test,
             get_shops_for_party_error_test,
             get_shop_limits_for_party_ok_test,
+            get_shop_limits_candidate_allowed_false_test,
+            get_shop_limits_provider_blocks_terminal_test,
 
             create_payment_ok_test,
             create_payment_with_changed_cost_ok_test,
@@ -1270,6 +1274,76 @@ get_shop_limits_for_party_ok_test(Config) ->
     ?assertEqual(<<"KZT">>, maps:get(<<"currency">>, Result)),
     ?assertEqual(#{<<"amount">> => 10000, <<"inclusive">> => true}, maps:get(<<"lowerBound">>, Result)),
     ?assertEqual(#{<<"amount">> => 120000000, <<"inclusive">> => true}, maps:get(<<"upperBound">>, Result)).
+
+-spec get_shop_limits_candidate_allowed_false_test(config()) -> ok.
+get_shop_limits_candidate_allowed_false_test(Config) ->
+    Context = ?config(context, Config),
+    TestRuleset = #domain_RoutingRuleset{
+        name = <<"mock-ruleset">>,
+        description = <<"mocked for cash limits test">>,
+        decisions =
+            {candidates, [
+                #domain_RoutingCandidate{
+                    allowed = {constant, true},
+                    terminal = #domain_TerminalRef{id = ?KZT_TERMINAL_15_ID}
+                },
+                #domain_RoutingCandidate{
+                    allowed = {constant, false},
+                    terminal = #domain_TerminalRef{id = ?KZT_TERMINAL_16_ID}
+                }
+            ]}
+    },
+    _ = capi_ct_helper:mock_services(
+        [
+            {party_management, fun('ComputeRoutingRuleset', _) ->
+                {ok, TestRuleset}
+            end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(
+        <<"GetShopCashLimitsForParty">>,
+        ?KZT_PARTY_ID,
+        ?KZT_SHOP_ID,
+        Config
+    ),
+    {ok, [Result]} = capi_client_shops:get_shop_cash_limits_for_party(Context, ?KZT_PARTY_ID, ?KZT_SHOP_ID),
+    PaymentMethod = maps:get(<<"paymentMethod">>, Result),
+    ?assertEqual(<<"BankCard">>, maps:get(<<"method">>, PaymentMethod)),
+    ?assertEqual([], maps:get(<<"paymentSystems">>, PaymentMethod)),
+    ?assertEqual(<<"KZT">>, maps:get(<<"currency">>, Result)),
+    ?assertEqual(#{<<"amount">> => 10000, <<"inclusive">> => true}, maps:get(<<"lowerBound">>, Result)),
+    ?assertEqual(#{<<"amount">> => 120000000, <<"inclusive">> => true}, maps:get(<<"upperBound">>, Result)).
+
+-spec get_shop_limits_provider_blocks_terminal_test(config()) -> ok.
+get_shop_limits_provider_blocks_terminal_test(Config) ->
+    Context = ?config(context, Config),
+    TestRuleset = #domain_RoutingRuleset{
+        name = <<"mock-ruleset">>,
+        description = <<"mocked for cash limits test">>,
+        decisions =
+            {candidates, [
+                #domain_RoutingCandidate{
+                    allowed = {constant, true},
+                    terminal = #domain_TerminalRef{id = ?KZT_TERMINAL_17_ID}
+                }
+            ]}
+    },
+    _ = capi_ct_helper:mock_services(
+        [
+            {party_management, fun('ComputeRoutingRuleset', _) ->
+                {ok, TestRuleset}
+            end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(
+        <<"GetShopCashLimitsForParty">>,
+        ?KZT_PARTY_ID,
+        ?KZT_SHOP_ID,
+        Config
+    ),
+    ?assertMatch({ok, []}, capi_client_shops:get_shop_cash_limits_for_party(Context, ?KZT_PARTY_ID, ?KZT_SHOP_ID)).
 
 -spec create_webhook_ok_test(config()) -> _.
 create_webhook_ok_test(Config) ->
