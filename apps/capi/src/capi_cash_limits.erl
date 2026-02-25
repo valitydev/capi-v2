@@ -100,6 +100,8 @@ get_payment_terminal_refs(PiRef, PartyID, ShopID, Context) ->
 
 predicate_allowed({constant, false}) ->
     false;
+predicate_allowed({all_of, List}) when is_list(List) ->
+    lists:all(fun predicate_allowed/1, List);
 predicate_allowed(_) ->
     true.
 
@@ -338,6 +340,9 @@ predicate_allowed_constant_false_test() ->
 -spec predicate_allowed_other_predicates_test() -> _.
 predicate_allowed_other_predicates_test() ->
     ?assertEqual(true, predicate_allowed({all_of, []})),
+    ?assertEqual(true, predicate_allowed({all_of, [{constant, true}, {constant, true}]})),
+    ?assertEqual(false, predicate_allowed({all_of, [{constant, true}, {constant, false}]})),
+    ?assertEqual(false, predicate_allowed({all_of, [{all_of, [{constant, true}, {constant, false}]}]})),
     ?assertEqual(true, predicate_allowed({any_of, []})),
     ?assertEqual(true, predicate_allowed({condition, []})).
 

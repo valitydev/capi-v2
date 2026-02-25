@@ -1343,7 +1343,7 @@ get_shop_limits_provider_blocks_terminal_test(Config) ->
         ?KZT_SHOP_ID,
         Config
     ),
-    {ok, []} = capi_client_shops:get_shop_cash_limits_for_party(Context, ?KZT_PARTY_ID, ?KZT_SHOP_ID).
+    ?assertMatch({ok, []}, capi_client_shops:get_shop_cash_limits_for_party(Context, ?KZT_PARTY_ID, ?KZT_SHOP_ID)).
 
 -spec create_webhook_ok_test(config()) -> _.
 create_webhook_ok_test(Config) ->
