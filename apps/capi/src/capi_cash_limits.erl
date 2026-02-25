@@ -153,13 +153,13 @@ get_terminal_limit(TerminalRef, Currency, Context) ->
     end.
 
 compute_terminal_limit(
-    #domain_ProvisionTermSet{payments = #domain_PaymentsProvisionTerms{cash_limit = {value, _}}} = Terms,
+    #domain_ProvisionTermSet{payments = #domain_PaymentsProvisionTerms{cash_limit = {value, _}}} = TerminalTerms,
     ProviderTerms,
     Currency
 ) ->
-    case terminal_and_provider_allowed(Terms#domain_ProvisionTermSet.payments, ProviderTerms) of
+    case terminal_and_provider_allowed(TerminalTerms#domain_ProvisionTermSet.payments, ProviderTerms) of
         true ->
-            case extract_provider_limit(Terms, Currency) of
+            case extract_provider_limit(TerminalTerms, Currency) of
                 undefined ->
                     extract_provider_limit(ProviderTerms, Currency);
                 Limit ->
