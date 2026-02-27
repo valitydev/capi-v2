@@ -90,7 +90,8 @@ build(operation, #{id := OperationID} = Params, Acc, _WoodyCtx) ->
                 payment = maybe_entity(payment, Params),
                 refund = maybe_entity(refund, Params),
                 invoice_template = maybe_entity(invoice_template, Params),
-                webhook = maybe_entity(webhook, Params)
+                webhook = maybe_entity(webhook, Params),
+                customer = maybe_entity(customer, Params)
             }
         }
     };
