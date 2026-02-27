@@ -73,6 +73,8 @@ apply_retry_step({wait, Timeout, Retry}, Deadline0, Error) ->
     end.
 
 -spec get_service_modname(service_name()) -> woody:service().
+get_service_modname(inspector) ->
+    {fb_proto_fraudbusters_thrift, 'InspectorService'};
 get_service_modname(invoicing) ->
     {dmsl_payproc_thrift, 'Invoicing'};
 get_service_modname(invoice_templating) ->
