@@ -44,10 +44,10 @@ get_cowboy_config(AdditionalRoutes, LogicHandler, SwaggerHandlerOpts) ->
             cors_policy => capi_cors_policy
         },
         middlewares => [
+            capi_otel_middleware,
             cowboy_router,
             cowboy_cors,
-            cowboy_handler,
-            capi_otel_middleware
+            cowboy_handler
         ],
         stream_handlers => [
             cowboy_access_log_h,
