@@ -5,6 +5,11 @@
 % - exclusive bounds приводятся к inclusive (границы теряют строгость)
 % - терминалы с cash_limit=decisions полностью игнорируются (нет fallback на provider)
 % - при отсутствии payment_methods ответ пустой, даже если лимит посчитан
+%
+% Учитываются allow и global_allow:
+% - {constant, true} -> разрешено, {constant, false} -> запрещено
+% - остальные предикаты (all_of, any_of и т.д.) -> по умолчанию разрешено
+% - global_allow у провайдера при false запрещает все терминалы провайдера
 
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
@@ -80,13 +85,25 @@ get_payment_terminal_refs(PiRef, PartyID, ShopID, Context) ->
         {ok, #domain_PaymentInstitution{payment_routing_rules = Rules}} ->
             case compute_routing_ruleset(Rules, PartyID, ShopID, Context) of
                 {ok, #domain_RoutingRuleset{decisions = {candidates, Candidates}}} ->
-                    lists:usort([C#domain_RoutingCandidate.terminal || C <- Candidates]);
+                    AllowedCandidates = [
+                        C#domain_RoutingCandidate.terminal
+                     || C <- Candidates,
+                        predicate_allowed(C#domain_RoutingCandidate.allowed)
+                    ],
+                    lists:usort(AllowedCandidates);
                 _ ->
                     []
             end;
         _ ->
             []
     end.
+
+predicate_allowed({constant, false}) ->
+    false;
+predicate_allowed({all_of, List}) when is_list(List) ->
+    lists:all(fun predicate_allowed/1, List);
+predicate_allowed(_) ->
+    true.
 
 compute_routing_ruleset(undefined, _PartyID, _ShopID, _Context) ->
     undefined;
@@ -127,31 +144,45 @@ log_terminal_terms(TerminalRef, Limit) ->
     ).
 
 get_terminal_limit(TerminalRef, Currency, Context) ->
-    case get_and_check_terminal(TerminalRef, Context) of
-        {ok, #domain_Terminal{provider_ref = ProviderRef, terms = TerminalTerms}} ->
-            TerminalLimit = extract_provider_limit(TerminalTerms, Currency),
-            case TerminalLimit of
-                undefined ->
-                    ProviderTerms = get_provider_terms(ProviderRef, Context),
-                    extract_provider_limit(ProviderTerms, Currency);
-                _ ->
-                    TerminalLimit
-            end;
+    case capi_domain:get({terminal, TerminalRef}, Context) of
+        {ok, #domain_TerminalObject{data = #domain_Terminal{provider_ref = ProviderRef, terms = Terms}}} ->
+            ProviderTerms = get_provider_terms(ProviderRef, Context),
+            compute_terminal_limit(Terms, ProviderTerms, Currency);
         _ ->
             undefined
     end.
 
-get_and_check_terminal(TerminalRef, Context) ->
-    case capi_domain:get({terminal, TerminalRef}, Context) of
-        {ok, #domain_TerminalObject{data = #domain_Terminal{terms = Terms} = Terminal}} ->
-            case Terms of
-                #domain_ProvisionTermSet{payments = #domain_PaymentsProvisionTerms{cash_limit = {value, _}}} ->
-                    {ok, Terminal};
-                _ ->
-                    undefined
+compute_terminal_limit(
+    #domain_ProvisionTermSet{payments = #domain_PaymentsProvisionTerms{cash_limit = {value, _}}} = TerminalTerms,
+    ProviderTerms,
+    Currency
+) ->
+    case terminal_and_provider_allowed(TerminalTerms#domain_ProvisionTermSet.payments, ProviderTerms) of
+        true ->
+            case extract_provider_limit(TerminalTerms, Currency) of
+                undefined ->
+                    extract_provider_limit(ProviderTerms, Currency);
+                Limit ->
+                    Limit
             end;
-        _ ->
+        false ->
             undefined
+    end;
+compute_terminal_limit(_, _ProviderTerms, _Currency) ->
+    undefined.
+
+-spec terminal_and_provider_allowed(term(), term()) -> boolean().
+terminal_and_provider_allowed(TerminalPayments, ProviderTerms) ->
+    TerminalAllowed = predicate_allowed(TerminalPayments#domain_PaymentsProvisionTerms.allow),
+    TerminalGlobalAllowed = predicate_allowed(TerminalPayments#domain_PaymentsProvisionTerms.global_allow),
+    case ProviderTerms of
+        #domain_ProvisionTermSet{payments = #domain_PaymentsProvisionTerms{} = ProviderPayments} ->
+            %% global_allow провайдера при false запрещает все терминалы
+            ProviderGlobalAllowed = predicate_allowed(ProviderPayments#domain_PaymentsProvisionTerms.global_allow),
+            ProviderAllowed = predicate_allowed(ProviderPayments#domain_PaymentsProvisionTerms.allow),
+            TerminalAllowed andalso TerminalGlobalAllowed andalso ProviderGlobalAllowed andalso ProviderAllowed;
+        _ ->
+            TerminalAllowed andalso TerminalGlobalAllowed
     end.
 
 get_provider_terms(ProviderRef, Context) ->
@@ -285,3 +316,98 @@ encode_payment_method(crypto_currency) ->
     #{<<"method">> => <<"CryptoWallet">>};
 encode_payment_method(mobile) ->
     #{<<"method">> => <<"MobileCommerce">>}.
+
+%%%
+%%% EUnit tests
+%%%
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+-spec test() -> _.
+
+-spec predicate_allowed_undefined_test() -> _.
+predicate_allowed_undefined_test() ->
+    ?assertEqual(true, predicate_allowed(undefined)).
+
+-spec predicate_allowed_constant_true_test() -> _.
+predicate_allowed_constant_true_test() ->
+    ?assertEqual(true, predicate_allowed({constant, true})).
+
+-spec predicate_allowed_constant_false_test() -> _.
+predicate_allowed_constant_false_test() ->
+    ?assertEqual(false, predicate_allowed({constant, false})).
+
+-spec predicate_allowed_other_predicates_test() -> _.
+predicate_allowed_other_predicates_test() ->
+    ?assertEqual(true, predicate_allowed({all_of, []})),
+    ?assertEqual(true, predicate_allowed({all_of, [{constant, true}, {constant, true}]})),
+    ?assertEqual(false, predicate_allowed({all_of, [{constant, true}, {constant, false}]})),
+    ?assertEqual(false, predicate_allowed({all_of, [{all_of, [{constant, true}, {constant, false}]}]})),
+    ?assertEqual(true, predicate_allowed({any_of, []})),
+    ?assertEqual(true, predicate_allowed({condition, []})).
+
+-spec terminal_and_provider_allowed_all_true_test() -> _.
+terminal_and_provider_allowed_all_true_test() ->
+    TerminalPayments = #domain_PaymentsProvisionTerms{
+        allow = {constant, true},
+        global_allow = {constant, true}
+    },
+    ProviderTerms = #domain_ProvisionTermSet{
+        payments = #domain_PaymentsProvisionTerms{
+            allow = {constant, true},
+            global_allow = {constant, true}
+        }
+    },
+    ?assertEqual(true, terminal_and_provider_allowed(TerminalPayments, ProviderTerms)).
+
+-spec terminal_and_provider_allowed_terminal_allow_false_test() -> _.
+terminal_and_provider_allowed_terminal_allow_false_test() ->
+    TerminalPayments = #domain_PaymentsProvisionTerms{
+        allow = {constant, false},
+        global_allow = {constant, true}
+    },
+    ProviderTerms = #domain_ProvisionTermSet{
+        payments = #domain_PaymentsProvisionTerms{
+            allow = {constant, true},
+            global_allow = {constant, true}
+        }
+    },
+    ?assertEqual(false, terminal_and_provider_allowed(TerminalPayments, ProviderTerms)).
+
+-spec terminal_and_provider_allowed_provider_global_allow_false_test() -> _.
+terminal_and_provider_allowed_provider_global_allow_false_test() ->
+    TerminalPayments = #domain_PaymentsProvisionTerms{
+        allow = {constant, true},
+        global_allow = {constant, true}
+    },
+    ProviderTerms = #domain_ProvisionTermSet{
+        payments = #domain_PaymentsProvisionTerms{
+            allow = {constant, true},
+            global_allow = {constant, false}
+        }
+    },
+    ?assertEqual(false, terminal_and_provider_allowed(TerminalPayments, ProviderTerms)).
+
+-spec terminal_and_provider_allowed_provider_allow_false_test() -> _.
+terminal_and_provider_allowed_provider_allow_false_test() ->
+    TerminalPayments = #domain_PaymentsProvisionTerms{
+        allow = {constant, true},
+        global_allow = {constant, true}
+    },
+    ProviderTerms = #domain_ProvisionTermSet{
+        payments = #domain_PaymentsProvisionTerms{
+            allow = {constant, false},
+            global_allow = {constant, true}
+        }
+    },
+    ?assertEqual(false, terminal_and_provider_allowed(TerminalPayments, ProviderTerms)).
+
+-spec terminal_and_provider_allowed_provider_undefined_test() -> _.
+terminal_and_provider_allowed_provider_undefined_test() ->
+    TerminalPayments = #domain_PaymentsProvisionTerms{
+        allow = {constant, true},
+        global_allow = {constant, true}
+    },
+    ?assertEqual(true, terminal_and_provider_allowed(TerminalPayments, undefined)).
+
+-endif.
