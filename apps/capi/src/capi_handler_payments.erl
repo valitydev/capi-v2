@@ -47,8 +47,6 @@ prepare('CreatePayment' = OperationID, Req, Context) ->
                     {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
                 {exception, #payproc_InvalidShopStatus{}} ->
                     {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)};
-                {exception, #payproc_InvalidContractStatus{}} ->
-                    {ok, logic_error('invalidContractStatus', <<"Invalid contract status">>)};
                 {exception, #payproc_InvalidRecurrentParentPayment{}} ->
                     {ok, logic_error('invalidRecurrentParent', <<"Specified recurrent parent is invalid">>)};
                 {exception, #payproc_InvoiceNotFound{}} ->
@@ -145,7 +143,7 @@ prepare('CapturePayment' = OperationID, Req, Context) ->
     InvoiceID = maps:get('invoiceID', Req),
     PaymentID = maps:get('paymentID', Req),
     Invoice = get_invoice_by_id(InvoiceID, Context),
-    PartyID = Invoice#payproc_Invoice.invoice#domain_Invoice.owner_id,
+    PartyID = Invoice#payproc_Invoice.invoice#domain_Invoice.party_ref#domain_PartyConfigRef.id,
     Authorize = fun() ->
         Prototypes = [
             {operation, #{id => OperationID, invoice => InvoiceID, payment => PaymentID}},
@@ -254,7 +252,7 @@ prepare('CreateRefund' = OperationID, Req, Context) ->
     PaymentID = maps:get('paymentID', Req),
     RefundParams = maps:get('RefundParams', Req),
     Invoice = get_invoice_by_id(InvoiceID, Context),
-    PartyID = Invoice#payproc_Invoice.invoice#domain_Invoice.owner_id,
+    PartyID = Invoice#payproc_Invoice.invoice#domain_Invoice.party_ref#domain_PartyConfigRef.id,
     Authorize = fun() ->
         Prototypes = [
             {operation, #{id => OperationID, invoice => InvoiceID, payment => PaymentID}},
@@ -277,8 +275,6 @@ prepare('CreateRefund' = OperationID, Req, Context) ->
                 {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
             {exception, #payproc_InvalidShopStatus{}} ->
                 {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)};
-            {exception, #payproc_InvalidContractStatus{}} ->
-                {ok, logic_error('invalidContractStatus', <<"Invalid contract status">>)};
             {exception, #payproc_OperationNotPermitted{}} ->
                 {ok, logic_error('operationNotPermitted', <<"Operation not permitted">>)};
             {exception, #payproc_InvalidPaymentStatus{}} ->
@@ -493,7 +489,7 @@ create_payment(Invoice, PaymentParams, Context, OperationID) ->
 
 create_payment_id(Invoice, PaymentParams0, Context, OperationID, PaymentToolThrift) ->
     InvoiceID = Invoice#domain_Invoice.id,
-    PartyID = Invoice#domain_Invoice.owner_id,
+    PartyID = Invoice#domain_Invoice.party_ref#domain_PartyConfigRef.id,
     Payer = maps:get(<<"payer">>, PaymentParams0),
     PaymentTool = capi_utils:'maybe'(PaymentToolThrift, fun capi_handler_decoder_invoicing:decode_payment_tool/1),
     PaymentParams = PaymentParams0#{
@@ -569,14 +565,6 @@ encode_invoice_payment_params(ID, ExternalID, PaymentParams, PaymentTool) ->
         )
     }.
 
-encode_payer_params(
-    #{
-        <<"payerType">> := <<"CustomerPayer">>,
-        <<"customerID">> := ID
-    },
-    _
-) ->
-    {customer, #payproc_CustomerPayerParams{customer_id = ID}};
 encode_payer_params(
     #{
         <<"payerType">> := <<"PaymentResourcePayer">>,

@@ -15,6 +15,7 @@
         woody,
         capi_woody_client,
         damsel,
+        fraudbusters_proto,
         lechiffre,
         bender_proto,
         bender_client,
@@ -30,7 +31,6 @@
         bouncer_client,
         token_keeper_client,
         party_client,
-        magista_proto,
         opentelemetry_api,
         opentelemetry_exporter,
         opentelemetry

@@ -7,6 +7,7 @@
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 
 -include_lib("capi_dummy_data.hrl").
+-include_lib("stdlib/include/assert.hrl").
 
 -export([all/0]).
 -export([groups/0]).
@@ -22,7 +23,8 @@
 -export([
     oops_body_test/1,
     schema_param_validation/1,
-    query_param_validation/1
+    query_param_validation/1,
+    amzn_xray_header_for_otel_ctx/1
 ]).
 
 -type test_case_name() :: atom().
@@ -53,6 +55,9 @@ groups() ->
         {validation_tests, [], [
             schema_param_validation,
             query_param_validation
+        ]},
+        {middleware_tests, [], [
+            amzn_xray_header_for_otel_ctx
         ]}
     ].
 
@@ -74,7 +79,9 @@ end_per_suite(C) ->
     ok.
 
 -spec init_per_group(group_name(), config()) -> config().
-init_per_group(GroupName, Config) when stream_handler_tests =:= GroupName; validation_tests =:= GroupName ->
+init_per_group(GroupName, Config) when
+    stream_handler_tests =:= GroupName; validation_tests =:= GroupName; middleware_tests =:= GroupName
+->
     Context = capi_ct_helper:get_context(?API_TOKEN),
     SupPid = capi_ct_helper:start_mocked_service_sup(?MODULE),
     Apps1 = capi_ct_helper_token_keeper:mock_user_session_token(SupPid),
@@ -89,10 +96,41 @@ end_per_group(_Group, C) ->
     ok.
 
 -spec init_per_testcase(test_case_name(), config()) -> config().
+init_per_testcase(amzn_xray_header_for_otel_ctx, C) ->
+    AmznXrayTraceId = <<"1-67891233-abcdef012345678912345678">>,
+    ExpectedTraceId = "67891233abcdef012345678912345678",
+    meck:expect(capi_client_lib, make_request, fun(Context, Params) ->
+        {Url, PreparedParams, Opts} = meck:passthrough([Context, Params]),
+        UpdFun = fun(Headers) ->
+            Headers#{
+                <<"X-Amzn-Trace-Id">> =>
+                    <<"Root=", AmznXrayTraceId/binary, ";Parent=53995c3f42cd8ad8;Sampled=1">>
+            }
+        end,
+        {Url, maps:update_with(header, UpdFun, PreparedParams), Opts}
+    end),
+    TestProcess = self(),
+    meck:expect(otel_ctx, get_current, fun() ->
+        OtelCtx = meck:passthrough([]),
+        SpanCtx = otel_tracer:current_span_ctx(OtelCtx),
+        TestProcess ! {otel_span_info, otel_span:hex_span_ctx(SpanCtx)},
+        OtelCtx
+    end),
+    [
+        {amzn_xray_trace_id, AmznXrayTraceId},
+        {expected_trace_id, ExpectedTraceId},
+        {test_sup, capi_ct_helper:start_mocked_service_sup(?MODULE)}
+        | C
+    ];
 init_per_testcase(_Name, C) ->
     [{test_sup, capi_ct_helper:start_mocked_service_sup(?MODULE)} | C].
 
 -spec end_per_testcase(test_case_name(), config()) -> _.
+end_per_testcase(amzn_xray_header_for_otel_ctx, C) ->
+    _ = capi_ct_helper:stop_mocked_service_sup(?config(test_sup, C)),
+    meck:unload(otel_ctx),
+    meck:unload(capi_client_lib),
+    ok;
 end_per_testcase(_Name, C) ->
     _ = capi_ct_helper:stop_mocked_service_sup(?config(test_sup, C)),
     ok.
@@ -105,7 +143,7 @@ oops_body_test(Config) ->
     Context = ?config(context, Config),
     Params = #{binding => #{<<"invoiceID">> => ?STRING}},
     {Endpoint, PreparedParams, Opts0} = capi_client_lib:make_request(Context, Params),
-    Url = swag_client_utils:get_url(Endpoint, "/v2/processing/me"),
+    Url = swag_client_utils:get_url(Endpoint, "/v2/processing/invoices/" ++ binary_to_list(?STRING)),
     Headers = maps:to_list(maps:get(header, PreparedParams)),
     Body = <<"{}">>,
     Opts = Opts0 ++ [with_body],
@@ -143,3 +181,17 @@ schema_param_validation(Config) ->
 query_param_validation(Config) ->
     {error, {request_validation_failed, _}} =
         capi_client_invoices:get_invoice_by_external_id(?config(context, Config), <<"">>).
+
+-spec amzn_xray_header_for_otel_ctx(config()) -> _.
+amzn_xray_header_for_otel_ctx(Config) ->
+    _ = oops_body_test(Config),
+    ExpectedTraceId = ?config(expected_trace_id, Config),
+    ?assertMatch(#{otel_trace_id := ExpectedTraceId}, await_latest_otel_span_info(1_000, #{})).
+
+await_latest_otel_span_info(Timeout, LastValue) ->
+    receive
+        {otel_span_info, HexSpanCtx} ->
+            await_latest_otel_span_info(Timeout, HexSpanCtx)
+    after Timeout ->
+        LastValue
+    end.

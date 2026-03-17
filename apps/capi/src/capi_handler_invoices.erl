@@ -45,7 +45,7 @@ prepare('CreateInvoice' = OperationID, Req, Context) ->
                 {exception, #payproc_InvalidShopStatus{}} ->
                     {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)};
                 {exception, #payproc_InvoiceTermsViolated{}} ->
-                    {ok, logic_error('invoiceTermsViolated', <<"Invoice parameters violate contract terms">>)};
+                    {ok, logic_error('invoiceTermsViolated', <<"Invoice parameters violate terms">>)};
                 {exception, #payproc_AllocationNotAllowed{}} ->
                     {ok, logic_error('allocationNotPermitted', <<"Not allowed">>)};
                 {exception, #payproc_AllocationExceededPaymentAmount{}} ->
@@ -239,11 +239,7 @@ prepare('GetInvoicePaymentMethods' = OperationID, Req, Context) ->
     end,
     Process = fun() ->
         capi_handler:respond_if_undefined(ResultInvoice, general_error(404, <<"Invoice not found">>)),
-        PartyID = ResultInvoice#payproc_Invoice.invoice#domain_Invoice.owner_id,
-        % В данном контексте - Party не может не существовать
-        {ok, Party} = capi_party:get_party(PartyID, Context),
-        Args = {InvoiceID, {revision, Party#domain_Party.revision}},
-        case capi_handler_utils:get_payment_methods(invoicing, Args, Context) of
+        case capi_handler_utils:get_payment_methods(invoicing, {InvoiceID}, Context) of
             {ok, PaymentMethodRefs} ->
                 #payproc_Invoice{invoice = Invoice} = ResultInvoice,
                 PaymentMethods0 = capi_handler_decoder_invoicing:decode_payment_methods(PaymentMethodRefs),
@@ -283,12 +279,12 @@ encode_invoice_params(ID, PartyID, InvoiceParams) ->
     Allocation = genlib_map:get(<<"allocation">>, InvoiceParams),
     #payproc_InvoiceParams{
         id = ID,
-        party_id = PartyID,
+        party_id = #domain_PartyConfigRef{id = PartyID},
         details = encode_invoice_details(InvoiceParams),
         cost = encode_invoice_cost(Amount, Currency, Cart),
         due = capi_handler_utils:get_time(<<"dueDate">>, InvoiceParams),
         context = capi_handler_encoder:encode_invoice_context(InvoiceParams),
-        shop_id = genlib_map:get(<<"shopID">>, InvoiceParams),
+        shop_id = #domain_ShopConfigRef{id = genlib_map:get(<<"shopID">>, InvoiceParams)},
         external_id = genlib_map:get(<<"externalID">>, InvoiceParams, undefined),
         client_info = encode_client_info(ClientInfo),
         allocation = capi_allocation:encode(Allocation, PartyID),

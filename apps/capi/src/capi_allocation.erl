@@ -32,9 +32,9 @@ transaction_error(#payproc_AllocationInvalidTransaction{reason = Reason, transac
     ShopID =
         case Transaction of
             {transaction, #domain_AllocationTransaction{target = {shop, Target}}} ->
-                Target#domain_AllocationTransactionTargetShop.shop_id;
+                Target#domain_AllocationTransactionTargetShop.shop_ref#domain_ShopConfigRef.id;
             {transaction_prototype, #domain_AllocationTransactionPrototype{target = {shop, Target}}} ->
-                Target#domain_AllocationTransactionTargetShop.shop_id
+                Target#domain_AllocationTransactionTargetShop.shop_ref#domain_ShopConfigRef.id
         end,
     Message = io_lib:format("Invalid allocation transaction with shop_id \"~ts\" and error \"~ts\"", [ShopID, Reason]),
     genlib:to_binary(Message).
@@ -56,8 +56,8 @@ encode_transaction(PartyID, Transaction) ->
 
 encode_target(PartyID, #{<<"allocationTargetType">> := <<"AllocationTargetShop">>} = Target) ->
     {shop, #domain_AllocationTransactionTargetShop{
-        owner_id = PartyID,
-        shop_id = maps:get(<<"shopID">>, Target)
+        party_ref = #domain_PartyConfigRef{id = PartyID},
+        shop_ref = #domain_ShopConfigRef{id = maps:get(<<"shopID">>, Target)}
     }}.
 
 encode_details(#{<<"cart">> := _Cart} = Transaction) ->
@@ -123,7 +123,7 @@ decode_transaction(Transaction) ->
 decode_target({shop, AllocationShop}) ->
     #{
         <<"allocationTargetType">> => <<"AllocationTargetShop">>,
-        <<"shopID">> => AllocationShop#domain_AllocationTransactionTargetShop.shop_id
+        <<"shopID">> => AllocationShop#domain_AllocationTransactionTargetShop.shop_ref#domain_ShopConfigRef.id
     }.
 
 decode_details(undefined) ->
@@ -239,8 +239,8 @@ encode_test() ->
             #domain_AllocationTransactionPrototype{
                 target =
                     {shop, #domain_AllocationTransactionTargetShop{
-                        owner_id = <<"partyID">>,
-                        shop_id = <<"shopID1">>
+                        party_ref = #domain_PartyConfigRef{id = <<"partyID">>},
+                        shop_ref = #domain_ShopConfigRef{id = <<"shopID1">>}
                     }},
                 body =
                     {total, #domain_AllocationTransactionPrototypeBodyTotal{
@@ -285,15 +285,15 @@ decode_test() ->
                 id = <<"0">>,
                 target =
                     {shop, #domain_AllocationTransactionTargetShop{
-                        owner_id = <<"partyID1">>,
-                        shop_id = <<"shopID1">>
+                        party_ref = #domain_PartyConfigRef{id = <<"partyID1">>},
+                        shop_ref = #domain_ShopConfigRef{id = <<"shopID1">>}
                     }},
                 amount = make_cash(32),
                 body = #domain_AllocationTransactionBodyTotal{
                     fee_target =
                         {shop, #domain_AllocationTransactionTargetShop{
-                            owner_id = <<"partyID2">>,
-                            shop_id = <<"shopID2">>
+                            party_ref = #domain_PartyConfigRef{id = <<"partyID2">>},
+                            shop_ref = #domain_ShopConfigRef{id = <<"shopID2">>}
                         }},
                     total = make_cash(16),
                     fee_amount = make_cash(8),

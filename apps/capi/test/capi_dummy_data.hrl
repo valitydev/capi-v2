@@ -5,15 +5,14 @@
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
--include_lib("damsel/include/dmsl_domain_conf_thrift.hrl").
 -include_lib("damsel/include/dmsl_user_interaction_thrift.hrl").
--include_lib("magista_proto/include/magista_magista_thrift.hrl").
 
 -define(RECORD_UPDATE(FieldIndex, Value, Record), erlang:setelement(FieldIndex, Record, Value)).
 
 -define(STRING, <<"TEST">>).
 -define(RUB, <<"RUB">>).
 -define(USD, <<"USD">>).
+-define(KZT, <<"KZT">>).
 -define(BANKID_RU, <<"PUTIN">>).
 -define(BANKID_US, <<"TRAMP">>).
 -define(WALLET_TOOL, <<"TOOL">>).
@@ -31,6 +30,19 @@
 -define(TEST_RULESET_ID, <<"test/api">>).
 -define(API_TOKEN, <<"letmein">>).
 -define(EMAIL, <<"test@test.ru">>).
+
+-define(KZT_PARTY_ID, <<"95a158c2-343a-40c9-b690-247dbee3fa40">>).
+-define(KZT_SHOP_ID, <<"bbe49f63-0ff8-4cc4-99e8-00892a683cec">>).
+-define(KZT_PI_ID, 100).
+-define(KZT_TERMS_ID, 1000).
+-define(KZT_RULESET_ID, 1059).
+-define(KZT_PROHIBITIONS_ID, 1060).
+-define(KZT_PROVIDER_8_ID, 8).
+-define(KZT_PROVIDER_9_ID, 9).
+-define(KZT_PROVIDER_10_ID, 10).
+-define(KZT_TERMINAL_15_ID, 15).
+-define(KZT_TERMINAL_16_ID, 16).
+-define(KZT_TERMINAL_17_ID, 17).
 
 -define(RATIONAL, #base_Rational{p = ?INTEGER, q = ?INTEGER}).
 
@@ -85,14 +97,15 @@
 
 -define(INVOICE(ID, EID, OwnerID), #domain_Invoice{
     id = ID,
+    domain_revision = ?INTEGER,
     created_at = ?TIMESTAMP,
     status = ?INVOICE_STATUS(unpaid),
     due = ?TIMESTAMP,
     details = ?DETAILS,
     cost = ?CASH,
     context = ?CONTENT,
-    shop_id = ?STRING,
-    owner_id = OwnerID,
+    shop_ref = #domain_ShopConfigRef{id = ?STRING},
+    party_ref = #domain_PartyConfigRef{id = OwnerID},
     template_id = ?STRING,
     external_id = EID
 }).
@@ -158,15 +171,15 @@
             id = ?STRING,
             target =
                 {shop, #domain_AllocationTransactionTargetShop{
-                    owner_id = ?STRING,
-                    shop_id = ?STRING
+                    party_ref = #domain_PartyConfigRef{id = ?STRING},
+                    shop_ref = #domain_ShopConfigRef{id = ?STRING}
                 }},
             amount = ?CASH,
             body = #domain_AllocationTransactionBodyTotal{
                 fee_target =
                     {shop, #domain_AllocationTransactionTargetShop{
-                        owner_id = ?STRING,
-                        shop_id = ?STRING
+                        party_ref = #domain_PartyConfigRef{id = ?STRING},
+                        shop_ref = #domain_ShopConfigRef{id = ?STRING}
                     }},
                 total = ?CASH,
                 fee_amount = ?CASH,
@@ -204,8 +217,8 @@
         }},
     product = ?STRING,
     context = ?CONTENT,
-    shop_id = ?STRING,
-    owner_id = ?STRING,
+    shop_ref = #domain_ShopConfigRef{id = ?STRING},
+    party_ref = #domain_PartyConfigRef{id = ?STRING},
     invoice_lifetime = ?LIFETIME_INTERVAL
 }).
 
@@ -287,16 +300,6 @@
     }}
 ).
 
--define(CUSTOMER_PAYER,
-    {customer, #domain_CustomerPayer{
-        customer_id = ?STRING,
-        customer_binding_id = ?STRING,
-        rec_payment_tool_id = ?STRING,
-        payment_tool = {bank_card, ?BANK_CARD},
-        contact_info = ?CONTACT_INFO
-    }}
-).
-
 -define(PAYER(PT),
     {payment_resource, #domain_PaymentResourcePayer{
         resource = ?DISP_PAYMENT_RESOURCE(PT),
@@ -332,7 +335,6 @@
 -define(PAYMENT, ?PAYMENT(?STRING, ?PAYMENT_STATUS_PENDING, ?PAYER)).
 
 -define(PAYMENT_WITH_RECURRENT_PAYER, ?PAYMENT(?STRING, ?PAYMENT_STATUS_PENDING, ?RECURRENT_PAYER)).
--define(PAYMENT_WITH_CUSTOMER_PAYER, ?PAYMENT(?STRING, ?PAYMENT_STATUS_PENDING, ?CUSTOMER_PAYER)).
 
 -define(PAYMENT_W_EXTERNAL_ID(ID, ExternalID), ?PAYMENT(ID, ?PAYMENT_STATUS_PENDING, ?PAYER, ExternalID, undefined)).
 
@@ -424,40 +426,6 @@
     category = {dispute, #'domain_InvoicePaymentChargebackCategoryDispute'{}}
 }).
 
--define(CONTRACT, #domain_Contract{
-    id = ?STRING,
-    contractor = ?CONTRACTOR_REGISTERED_USER,
-    payment_institution = #domain_PaymentInstitutionRef{id = ?INTEGER},
-    created_at = ?TIMESTAMP,
-    valid_since = ?TIMESTAMP,
-    valid_until = ?TIMESTAMP,
-    status = {active, #domain_ContractActive{}},
-    terms = #domain_TermSetHierarchyRef{id = ?INTEGER},
-    adjustments = [?CONTRACT_ADJUSTMENT],
-    payout_tools = [],
-    legal_agreement = ?CONTRACT_LEGAL_AGREEMENT,
-    report_preferences = ?CONTRACT_REPORT_PREFS
-}).
-
--define(CONTRACT_LEGAL_AGREEMENT, #domain_LegalAgreement{
-    signed_at = ?TIMESTAMP,
-    legal_agreement_id = ?STRING,
-    valid_until = ?TIMESTAMP
-}).
-
--define(CONTRACT_REPORT_PREFS, #domain_ReportPreferences{
-    service_acceptance_act_preferences = #domain_ServiceAcceptanceActPreferences{
-        schedule = #domain_BusinessScheduleRef{id = ?INTEGER},
-        signer = #domain_Representative{
-            position = ?STRING,
-            full_name = ?STRING,
-            document = {articles_of_association, #domain_ArticlesOfAssociation{}}
-        }
-    }
-}).
-
--define(CONTRACTOR_REGISTERED_USER, {registered_user, #domain_RegisteredUser{email = ?STRING}}).
-
 -define(BLOCKING,
     {unblocked, #domain_Unblocked{
         reason = ?STRING,
@@ -467,90 +435,40 @@
 
 -define(SUSPENTION, {active, #domain_Active{since = ?TIMESTAMP}}).
 
--define(SHOP(Account), #domain_Shop{
-    id = ?STRING,
-    created_at = ?TIMESTAMP,
-    blocking = ?BLOCKING,
+-define(SHOP(Currency), #domain_ShopConfig{
+    name = ?STRING,
+    block = ?BLOCKING,
     suspension = ?SUSPENTION,
-    details = ?SHOP_DETAILS,
+    payment_institution = #domain_PaymentInstitutionRef{id = ?INTEGER},
+    terms = #domain_TermSetHierarchyRef{id = ?INTEGER},
+    account = #domain_ShopAccount{
+        currency = #domain_CurrencyRef{symbolic_code = Currency},
+        settlement = ?INTEGER,
+        guarantee = ?INTEGER
+    },
+    party_ref = #domain_PartyConfigRef{id = ?STRING},
     location = ?SHOP_LOCATION,
-    category = #domain_CategoryRef{id = ?INTEGER},
-    contract_id = ?STRING,
-    account = Account
+    category = #domain_CategoryRef{id = ?INTEGER}
 }).
 
--define(SHOP, ?SHOP(undefined)).
-
--define(SHOP_ACCOUNT(Currency), #domain_ShopAccount{
-    currency = #domain_CurrencyRef{symbolic_code = Currency},
-    settlement = ?INTEGER,
-    guarantee = ?INTEGER,
-    payout = ?INTEGER
-}).
-
--define(SHOP_CONTRACT, #payproc_ShopContract{
-    shop = ?SHOP,
-    contract = ?CONTRACT
-}).
+-define(SHOP, ?SHOP(?RUB)).
 
 -define(SHOP_LOCATION, {url, ?URL}).
 
--define(SHOP_DETAILS, #domain_ShopDetails{name = ?STRING}).
+-define(SHOP_DETAILS, #domain_Details{name = ?STRING}).
 
--define(PARTY_CONTRACTOR, #domain_PartyContractor{
-    id = ?STRING,
-    contractor =
-        {private_entity,
-            {russian_private_entity, #domain_RussianPrivateEntity{
-                first_name = ?STRING,
-                second_name = ?STRING,
-                middle_name = ?STRING,
-                contact_info = ?CONTACT_INFO
-            }}},
-    status = none,
-    identity_documents = []
-}).
-
--define(WALLET_CONTRACT_ID, <<"WALLET_CONTRACT_ID">>).
-
--define(WALLET_CONTRACT, #domain_Contract{
-    id = ?WALLET_CONTRACT_ID,
-    contractor_id = ?STRING,
-    payment_institution = #domain_PaymentInstitutionRef{id = ?INTEGER},
-    created_at = ?TIMESTAMP,
-    valid_since = ?TIMESTAMP,
-    valid_until = ?TIMESTAMP,
-    status = {active, #domain_ContractActive{}},
-    terms = #domain_TermSetHierarchyRef{id = ?INTEGER},
-    adjustments = [],
-    payout_tools = []
-}).
-
--define(WALLET, #domain_Wallet{
-    id = ?STRING,
-    created_at = ?TIMESTAMP,
-    blocking = ?BLOCKING,
+-define(PARTY, #domain_PartyConfig{
+    name = <<"PARTY">>,
+    block = ?BLOCKING,
     suspension = ?SUSPENTION,
-    contract = ?WALLET_CONTRACT_ID
+    contact_info = #domain_PartyContactInfo{registration_email = ?STRING}
 }).
 
--define(PARTY, #domain_Party{
-    id = ?STRING,
-    contact_info = #domain_PartyContactInfo{registration_email = ?STRING},
-    created_at = ?TIMESTAMP,
-    blocking = ?BLOCKING,
+-define(PARTY_WITH_SHOPS, #domain_PartyConfig{
+    name = <<"PARTY_WITH_SHOPS">>,
+    block = ?BLOCKING,
     suspension = ?SUSPENTION,
-    contracts = #{
-        ?STRING => ?CONTRACT,
-        ?WALLET_CONTRACT_ID => ?WALLET_CONTRACT
-    },
-    shops = #{
-        ?STRING => ?SHOP,
-        ?USD => ?SHOP(?SHOP_ACCOUNT(?USD))
-    },
-    contractors = #{?STRING => ?PARTY_CONTRACTOR},
-    wallets = #{?STRING => ?WALLET},
-    revision = 0
+    contact_info = #domain_PartyContactInfo{registration_email = ?STRING}
 }).
 
 -define(ADJUSTMENT, #domain_InvoicePaymentAdjustment{
@@ -563,52 +481,9 @@
     old_cash_flow_inverse = []
 }).
 
--define(CONTRACT_ADJUSTMENT, #domain_ContractAdjustment{
-    id = ?STRING,
-    created_at = ?TIMESTAMP,
-    valid_since = ?TIMESTAMP,
-    valid_until = ?TIMESTAMP,
-    terms = #domain_TermSetHierarchyRef{id = ?INTEGER}
-}).
-
--define(PAYOUT_TOOL(ID, ToolInfo), #domain_PayoutTool{
-    id = ID,
-    created_at = ?TIMESTAMP,
-    currency = #domain_CurrencyRef{symbolic_code = ?RUB},
-    payout_tool_info = ToolInfo
-}).
-
 -define(PAYMENT_INSTITUTION_ACCOUNT,
     {payment_institution_account, #domain_PaymentInstitutionAccount{}}
 ).
-
--define(RUSSIAN_BANK_ACCOUNT,
-    {russian_bank_account, #domain_RussianBankAccount{
-        account = <<"12345678901234567890">>,
-        bank_name = ?STRING,
-        bank_post_account = <<"12345678901234567890">>,
-        bank_bik = <<"123456789">>
-    }}
-).
-
--define(INTERNATIONAL_BANK_ACCOUNT,
-    {international_bank_account, #domain_InternationalBankAccount{
-        number = <<"12345678901234567890">>,
-        bank = ?INTERNATIONAL_BANK_DETAILS,
-        correspondent_account = #domain_InternationalBankAccount{number = <<"00000000000000000000">>},
-        iban = <<"GR1601101250000000012300695">>,
-        account_holder = ?STRING
-    }}
-).
-
--define(INTERNATIONAL_BANK_DETAILS, #domain_InternationalBankDetails{
-    %% In reality either bic or aba_rtn should be used, not both.
-    bic = <<"DEUTDEFF500">>,
-    country = usa,
-    name = ?STRING,
-    address = ?STRING,
-    aba_rtn = <<"129131673">>
-}).
 
 -define(WALLET_INFO,
     {wallet_info, #domain_WalletInfo{
@@ -618,10 +493,10 @@
 
 -define(WEBHOOK, #webhooker_Webhook{
     id = ?INTEGER,
-    party_id = ?STRING,
+    party_ref = #domain_PartyConfigRef{id = ?STRING},
     event_filter =
         {invoice, #webhooker_InvoiceEventFilter{
-            shop_id = ?STRING,
+            shop_ref = #domain_ShopConfigRef{id = ?STRING},
             types = ordsets:from_list([
                 {created, #webhooker_InvoiceCreated{}},
 
@@ -754,70 +629,6 @@
     enabled = true
 }).
 
--define(STAT_RESPONSE_INVOICES, #magista_StatInvoiceResponse{
-    invoices = [
-        ?STAT_INVOICE({unpaid, #domain_InvoiceUnpaid{}}),
-        ?STAT_INVOICE({paid, #domain_InvoicePaid{}}),
-        ?STAT_INVOICE({cancelled, #domain_InvoiceCancelled{details = ?STRING}}),
-        ?STAT_INVOICE({fulfilled, #domain_InvoiceFulfilled{details = ?STRING}})
-    ],
-    continuation_token = ?STRING
-}).
-
--define(STAT_INVOICE(Status), #magista_StatInvoice{
-    id = ?STRING,
-    owner_id = ?STRING,
-    shop_id = ?STRING,
-    created_at = ?TIMESTAMP,
-    status = Status,
-    product = ?STRING,
-    description = ?STRING,
-    due = ?TIMESTAMP,
-    amount = ?INTEGER,
-    currency_symbolic_code = ?RUB,
-    context = ?CONTENT,
-    cart = ?INVOICE_CART,
-    external_id = ?STRING,
-    status_changed_at = ?TIMESTAMP
-}).
-
--define(STAT_RESPONSE_PAYMENTS, #magista_StatPaymentResponse{
-    payments = [
-        ?STAT_PAYMENT(
-            ?STAT_CUSTOMER_PAYER({digital_wallet, ?DIGITAL_WALLET(?STRING, ?STRING, ?STRING)}),
-            ?STAT_PAYMENT_STATUS_PENDING
-        ),
-        ?STAT_PAYMENT(?STAT_CUSTOMER_PAYER({bank_card, ?BANK_CARD}), ?STAT_PAYMENT_STATUS_FAILED),
-        ?STAT_PAYMENT(?RECURRENT_PAYER, ?STAT_PAYMENT_STATUS_PENDING),
-        ?STAT_PAYMENT(?PAYER, ?STAT_PAYMENT_STATUS_CAPTURED),
-        ?STAT_PAYMENT(
-            ?PAYER,
-            ?STAT_PAYMENT_STATUS_PENDING,
-            {hold, #magista_InvoicePaymentFlowHold{on_hold_expiration = cancel, held_until = ?TIMESTAMP}}
-        )
-    ],
-    continuation_token = ?STRING
-}).
-
--define(STAT_PAYMENT(Payer, Status, Flow), #magista_StatPayment{
-    id = ?STRING,
-    invoice_id = ?STRING,
-    owner_id = ?STRING,
-    shop_id = ?STRING,
-    created_at = ?TIMESTAMP,
-    status = Status,
-    amount = ?INTEGER,
-    fee = ?INTEGER,
-    currency_symbolic_code = ?RUB,
-    payer = Payer,
-    context = ?CONTENT,
-    flow = Flow,
-    domain_revision = ?INTEGER,
-    additional_transaction_info = ?ADDITIONAL_TX_INFO
-}).
-
--define(STAT_PAYMENT(Payer, Status), ?STAT_PAYMENT(Payer, Status, {instant, #magista_InvoicePaymentFlowInstant{}})).
-
 -define(TX_INFO, #domain_TransactionInfo{
     id = ?STRING,
     timestamp = ?TIMESTAMP,
@@ -831,14 +642,6 @@
     extra_payment_info = #{<<"test_key">> => <<"test_value">>}
 }).
 
--define(STAT_CUSTOMER_PAYER(PaymentTool),
-    {customer, #magista_CustomerPayer{
-        customer_id = ?STRING,
-        payment_tool = PaymentTool,
-        contact_info = ?CONTACT_INFO
-    }}
-).
-
 -define(STAT_PAYMENT_STATUS_PENDING, {pending, #domain_InvoicePaymentPending{}}).
 
 -define(STAT_PAYMENT_STATUS_CAPTURED, {captured, #domain_InvoicePaymentCaptured{}}).
@@ -847,145 +650,556 @@
     {failed, #domain_InvoicePaymentFailed{failure = {failure, #domain_Failure{code = <<"error_code">>}}}}
 ).
 
--define(STAT_RESPONSE_REFUNDS, #magista_StatRefundResponse{
-    refunds = [
-        ?STAT_REFUND({pending, #domain_InvoicePaymentRefundPending{}}),
-        ?STAT_REFUND({succeeded, #domain_InvoicePaymentRefundSucceeded{}}),
-        ?STAT_REFUND(
-            {failed, #domain_InvoicePaymentRefundFailed{
-                failure = {operation_timeout, #domain_OperationTimeout{}}
-            }}
-        )
-    ],
-    continuation_token = ?STRING
-}).
+-define(ALL_OBJECTS, #{
+    {category, #domain_CategoryRef{id = ?INTEGER}} =>
+        {category, #domain_CategoryObject{
+            ref = #domain_CategoryRef{id = ?INTEGER},
+            data = #domain_Category{
+                name = ?STRING,
+                description = ?STRING
+            }
+        }},
+    {business_schedule, #domain_BusinessScheduleRef{id = ?INTEGER}} =>
+        {business_schedule, #domain_BusinessScheduleObject{
+            ref = #domain_BusinessScheduleRef{id = ?INTEGER},
+            data = #domain_BusinessSchedule{
+                name = ?STRING,
+                description = ?STRING,
+                schedule = #'base_Schedule'{
+                    year = {every, #'base_ScheduleEvery'{}},
+                    month = {every, #'base_ScheduleEvery'{}},
+                    day_of_month = {every, #'base_ScheduleEvery'{}},
+                    day_of_week = {every, #'base_ScheduleEvery'{}},
+                    hour = {every, #'base_ScheduleEvery'{}},
+                    minute = {every, #'base_ScheduleEvery'{}},
+                    second = {every, #'base_ScheduleEvery'{}}
+                },
+                delay = #'base_TimeSpan'{}
+            }
+        }},
+    {globals, #domain_GlobalsRef{}} =>
+        {globals, #domain_GlobalsObject{
+            ref = #domain_GlobalsRef{},
+            data = #domain_Globals{
+                external_account_set = {value, #domain_ExternalAccountSetRef{id = ?INTEGER}},
+                payment_institutions = [#domain_PaymentInstitutionRef{id = ?INTEGER}]
+            }
+        }},
+    {payment_institution, #domain_PaymentInstitutionRef{id = ?INTEGER}} =>
+        {payment_institution, #domain_PaymentInstitutionObject{
+            ref = #domain_PaymentInstitutionRef{id = ?INTEGER},
+            data = #domain_PaymentInstitution{
+                name = ?STRING,
+                description = ?STRING,
+                system_account_set = {value, #domain_SystemAccountSetRef{id = ?INTEGER}},
+                inspector = {value, #domain_InspectorRef{id = ?INTEGER}},
+                realm = test,
+                residences = [rus]
+            }
+        }},
+    {country, #domain_CountryRef{id = rus}} =>
+        {country, #domain_CountryObject{
+            ref = #domain_CountryRef{id = rus},
+            data = #domain_Country{
+                name = <<"Russia">>
+            }
+        }},
+    {party_config, #domain_PartyConfigRef{id = ?STRING}} =>
+        {party_config, #domain_PartyConfigObject{
+            ref = #domain_PartyConfigRef{id = ?STRING},
+            data = ?PARTY_WITH_SHOPS
+        }},
+    {shop_config, #domain_ShopConfigRef{id = ?STRING}} =>
+        {shop_config, #domain_ShopConfigObject{
+            ref = #domain_ShopConfigRef{id = ?STRING},
+            data = ?SHOP(?USD)
+        }},
+    {country, #domain_CountryRef{id = deu}} =>
+        {country, #domain_CountryObject{
+            ref = #domain_CountryRef{id = deu},
+            data = #domain_Country{
+                name = <<"Germany">>,
+                trade_blocs = ordsets:from_list(
+                    [#domain_TradeBlocRef{id = <<"EEA">>}]
+                )
+            }
+        }},
+    {trade_bloc, #domain_TradeBlocRef{id = <<"EEA">>}} =>
+        {trade_bloc, #domain_TradeBlocObject{
+            ref = #domain_TradeBlocRef{id = <<"EEA">>},
+            data = #domain_TradeBloc{
+                name = <<"European Economic Area">>,
+                description = <<"Extension of EU">>
+            }
+        }},
 
--define(STAT_REFUND(Status), #magista_StatRefund{
-    id = ?STRING,
-    payment_id = ?STRING,
-    invoice_id = ?STRING,
-    owner_id = ?STRING,
-    shop_id = ?STRING,
-    status = Status,
-    created_at = ?TIMESTAMP,
-    amount = ?INTEGER,
-    fee = ?INTEGER,
-    currency_symbolic_code = ?RUB,
-    reason = ?STRING,
-    cart = ?INVOICE_CART,
-    external_id = ?STRING,
-    status_changed_at = ?TIMESTAMP
-}).
+    {payment_system, #domain_PaymentSystemRef{id = <<"visa">>}} =>
+        {payment_system, #domain_PaymentSystemObject{
+            ref = #domain_PaymentSystemRef{id = <<"visa">>},
+            data = #domain_PaymentSystem{name = <<"Visa">>}
+        }},
 
--define(SNAPSHOT, #'domain_conf_Snapshot'{
-    version = ?INTEGER,
-    domain = #{
-        {category, #domain_CategoryRef{id = ?INTEGER}} =>
-            {category, #domain_CategoryObject{
-                ref = #domain_CategoryRef{id = ?INTEGER},
-                data = #domain_Category{
-                    name = ?STRING,
-                    description = ?STRING
-                }
-            }},
-        {business_schedule, #domain_BusinessScheduleRef{id = ?INTEGER}} =>
-            {business_schedule, #domain_BusinessScheduleObject{
-                ref = #domain_BusinessScheduleRef{id = ?INTEGER},
-                data = #domain_BusinessSchedule{
-                    name = ?STRING,
-                    description = ?STRING,
-                    schedule = #'base_Schedule'{
-                        year = {every, #'base_ScheduleEvery'{}},
-                        month = {every, #'base_ScheduleEvery'{}},
-                        day_of_month = {every, #'base_ScheduleEvery'{}},
-                        day_of_week = {every, #'base_ScheduleEvery'{}},
-                        hour = {every, #'base_ScheduleEvery'{}},
-                        minute = {every, #'base_ScheduleEvery'{}},
-                        second = {every, #'base_ScheduleEvery'{}}
-                    },
-                    delay = #'base_TimeSpan'{}
-                }
-            }},
-        {globals, #domain_GlobalsRef{}} =>
-            {globals, #domain_GlobalsObject{
-                ref = #domain_GlobalsRef{},
-                data = #domain_Globals{
-                    external_account_set = {value, #domain_ExternalAccountSetRef{id = ?INTEGER}},
-                    payment_institutions = [#domain_PaymentInstitutionRef{id = ?INTEGER}]
-                }
-            }},
-        {payment_institution, #domain_PaymentInstitutionRef{id = ?INTEGER}} =>
-            {payment_institution, #domain_PaymentInstitutionObject{
-                ref = #domain_PaymentInstitutionRef{id = ?INTEGER},
-                data = #domain_PaymentInstitution{
-                    name = ?STRING,
-                    description = ?STRING,
-                    system_account_set = {value, #domain_SystemAccountSetRef{id = ?INTEGER}},
-                    default_contract_template = {value, #domain_ContractTemplateRef{id = ?INTEGER}},
-                    providers = {value, []},
-                    inspector = {value, #domain_InspectorRef{id = ?INTEGER}},
-                    realm = test,
-                    residences = [rus]
-                }
-            }},
-        {country, #domain_CountryRef{id = rus}} =>
-            {country, #domain_CountryObject{
-                ref = #domain_CountryRef{id = rus},
-                data = #domain_Country{
-                    name = <<"Russia">>
-                }
-            }},
-        {country, #domain_CountryRef{id = deu}} =>
-            {country, #domain_CountryObject{
-                ref = #domain_CountryRef{id = deu},
-                data = #domain_Country{
-                    name = <<"Germany">>,
-                    trade_blocs = ordsets:from_list(
-                        [#domain_TradeBlocRef{id = <<"EEA">>}]
-                    )
-                }
-            }},
-        {trade_bloc, #domain_TradeBlocRef{id = <<"EEA">>}} =>
-            {trade_bloc, #domain_TradeBlocObject{
-                ref = #domain_TradeBlocRef{id = <<"EEA">>},
-                data = #domain_TradeBloc{
-                    name = <<"European Economic Area">>,
-                    description = <<"Extension of EU">>
-                }
-            }},
+    {payment_system, #domain_PaymentSystemRef{id = <<"mastercard">>}} =>
+        {payment_system, #domain_PaymentSystemObject{
+            ref = #domain_PaymentSystemRef{id = <<"mastercard">>},
+            data = #domain_PaymentSystem{name = <<"Mastercard">>}
+        }},
 
-        {payment_system, #domain_PaymentSystemRef{id = <<"visa">>}} =>
-            {payment_system, #domain_PaymentSystemObject{
-                ref = #domain_PaymentSystemRef{id = <<"visa">>},
-                data = #domain_PaymentSystem{name = <<"Visa">>}
-            }},
+    {payment_service, #domain_PaymentServiceRef{id = <<"qiwi">>}} =>
+        {payment_service, #domain_PaymentServiceObject{
+            ref = #domain_PaymentServiceRef{id = <<"qiwi">>},
+            data = #domain_PaymentService{
+                name = <<"Qiwi">>,
+                brand_name = <<"QIWI">>,
+                category = <<"wallets">>,
+                metadata = #{
+                    <<"test.ns">> =>
+                        {obj, #{
+                            <<"answer">> => {i, 42},
+                            <<"localization">> =>
+                                {obj, #{
+                                    <<"ru_RU">> => {arr, [{str, <<"КИВИ Кошелёк">>}]}
+                                }}
+                        }}
+                }
+            }
+        }},
 
-        {payment_system, #domain_PaymentSystemRef{id = <<"mastercard">>}} =>
-            {payment_system, #domain_PaymentSystemObject{
-                ref = #domain_PaymentSystemRef{id = <<"mastercard">>},
-                data = #domain_PaymentSystem{name = <<"Mastercard">>}
-            }},
+    {payment_institution, #domain_PaymentInstitutionRef{id = ?KZT_PI_ID}} =>
+        {payment_institution, #domain_PaymentInstitutionObject{
+            ref = #domain_PaymentInstitutionRef{id = ?KZT_PI_ID},
+            data = #domain_PaymentInstitution{
+                name = ?STRING,
+                description = ?STRING,
+                system_account_set = {value, #domain_SystemAccountSetRef{id = ?INTEGER}},
+                inspector = {value, #domain_InspectorRef{id = ?INTEGER}},
+                realm = test,
+                residences = [rus],
+                payment_routing_rules = #domain_RoutingRules{
+                    policies = #domain_RoutingRulesetRef{id = ?KZT_RULESET_ID},
+                    prohibitions = #domain_RoutingRulesetRef{id = ?KZT_PROHIBITIONS_ID}
+                }
+            }
+        }},
 
-        {payment_service, #domain_PaymentServiceRef{id = <<"qiwi">>}} =>
-            {payment_service, #domain_PaymentServiceObject{
-                ref = #domain_PaymentServiceRef{id = <<"qiwi">>},
-                data = #domain_PaymentService{
-                    name = <<"Qiwi">>,
-                    brand_name = <<"QIWI">>,
-                    category = <<"wallets">>,
-                    metadata = #{
-                        <<"test.ns">> =>
-                            {obj, #{
-                                <<"answer">> => {i, 42},
-                                <<"localization">> =>
-                                    {obj, #{
-                                        <<"ru_RU">> => {arr, [{str, <<"КИВИ Кошелёк">>}]}
-                                    }}
-                            }}
+    {routing_rules, #domain_RoutingRulesetRef{id = ?KZT_RULESET_ID}} =>
+        {routing_rules, #domain_RoutingRulesObject{
+            ref = #domain_RoutingRulesetRef{id = ?KZT_RULESET_ID},
+            data = #domain_RoutingRuleset{
+                name = ?STRING,
+                decisions =
+                    {candidates, [
+                        #domain_RoutingCandidate{
+                            allowed = {constant, true},
+                            terminal = #domain_TerminalRef{id = ?KZT_TERMINAL_15_ID}
+                        },
+                        #domain_RoutingCandidate{
+                            allowed = {constant, true},
+                            terminal = #domain_TerminalRef{id = ?KZT_TERMINAL_16_ID}
+                        }
+                    ]}
+            }
+        }},
+
+    {routing_rules, #domain_RoutingRulesetRef{id = ?KZT_PROHIBITIONS_ID}} =>
+        {routing_rules, #domain_RoutingRulesObject{
+            ref = #domain_RoutingRulesetRef{id = ?KZT_PROHIBITIONS_ID},
+            data = #domain_RoutingRuleset{
+                name = ?STRING,
+                decisions = {candidates, []}
+            }
+        }},
+
+    {provider, #domain_ProviderRef{id = ?KZT_PROVIDER_8_ID}} =>
+        {provider, #domain_ProviderObject{
+            ref = #domain_ProviderRef{id = ?KZT_PROVIDER_8_ID},
+            data = #domain_Provider{
+                name = ?STRING,
+                description = ?STRING,
+                proxy = #domain_Proxy{ref = #domain_ProxyRef{id = ?INTEGER}, additional = #{}},
+                realm = test,
+                terms =
+                    #domain_ProvisionTermSet{
+                        payments =
+                            #domain_PaymentsProvisionTerms{
+                                payment_methods =
+                                    {value, [
+                                        #domain_PaymentMethodRef{
+                                            id =
+                                                {bank_card, #domain_BankCardPaymentMethod{
+                                                    payment_system = #domain_PaymentSystemRef{id = <<"MASTERCARD">>},
+                                                    is_cvv_empty = false
+                                                }}
+                                        },
+                                        #domain_PaymentMethodRef{
+                                            id =
+                                                {bank_card, #domain_BankCardPaymentMethod{
+                                                    payment_system = #domain_PaymentSystemRef{id = <<"VISA">>},
+                                                    is_cvv_empty = false
+                                                }}
+                                        }
+                                    ]},
+                                cash_limit =
+                                    {decisions, [
+                                        #domain_CashLimitDecision{
+                                            if_ = {constant, true},
+                                            then_ =
+                                                {value, #domain_CashRange{
+                                                    lower =
+                                                        {inclusive, #domain_Cash{
+                                                            amount = 100,
+                                                            currency =
+                                                                #domain_CurrencyRef{symbolic_code = ?KZT}
+                                                        }},
+                                                    upper =
+                                                        {inclusive, #domain_Cash{
+                                                            amount = 1000000000,
+                                                            currency =
+                                                                #domain_CurrencyRef{symbolic_code = ?KZT}
+                                                        }}
+                                                }}
+                                        }
+                                    ]},
+                                refunds =
+                                    #domain_PaymentRefundsProvisionTerms{
+                                        cash_flow = {value, []},
+                                        partial_refunds =
+                                            #domain_PartialRefundsProvisionTerms{
+                                                cash_limit =
+                                                    {decisions, [
+                                                        #domain_CashLimitDecision{
+                                                            if_ = {constant, true},
+                                                            then_ =
+                                                                {value, #domain_CashRange{
+                                                                    lower =
+                                                                        {inclusive, #domain_Cash{
+                                                                            amount = 100,
+                                                                            currency =
+                                                                                #domain_CurrencyRef{
+                                                                                    symbolic_code = ?KZT
+                                                                                }
+                                                                        }},
+                                                                    upper =
+                                                                        {inclusive, #domain_Cash{
+                                                                            amount = 1000000000,
+                                                                            currency =
+                                                                                #domain_CurrencyRef{
+                                                                                    symbolic_code = ?KZT
+                                                                                }
+                                                                        }}
+                                                                }}
+                                                        }
+                                                    ]}
+                                            }
+                                    }
+                            }
                     }
-                }
-            }}
-    }
+            }
+        }},
+
+    {provider, #domain_ProviderRef{id = ?KZT_PROVIDER_9_ID}} =>
+        {provider, #domain_ProviderObject{
+            ref = #domain_ProviderRef{id = ?KZT_PROVIDER_9_ID},
+            data = #domain_Provider{
+                name = ?STRING,
+                description = ?STRING,
+                proxy = #domain_Proxy{ref = #domain_ProxyRef{id = ?INTEGER}, additional = #{}},
+                realm = test,
+                terms =
+                    #domain_ProvisionTermSet{
+                        payments =
+                            #domain_PaymentsProvisionTerms{
+                                payment_methods =
+                                    {value, [
+                                        #domain_PaymentMethodRef{
+                                            id =
+                                                {bank_card, #domain_BankCardPaymentMethod{
+                                                    payment_system = #domain_PaymentSystemRef{id = <<"MASTERCARD">>},
+                                                    is_cvv_empty = false
+                                                }}
+                                        },
+                                        #domain_PaymentMethodRef{
+                                            id =
+                                                {bank_card, #domain_BankCardPaymentMethod{
+                                                    payment_system = #domain_PaymentSystemRef{id = <<"VISA">>},
+                                                    is_cvv_empty = false
+                                                }}
+                                        }
+                                    ]},
+                                cash_limit =
+                                    {value, #domain_CashRange{
+                                        lower =
+                                            {inclusive, #domain_Cash{
+                                                amount = 100,
+                                                currency = #domain_CurrencyRef{symbolic_code = ?KZT}
+                                            }},
+                                        upper =
+                                            {inclusive, #domain_Cash{
+                                                amount = 1000000000,
+                                                currency = #domain_CurrencyRef{symbolic_code = ?KZT}
+                                            }}
+                                    }},
+                                refunds =
+                                    #domain_PaymentRefundsProvisionTerms{
+                                        cash_flow = {value, []},
+                                        partial_refunds =
+                                            #domain_PartialRefundsProvisionTerms{
+                                                cash_limit =
+                                                    {value, #domain_CashRange{
+                                                        lower =
+                                                            {inclusive, #domain_Cash{
+                                                                amount = 100,
+                                                                currency =
+                                                                    #domain_CurrencyRef{
+                                                                        symbolic_code = ?KZT
+                                                                    }
+                                                            }},
+                                                        upper =
+                                                            {inclusive, #domain_Cash{
+                                                                amount = 100000000,
+                                                                currency =
+                                                                    #domain_CurrencyRef{
+                                                                        symbolic_code = ?KZT
+                                                                    }
+                                                            }}
+                                                    }}
+                                            }
+                                    }
+                            }
+                    }
+            }
+        }},
+
+    %% Провайдер с global_allow=false — для теста блокировки терминала
+    {provider, #domain_ProviderRef{id = ?KZT_PROVIDER_10_ID}} =>
+        {provider, #domain_ProviderObject{
+            ref = #domain_ProviderRef{id = ?KZT_PROVIDER_10_ID},
+            data = #domain_Provider{
+                name = ?STRING,
+                description = ?STRING,
+                proxy = #domain_Proxy{ref = #domain_ProxyRef{id = ?INTEGER}, additional = #{}},
+                realm = test,
+                terms =
+                    #domain_ProvisionTermSet{
+                        payments =
+                            #domain_PaymentsProvisionTerms{
+                                allow = {constant, true},
+                                global_allow = {constant, false},
+                                payment_methods =
+                                    {value, [
+                                        #domain_PaymentMethodRef{
+                                            id =
+                                                {bank_card, #domain_BankCardPaymentMethod{
+                                                    payment_system = #domain_PaymentSystemRef{id = <<"VISA">>},
+                                                    is_cvv_empty = false
+                                                }}
+                                        }
+                                    ]},
+                                cash_limit =
+                                    {value, #domain_CashRange{
+                                        lower =
+                                            {inclusive, #domain_Cash{
+                                                amount = 50000,
+                                                currency = #domain_CurrencyRef{symbolic_code = ?KZT}
+                                            }},
+                                        upper =
+                                            {inclusive, #domain_Cash{
+                                                amount = 50000000,
+                                                currency = #domain_CurrencyRef{symbolic_code = ?KZT}
+                                            }}
+                                    }}
+                            }
+                    }
+            }
+        }},
+
+    {terminal, #domain_TerminalRef{id = ?KZT_TERMINAL_15_ID}} =>
+        {terminal, #domain_TerminalObject{
+            ref = #domain_TerminalRef{id = ?KZT_TERMINAL_15_ID},
+            data = #domain_Terminal{
+                name = ?STRING,
+                description = ?STRING,
+                provider_ref = #domain_ProviderRef{id = ?KZT_PROVIDER_8_ID},
+                terms =
+                    #domain_ProvisionTermSet{
+                        payments =
+                            #domain_PaymentsProvisionTerms{
+                                payment_methods =
+                                    {value, [
+                                        #domain_PaymentMethodRef{
+                                            id =
+                                                {bank_card, #domain_BankCardPaymentMethod{
+                                                    payment_system = #domain_PaymentSystemRef{id = <<"MASTERCARD">>},
+                                                    is_cvv_empty = false
+                                                }}
+                                        },
+                                        #domain_PaymentMethodRef{
+                                            id =
+                                                {bank_card, #domain_BankCardPaymentMethod{
+                                                    payment_system = #domain_PaymentSystemRef{id = <<"VISA">>},
+                                                    is_cvv_empty = false
+                                                }}
+                                        }
+                                    ]},
+                                cash_limit =
+                                    {value, #domain_CashRange{
+                                        lower =
+                                            {inclusive, #domain_Cash{
+                                                amount = 10000,
+                                                currency = #domain_CurrencyRef{symbolic_code = ?KZT}
+                                            }},
+                                        upper =
+                                            {inclusive, #domain_Cash{
+                                                amount = 120000000,
+                                                currency = #domain_CurrencyRef{symbolic_code = ?KZT}
+                                            }}
+                                    }}
+                            }
+                    }
+            }
+        }},
+
+    {terminal, #domain_TerminalRef{id = ?KZT_TERMINAL_16_ID}} =>
+        {terminal, #domain_TerminalObject{
+            ref = #domain_TerminalRef{id = ?KZT_TERMINAL_16_ID},
+            data = #domain_Terminal{
+                name = ?STRING,
+                description = ?STRING,
+                provider_ref = #domain_ProviderRef{id = ?KZT_PROVIDER_9_ID},
+                terms =
+                    #domain_ProvisionTermSet{
+                        payments =
+                            #domain_PaymentsProvisionTerms{
+                                cash_limit =
+                                    {decisions, [
+                                        #domain_CashLimitDecision{
+                                            if_ = {constant, true},
+                                            then_ =
+                                                {value, #domain_CashRange{
+                                                    lower =
+                                                        {inclusive, #domain_Cash{
+                                                            amount = 51300,
+                                                            currency =
+                                                                #domain_CurrencyRef{symbolic_code = ?KZT}
+                                                        }},
+                                                    upper =
+                                                        {inclusive, #domain_Cash{
+                                                            amount = 43609100,
+                                                            currency =
+                                                                #domain_CurrencyRef{symbolic_code = ?KZT}
+                                                        }}
+                                                }}
+                                        },
+                                        #domain_CashLimitDecision{
+                                            if_ = {constant, true},
+                                            then_ =
+                                                {value, #domain_CashRange{
+                                                    lower =
+                                                        {inclusive, #domain_Cash{
+                                                            amount = 51300,
+                                                            currency =
+                                                                #domain_CurrencyRef{symbolic_code = ?KZT}
+                                                        }},
+                                                    upper =
+                                                        {inclusive, #domain_Cash{
+                                                            amount = 128262000,
+                                                            currency =
+                                                                #domain_CurrencyRef{symbolic_code = ?KZT}
+                                                        }}
+                                                }}
+                                        }
+                                    ]}
+                            }
+                    }
+            }
+        }},
+
+    %% Терминал с провайдером global_allow=false — для теста блокировки
+    {terminal, #domain_TerminalRef{id = ?KZT_TERMINAL_17_ID}} =>
+        {terminal, #domain_TerminalObject{
+            ref = #domain_TerminalRef{id = ?KZT_TERMINAL_17_ID},
+            data = #domain_Terminal{
+                name = ?STRING,
+                description = ?STRING,
+                provider_ref = #domain_ProviderRef{id = ?KZT_PROVIDER_10_ID},
+                terms =
+                    #domain_ProvisionTermSet{
+                        payments =
+                            #domain_PaymentsProvisionTerms{
+                                allow = {constant, true},
+                                global_allow = {constant, true},
+                                payment_methods =
+                                    {value, [
+                                        #domain_PaymentMethodRef{
+                                            id =
+                                                {bank_card, #domain_BankCardPaymentMethod{
+                                                    payment_system = #domain_PaymentSystemRef{id = <<"VISA">>},
+                                                    is_cvv_empty = false
+                                                }}
+                                        }
+                                    ]},
+                                cash_limit =
+                                    {value, #domain_CashRange{
+                                        lower =
+                                            {inclusive, #domain_Cash{
+                                                amount = 50000,
+                                                currency = #domain_CurrencyRef{symbolic_code = ?KZT}
+                                            }},
+                                        upper =
+                                            {inclusive, #domain_Cash{
+                                                amount = 50000000,
+                                                currency = #domain_CurrencyRef{symbolic_code = ?KZT}
+                                            }}
+                                    }}
+                            }
+                    }
+            }
+        }},
+
+    {term_set_hierarchy, #domain_TermSetHierarchyRef{id = ?KZT_TERMS_ID}} =>
+        {term_set_hierarchy, #domain_TermSetHierarchyObject{
+            ref = #domain_TermSetHierarchyRef{id = ?KZT_TERMS_ID},
+            data = #domain_TermSetHierarchy{
+                term_set =
+                    #domain_TermSet{
+                        payments =
+                            #domain_PaymentsServiceTerms{
+                                payment_methods =
+                                    {value,
+                                        ordsets:from_list([
+                                            #domain_PaymentMethodRef{
+                                                id =
+                                                    {bank_card, #domain_BankCardPaymentMethod{
+                                                        payment_system = #domain_PaymentSystemRef{
+                                                            id = <<"VISA">>
+                                                        }
+                                                    }}
+                                            }
+                                        ])}
+                            }
+                    }
+            }
+        }},
+
+    {shop_config, #domain_ShopConfigRef{id = ?KZT_SHOP_ID}} =>
+        {shop_config, #domain_ShopConfigObject{
+            ref = #domain_ShopConfigRef{id = ?KZT_SHOP_ID},
+            data = #domain_ShopConfig{
+                name = ?STRING,
+                block = ?BLOCKING,
+                suspension = ?SUSPENTION,
+                payment_institution = #domain_PaymentInstitutionRef{id = ?KZT_PI_ID},
+                terms = #domain_TermSetHierarchyRef{id = ?KZT_TERMS_ID},
+                account = #domain_ShopAccount{
+                    currency = #domain_CurrencyRef{symbolic_code = ?KZT},
+                    settlement = ?INTEGER,
+                    guarantee = ?INTEGER
+                },
+                party_ref = #domain_PartyConfigRef{id = ?KZT_PARTY_ID},
+                location = ?SHOP_LOCATION,
+                category = #domain_CategoryRef{id = ?INTEGER}
+            }
+        }}
 }).
 
 -define(USER_INTERACTION,
@@ -1138,99 +1352,6 @@
             ])}
 }).
 
--define(CUSTOMER, ?CUSTOMER(?STRING)).
--define(CUSTOMER(ID), #payproc_Customer{
-    id = ID,
-    owner_id = ?STRING,
-    shop_id = ?STRING,
-    status = ?CUSTOMER_READY,
-    created_at = ?TIMESTAMP,
-    bindings = [?CUSTOMER_BINDING],
-    contact_info = ?CONTACT_INFO,
-    metadata = {obj, #{}}
-}).
-
--define(CUSTOMER_READY, {ready, #payproc_CustomerReady{}}).
-
--define(CUSTOMER_BINDING, ?CUSTOMER_BINDING(?STRING, ?STRING)).
-
--define(CUSTOMER_BINDING(ID, RECID), #payproc_CustomerBinding{
-    id = ID,
-    rec_payment_tool_id = RECID,
-    payment_resource = ?DISP_PAYMENT_RESOURCE,
-    status = {succeeded, #payproc_CustomerBindingSucceeded{}}
-}).
-
--define(CUSTOMER_EVENT(ID), #payproc_Event{
-    id = ID,
-    created_at = ?TIMESTAMP,
-    source = {customer_id, ?STRING},
-    payload =
-        {customer_changes, [
-            {customer_created, #payproc_CustomerCreated{
-                customer_id = ?STRING,
-                owner_id = ?STRING,
-                shop_id = ?STRING,
-                created_at = ?TIMESTAMP,
-                contact_info = ?CONTACT_INFO,
-                metadata = {obj, #{}}
-            }},
-            {customer_status_changed, #payproc_CustomerStatusChanged{
-                status = ?CUSTOMER_READY
-            }},
-            {customer_binding_changed, #payproc_CustomerBindingChanged{
-                id = ?STRING,
-                payload =
-                    {started, #payproc_CustomerBindingStarted{
-                        binding = ?CUSTOMER_BINDING
-                    }}
-            }},
-            {customer_binding_changed, #payproc_CustomerBindingChanged{
-                id = ?STRING,
-                payload =
-                    {status_changed, #payproc_CustomerBindingStatusChanged{
-                        status =
-                            {failed, #payproc_CustomerBindingFailed{
-                                failure = {failure, #domain_Failure{code = <<"error_code">>}}
-                            }}
-                    }}
-            }},
-            {customer_binding_changed, #payproc_CustomerBindingChanged{
-                id = ?STRING,
-                payload =
-                    {interaction_changed, #payproc_CustomerBindingInteractionChanged{
-                        interaction = ?USER_INTERACTION
-                    }}
-            }},
-            {customer_binding_changed, #payproc_CustomerBindingChanged{
-                id = ?STRING,
-                payload =
-                    {interaction_changed, #payproc_CustomerBindingInteractionChanged{
-                        interaction = ?USER_INTERACTION,
-                        status = ?USER_INTERACTION_COMPLETED
-                    }}
-            }}
-        ]}
-}).
-
--define(PAYOUT, ?PAYOUT(?PI_ACCOUNT_TOOL, ?STRING)).
--define(PAYOUT(ToolID), ?PAYOUT(ToolID, ?STRING)).
-
--define(PAYOUT(ToolID, PartyID), #payouts_Payout{
-    payout_id = ?STRING,
-    created_at = ?TIMESTAMP,
-    party_id = PartyID,
-    shop_id = ?STRING,
-    status = {paid, #payouts_PayoutPaid{}},
-    cash_flow = [],
-    payout_tool_id = ToolID,
-    amount = ?INTEGER,
-    fee = ?INTEGER,
-    currency = #payouts_CurrencyRef{
-        symbolic_code = ?RUB
-    }
-}).
-
 -define(TEST_PAYMENT_TOKEN, ?STRING).
 
 -define(TEST_PAYMENT_TOOL, ?TEST_PAYMENT_TOOL(<<"visa">>)).
@@ -1294,12 +1415,6 @@
         <<"account">> => <<"12345678901234567890">>,
         <<"bankBik">> => <<"123456789">>
     }
-}).
-
--define(CUSTOMER_PARAMS, #{
-    <<"shopID">> => ?STRING,
-    <<"contactInfo">> => #{<<"email">> => <<"bla@bla.ru">>},
-    <<"metadata">> => #{<<"text">> => [<<"SOMESHIT">>, 42]}
 }).
 
 -define(PAYMENT_PARAMS(EID, Token), #{

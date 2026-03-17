@@ -306,8 +306,7 @@ get_invoice_payment_methods_ok_test(Config) ->
             end},
             {party_management, fun
                 ('GetRevision', _) -> {ok, ?INTEGER};
-                ('Checkout', _) -> {ok, ?PARTY};
-                ('GetShopContract', _) -> {ok, ?SHOP_CONTRACT}
+                ('Checkout', _) -> {ok, ?PARTY}
             end}
         ],
         Config
@@ -520,10 +519,9 @@ check_ip_on_payment_creation_ok_test(Config) ->
 
 -spec get_payments_ok_test(config()) -> _.
 get_payments_ok_test(Config) ->
-    Payment0 = ?PAYPROC_PAYMENT(?PAYMENT_WITH_CUSTOMER_PAYER, [?REFUND], [?ADJUSTMENT], [?PAYPROC_CHARGEBACK]),
-    Payment1 = ?PAYPROC_PAYMENT(?PAYMENT_WITH_RECURRENT_PAYER, [?REFUND], [?ADJUSTMENT], [?PAYPROC_CHARGEBACK]),
-    Payment2 = ?PAYPROC_PAYMENT(?PAYMENT, [?REFUND], [?ADJUSTMENT], [?PAYPROC_CHARGEBACK]),
-    Result = ?PAYPROC_INVOICE([Payment0, Payment1, Payment2]),
+    Payment0 = ?PAYPROC_PAYMENT(?PAYMENT_WITH_RECURRENT_PAYER, [?REFUND], [?ADJUSTMENT], [?PAYPROC_CHARGEBACK]),
+    Payment1 = ?PAYPROC_PAYMENT(?PAYMENT, [?REFUND], [?ADJUSTMENT], [?PAYPROC_CHARGEBACK]),
+    Result = ?PAYPROC_INVOICE([Payment0, Payment1]),
     _ = capi_ct_helper:mock_services([{invoicing, fun('Get', _) -> {ok, Result} end}], Config),
     _ = capi_ct_helper_bouncer:mock_assert_invoice_op_ctx(
         <<"GetPayments">>,

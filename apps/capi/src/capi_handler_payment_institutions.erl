@@ -1,6 +1,5 @@
 -module(capi_handler_payment_institutions).
 
--include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 
 -behaviour(capi_handler).
@@ -40,18 +39,6 @@ prepare('GetPaymentInstitutionByRef' = OperationID, Req, Context) ->
             {ok, PaymentInstitution} ->
                 {ok, {200, #{}, decode_payment_institution(PaymentInstitution)}};
             {error, not_found} ->
-                {ok, general_error(404, <<"Payment institution not found">>)}
-        end
-    end,
-    {ok, #{authorize => Authorize, process => Process}};
-prepare('GetPaymentInstitutionPaymentTerms' = OperationID, Req, Context) ->
-    Authorize = mk_authorize_operation(OperationID, Context),
-    Process = fun() ->
-        PaymentInstitutionID = genlib:to_int(maps:get('paymentInstitutionID', Req)),
-        case compute_payment_institution_terms(PaymentInstitutionID, #payproc_Varset{}, Context) of
-            {ok, #domain_TermSet{payments = PaymentTerms}} ->
-                {ok, {200, #{}, decode_payment_terms(PaymentTerms)}};
-            {error, #payproc_PaymentInstitutionNotFound{}} ->
                 {ok, general_error(404, <<"Payment institution not found">>)}
         end
     end,
@@ -113,10 +100,6 @@ check_payment_institution_residence(Residence, #domain_PaymentInstitutionObject{
 }) ->
     ordsets:is_element(Residence, Residences).
 
-compute_payment_institution_terms(PaymentInstitutionID, VS, Context) ->
-    Ref = ?PAYMENT_INSTITUTION_REF(PaymentInstitutionID),
-    capi_party:compute_payment_institution_terms(Ref, VS, Context).
-
 %
 
 decode_payment_institution(#domain_PaymentInstitutionObject{ref = Ref, data = Data}) ->
@@ -130,19 +113,6 @@ decode_payment_institution(#domain_PaymentInstitutionObject{ref = Ref, data = Da
          || R <- ordsets:to_list(Data#domain_PaymentInstitution.residences)
         ]
     }).
-
-decode_payment_terms(#domain_PaymentsServiceTerms{currencies = Currencies, categories = Categories}) ->
-    genlib_map:compact(#{
-        <<"currencies">> => decode_payment_terms(fun capi_handler_decoder_utils:decode_currency/1, Currencies),
-        <<"categories">> => decode_payment_terms(fun capi_handler_decoder_utils:decode_category_ref/1, Categories)
-    });
-decode_payment_terms(undefined) ->
-    #{}.
-
-decode_payment_terms(Fun, {value, Val}) when is_list(Val) ->
-    [Fun(V) || V <- Val];
-decode_payment_terms(_, _) ->
-    undefined.
 
 %%
 

@@ -201,17 +201,6 @@ decode_additional_tx_info(AdditionalTransactionInfo) ->
     }).
 
 decode_payer(
-    {customer, #domain_CustomerPayer{
-        payment_tool = PaymentTool,
-        customer_id = ID
-    }}
-) ->
-    #{
-        <<"payerType">> => <<"CustomerPayer">>,
-        <<"customerID">> => ID,
-        <<"paymentToolDetails">> => decode_payment_tool_details(PaymentTool)
-    };
-decode_payer(
     {recurrent, #domain_RecurrentPayer{
         payment_tool = PaymentTool,
         recurrent_parent = RecurrentParent,
@@ -491,7 +480,7 @@ decode_invoice(Invoice) ->
         #{
             <<"id">> => Invoice#domain_Invoice.id,
             <<"externalID">> => Invoice#domain_Invoice.external_id,
-            <<"shopID">> => Invoice#domain_Invoice.shop_id,
+            <<"shopID">> => Invoice#domain_Invoice.shop_ref#domain_ShopConfigRef.id,
             <<"createdAt">> => Invoice#domain_Invoice.created_at,
             <<"dueDate">> => Invoice#domain_Invoice.due,
             <<"amount">> => Amount,

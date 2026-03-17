@@ -6,7 +6,7 @@
 -export([get_webhook_by_id/2]).
 -export([delete_webhook_by_id/2]).
 
--type party_id() :: dmsl_domain_thrift:'PartyID'().
+-type party_id() :: dmsl_base_thrift:'ID'().
 -type webhook_id() :: binary().
 -type webhook_params() :: map().
 -type webhook() :: map().
