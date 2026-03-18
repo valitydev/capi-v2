@@ -17,7 +17,7 @@
 ) -> {ok, capi_handler:request_state()} | {error, noimpl}.
 prepare('CreateCustomer' = OperationID, Req, Context) ->
     CustomerParams = maps:get('CustomerParams', Req),
-    PartyID = capi_handler_utils:get_party_id(Context),
+    PartyID = maps:get(<<"partyID">>, CustomerParams, capi_handler_utils:get_party_id(Context)),
     Authorize = fun() ->
         Prototypes = [
             {operation, #{id => OperationID, party => PartyID}}
@@ -46,7 +46,7 @@ prepare('CreateCustomer' = OperationID, Req, Context) ->
     {ok, #{authorize => Authorize, process => Process}};
 prepare('GetCustomerByExternalID' = OperationID, Req, Context) ->
     ExternalID = maps:get('externalID', Req),
-    PartyID = capi_handler_utils:get_party_id(Context),
+    PartyID = maps:get('partyID', Req, capi_handler_utils:get_party_id(Context)),
     {CustomerID, ResultCustomerState} =
         case get_customer_by_external_id(PartyID, ExternalID, Context) of
             {ok, Result} ->

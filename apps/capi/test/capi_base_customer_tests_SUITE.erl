@@ -105,8 +105,13 @@ init_per_group(_, Config) ->
     Config.
 
 -spec end_per_group(group_name(), config()) -> _.
-end_per_group(_Group, C) ->
+end_per_group(Group, C) when
+    Group =:= operations_by_api_key_token;
+    Group =:= operations_by_user_session_token
+->
     _ = capi_utils:'maybe'(?config(group_test_sup, C), fun capi_ct_helper:stop_mocked_service_sup/1),
+    ok;
+end_per_group(_Group, _C) ->
     ok.
 
 -spec init_per_testcase(test_case_name(), config()) -> config().
@@ -131,6 +136,7 @@ create_customer_ok_test(Config) ->
     ),
     _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"CreateCustomer">>, ?STRING, Config),
     Req = #{
+        <<"partyID">> => ?STRING,
         <<"contactInfo">> => #{<<"email">> => <<"test@test.ru">>},
         <<"metadata">> => #{<<"key">> => <<"value">>}
     },
@@ -147,6 +153,7 @@ create_customer_authorization_error_test(Config) ->
     _ = capi_ct_helper:mock_services([], Config),
     _ = capi_ct_helper_bouncer:mock_arbiter(capi_ct_helper_bouncer:judge_always_forbidden(), Config),
     Req = #{
+        <<"partyID">> => ?STRING,
         <<"contactInfo">> => #{<<"email">> => <<"test@test.ru">>}
     },
     {error, {401, _}} = capi_client_customers:create_customer(?config(context, Config), Req).
@@ -188,7 +195,7 @@ get_customer_by_external_id_ok_test(Config) ->
     {ok, #{
         <<"id">> := ?STRING,
         <<"createdAt">> := ?TIMESTAMP
-    }} = capi_client_customers:get_customer_by_external_id(?config(context, Config), ?STRING).
+    }} = capi_client_customers:get_customer_by_external_id(?config(context, Config), ?STRING, ?STRING).
 
 -spec get_customer_by_external_id_not_found_test(config()) -> _.
 get_customer_by_external_id_not_found_test(Config) ->
@@ -197,7 +204,7 @@ get_customer_by_external_id_not_found_test(Config) ->
         Config
     ),
     _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetCustomerByExternalID">>, ?STRING, Config),
-    {error, {404, _}} = capi_client_customers:get_customer_by_external_id(?config(context, Config), ?STRING).
+    {error, {404, _}} = capi_client_customers:get_customer_by_external_id(?config(context, Config), ?STRING, ?STRING).
 
 -spec delete_customer_ok_test(config()) -> _.
 delete_customer_ok_test(Config) ->

@@ -3,6 +3,7 @@
 -export([create_customer/2]).
 -export([get_customer_by_id/2]).
 -export([get_customer_by_external_id/2]).
+-export([get_customer_by_external_id/3]).
 -export([delete_customer/2]).
 -export([create_customer_access_token/2]).
 -export([get_customer_payments/3]).
@@ -26,7 +27,11 @@ get_customer_by_id(Context, CustomerID) ->
 
 -spec get_customer_by_external_id(context(), binary()) -> {ok, term()} | {error, term()}.
 get_customer_by_external_id(Context, ExternalID) ->
-    Params = #{qs_val => #{<<"externalID">> => ExternalID}},
+    get_customer_by_external_id(Context, ExternalID, undefined).
+
+-spec get_customer_by_external_id(context(), binary(), binary() | undefined) -> {ok, term()} | {error, term()}.
+get_customer_by_external_id(Context, ExternalID, PartyID) ->
+    Params = #{qs_val => genlib_map:compact(#{<<"externalID">> => ExternalID, <<"partyID">> => PartyID})},
     {Url, PreparedParams, Opts} = capi_client_lib:make_request(Context, Params),
     Response = swag_client_customers_api:get_customer_by_external_id(Url, PreparedParams, Opts),
     capi_client_lib:handle_response(Response).

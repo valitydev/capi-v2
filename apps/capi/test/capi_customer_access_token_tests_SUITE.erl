@@ -81,6 +81,7 @@ init_per_group(operations_by_customer_access_token_after_customer_creation, Conf
     _ = capi_ct_helper_token_keeper:mock_api_key_token(?STRING, MockServiceSup),
     _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"CreateCustomer">>, ?STRING, MockServiceSup),
     Req = #{
+        <<"partyID">> => ?STRING,
         <<"contactInfo">> => #{<<"email">> => <<"test@test.ru">>}
     },
     {ok, #{
