@@ -1,7 +1,5 @@
 -module(capi_otel_middleware).
 
-%% TODO Adopt https://github.com/cogini/opentelemetry_xray
-
 -behaviour(cowboy_middleware).
 
 -export([execute/2]).

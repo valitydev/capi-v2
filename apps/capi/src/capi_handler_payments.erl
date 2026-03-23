@@ -32,7 +32,8 @@ prepare('CreatePayment' = OperationID, Req, Context) ->
         try
             capi_handler:respond_if_undefined(Invoice, general_error(404, <<"Invoice not found">>)),
             DomainInvoice = Invoice#payproc_Invoice.invoice,
-            Result = create_payment(DomainInvoice, PaymentParams, Context, OperationID),
+            CustomerID = maps:get(<<"customerID">>, PaymentParams, undefined),
+            Result = create_payment(DomainInvoice, PaymentParams, CustomerID, Context, OperationID),
             case Result of
                 {ok, Payment} ->
                     {ok, {201, #{}, decode_invoice_payment(InvoiceID, Payment, Context)}};
@@ -476,14 +477,14 @@ validate_refund(Params) ->
         _ -> throw(refund_cart_conflict)
     end.
 
-create_payment(Invoice, PaymentParams, Context, OperationID) ->
+create_payment(Invoice, PaymentParams, CustomerID, Context, OperationID) ->
     PaymentToken = decode_payment_token(PaymentParams),
     PaymentTool = capi_utils:'maybe'(PaymentToken, fun(#{payment_tool := V}) -> V end),
 
     InvoiceID = Invoice#domain_Invoice.id,
     PaymentID = create_payment_id(Invoice, PaymentParams, Context, OperationID, PaymentTool),
     ExternalID = maps:get(<<"externalID">>, PaymentParams, undefined),
-    InvoicePaymentParams = encode_invoice_payment_params(PaymentID, ExternalID, PaymentParams, PaymentTool),
+    InvoicePaymentParams = encode_invoice_payment_params(PaymentID, ExternalID, PaymentParams, PaymentTool, CustomerID),
     Call = {invoicing, 'StartPayment', {InvoiceID, InvoicePaymentParams}},
     capi_handler_utils:service_call(Call, Context).
 
@@ -549,7 +550,7 @@ get_invoice_by_id(InvoiceID, Context) ->
             undefined
     end.
 
-encode_invoice_payment_params(ID, ExternalID, PaymentParams, PaymentTool) ->
+encode_invoice_payment_params(ID, ExternalID, PaymentParams, PaymentTool, CustomerID) ->
     Flow = genlib_map:get(<<"flow">>, PaymentParams, #{<<"type">> => <<"PaymentFlowInstant">>}),
     Payer = genlib_map:get(<<"payer">>, PaymentParams),
     #payproc_InvoicePaymentParams{
@@ -562,7 +563,8 @@ encode_invoice_payment_params(ID, ExternalID, PaymentParams, PaymentTool) ->
         context = capi_handler_encoder:encode_payment_context(PaymentParams),
         processing_deadline = encode_processing_deadline(
             genlib_map:get(<<"processingDeadline">>, PaymentParams, default_processing_deadline())
-        )
+        ),
+        customer_id = CustomerID
     }.
 
 encode_payer_params(

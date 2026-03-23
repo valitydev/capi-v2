@@ -6,6 +6,7 @@
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
 -include_lib("damsel/include/dmsl_user_interaction_thrift.hrl").
+-include_lib("damsel/include/dmsl_customer_thrift.hrl").
 
 -define(RECORD_UPDATE(FieldIndex, Value, Record), erlang:setelement(FieldIndex, Record, Value)).
 
@@ -132,6 +133,7 @@
 -define(PAYPROC_INVOICE(Payments), ?PAYPROC_INVOICE(?INVOICE, Payments)).
 
 -define(PAYPROC_INVOICE(Invoice, Payments), #payproc_Invoice{
+    latest_event_id = ?INTEGER,
     invoice = Invoice,
     payments = Payments
 }).
@@ -143,6 +145,7 @@
 -define(PAYPROC_INVOICE_WITH_ID(ID, EID), ?PAYPROC_INVOICE_WITH_ID(ID, EID, ?STRING)).
 
 -define(PAYPROC_INVOICE_WITH_ID(ID, EID, OwnerID), #payproc_Invoice{
+    latest_event_id = ?INTEGER,
     invoice = ?INVOICE(ID, EID, OwnerID),
     payments = []
 }).
@@ -339,6 +342,10 @@
 -define(PAYMENT_W_EXTERNAL_ID(ID, ExternalID), ?PAYMENT(ID, ?PAYMENT_STATUS_PENDING, ?PAYER, ExternalID, undefined)).
 
 -define(PAYMENT_W_CHANGED_COST(ID, Amount), ?PAYMENT(ID, ?PAYMENT_STATUS_PENDING, ?PAYER, undefined, ?CASH(Amount))).
+
+-define(PAYMENT_W_CUSTOMER(ID, CustomerID), (?PAYMENT(ID, ?PAYMENT_STATUS_PENDING, ?PAYER))#domain_InvoicePayment{
+    customer_id = CustomerID
+}).
 
 -define(RECURRENT_PAYMENT(Status), #domain_InvoicePayment{
     id = ?STRING,
@@ -1454,6 +1461,46 @@
     <<"cart">> => [
         #{<<"product">> => ?STRING, <<"quantity">> => ?INTEGER, <<"price">> => ?INTEGER}
     ]
+}).
+
+%% Customer
+
+-define(CUSTOMER, #customer_Customer{
+    id = ?STRING,
+    party_ref = #domain_PartyConfigRef{id = ?STRING},
+    created_at = ?TIMESTAMP,
+    status = {active, #customer_CustomerActive{}},
+    contact_info = ?CONTACT_INFO,
+    metadata = {obj, #{<<"key">> => {str, <<"value">>}}}
+}).
+
+-define(CUSTOMER_STATE, #customer_CustomerState{
+    customer = ?CUSTOMER,
+    bank_card_refs = [],
+    payment_refs = []
+}).
+
+-define(CUSTOMER_PAYMENT, #customer_CustomerPayment{
+    invoice_id = ?STRING,
+    payment_id = ?STRING,
+    created_at = ?TIMESTAMP
+}).
+
+-define(CUSTOMER_PAYMENTS_RESPONSE, #customer_CustomerPaymentsResponse{
+    payments = [?CUSTOMER_PAYMENT],
+    continuation_token = undefined
+}).
+
+-define(BANK_CARD_INFO, #customer_BankCardInfo{
+    id = ?STRING,
+    card_mask = <<"424242******4242">>,
+    created_at = ?TIMESTAMP,
+    recurrent_providers = []
+}).
+
+-define(CUSTOMER_BANK_CARDS_RESPONSE, #customer_CustomerBankCardsResponse{
+    bank_cards = [?BANK_CARD_INFO],
+    continuation_token = undefined
 }).
 
 -endif.
