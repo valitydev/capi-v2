@@ -200,7 +200,13 @@ create_metadata(TokenSpec) ->
     PartyID = maps:get(party, TokenSpec),
     Metadata0 = maps:get(metadata, TokenSpec, #{}),
     Metadata1 = put_metadata(get_metadata_mapped_key(party_id), PartyID, Metadata0),
-    put_metadata(get_metadata_mapped_key(token_consumer), <<"client">>, Metadata1).
+    Metadata2 = put_metadata(get_metadata_mapped_key(token_consumer), <<"client">>, Metadata1),
+    maybe_put_customer_id(TokenSpec, Metadata2).
+
+maybe_put_customer_id(#{scope := {customer, CustomerID}}, Metadata) ->
+    put_metadata(get_metadata_mapped_key(customer_id), CustomerID, Metadata);
+maybe_put_customer_id(_TokenSpec, Metadata) ->
+    Metadata.
 
 extract_auth_context(#{swagger_context := #{auth_context := AuthContext}}) ->
     AuthContext.

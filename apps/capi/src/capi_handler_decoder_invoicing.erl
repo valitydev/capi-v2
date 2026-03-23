@@ -170,6 +170,7 @@ decode_payment(InvoiceID, Payment, Context) ->
                 decode_payer_session_info(Payment#domain_InvoicePayment.payer_session_info)
             ),
             <<"makeRecurrent">> => decode_make_recurrent(Payment#domain_InvoicePayment.make_recurrent),
+            <<"customerID">> => Payment#domain_InvoicePayment.customer_id,
             <<"metadata">> => capi_handler_decoder_utils:decode_context(Payment#domain_InvoicePayment.context)
         },
         decode_payment_status(Payment#domain_InvoicePayment.status, Context)

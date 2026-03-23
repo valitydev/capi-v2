@@ -5,3 +5,4 @@
 -define(TK_META_TOKEN_CONSUMER, <<"dev.vality.capi.consumer">>).
 -define(TK_META_USER_ID, <<"dev.vality.user.id">>).
 -define(TK_META_USER_EMAIL, <<"dev.vality.user.email">>).
+-define(TK_META_CUSTOMER_ID, <<"dev.vality.customer.id">>).

@@ -343,6 +343,10 @@
 
 -define(PAYMENT_W_CHANGED_COST(ID, Amount), ?PAYMENT(ID, ?PAYMENT_STATUS_PENDING, ?PAYER, undefined, ?CASH(Amount))).
 
+-define(PAYMENT_W_CUSTOMER(ID, CustomerID), (?PAYMENT(ID, ?PAYMENT_STATUS_PENDING, ?PAYER))#domain_InvoicePayment{
+    customer_id = CustomerID
+}).
+
 -define(RECURRENT_PAYMENT(Status), #domain_InvoicePayment{
     id = ?STRING,
     created_at = ?TIMESTAMP,
