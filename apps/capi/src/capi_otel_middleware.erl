@@ -1,5 +1,8 @@
 -module(capi_otel_middleware).
 
+%% TODO Adopt https://github.com/cogini/opentelemetry_xray
+-include_lib("opentelemetry_api/include/opentelemetry.hrl").
+
 -behaviour(cowboy_middleware).
 
 -export([execute/2]).
@@ -53,35 +56,27 @@ extract(Ctx, Carrier, _CarrierKeysFun, CarrierGet, _Options) ->
         undefined ->
             Ctx;
         XRayTrace ->
-            case decode(string:trim(XRayTrace)) of
+            SpanCtx0 = otel_tracer:from_remote_span(0, 0, 0),
+            SpanCtx1 = lists:foldl(fun decode/2, SpanCtx0, string:split(string:trim(XRayTrace), ";", all)),
+            case SpanCtx1 of
                 undefined ->
                     Ctx;
-                SpanCtx ->
-                    otel_tracer:set_current_span(Ctx, SpanCtx)
+                _ ->
+                    otel_tracer:set_current_span(Ctx, SpanCtx1)
             end
     end.
 
 %%
 
-decode(
-    %% NOTE Version is expected to be always single char "1"
-    <<"Root=", _Version:1/binary, "-", Timestamp:8/binary, "-", RootId:24/binary, ";Parent=", ParentId:16/binary,
-        ";Sampled=", Sampled:1/binary, _/binary>>
-) ->
-    try
-        TraceId = binary_to_integer(<<Timestamp/binary, RootId/binary>>, 16),
-        SpanId = binary_to_integer(ParentId, 16),
-        TraceFlags =
-            case Sampled of
-                <<"1">> -> 1;
-                <<"0">> -> 0;
-                _ -> error(badarg)
-            end,
-        otel_tracer:from_remote_span(TraceId, SpanId, TraceFlags)
-    catch
-        %% to integer from base 16 string failed
-        error:badarg ->
-            undefined
-    end;
-decode(_) ->
-    undefined.
+decode(<<"Root=1-", Timestamp:8/binary, "-", RootId:24/binary>>, SpanCtx) ->
+    TraceId = binary_to_integer(<<Timestamp/binary, RootId/binary>>, 16),
+    SpanCtx#span_ctx{trace_id = TraceId, hex_trace_id = otel_utils:encode_hex(<<TraceId:128>>)};
+decode(<<"Parent=", ParentId:16/binary>>, SpanCtx) ->
+    SpanId = binary_to_integer(ParentId, 16),
+    SpanCtx#span_ctx{span_id = SpanId, hex_span_id = otel_utils:encode_hex(<<SpanId:64>>)};
+decode(<<"Sampled=0">>, SpanCtx) ->
+    SpanCtx#span_ctx{trace_flags = 0};
+decode(<<"Sampled=1">>, SpanCtx) ->
+    SpanCtx#span_ctx{trace_flags = 1};
+decode(_Value, SpanCtx) ->
+    SpanCtx.

@@ -43,7 +43,8 @@ init([]) ->
 all() ->
     [
         {group, stream_handler_tests},
-        {group, validation_tests}
+        {group, validation_tests},
+        {group, middleware_tests}
     ].
 
 -spec groups() -> [{group_name(), list(), [test_case_name()]}].
@@ -96,41 +97,10 @@ end_per_group(_Group, C) ->
     ok.
 
 -spec init_per_testcase(test_case_name(), config()) -> config().
-init_per_testcase(amzn_xray_header_for_otel_ctx, C) ->
-    AmznXrayTraceId = <<"1-67891233-abcdef012345678912345678">>,
-    ExpectedTraceId = "67891233abcdef012345678912345678",
-    meck:expect(capi_client_lib, make_request, fun(Context, Params) ->
-        {Url, PreparedParams, Opts} = meck:passthrough([Context, Params]),
-        UpdFun = fun(Headers) ->
-            Headers#{
-                <<"X-Amzn-Trace-Id">> =>
-                    <<"Root=", AmznXrayTraceId/binary, ";Parent=53995c3f42cd8ad8;Sampled=1">>
-            }
-        end,
-        {Url, maps:update_with(header, UpdFun, PreparedParams), Opts}
-    end),
-    TestProcess = self(),
-    meck:expect(otel_ctx, get_current, fun() ->
-        OtelCtx = meck:passthrough([]),
-        SpanCtx = otel_tracer:current_span_ctx(OtelCtx),
-        TestProcess ! {otel_span_info, otel_span:hex_span_ctx(SpanCtx)},
-        OtelCtx
-    end),
-    [
-        {amzn_xray_trace_id, AmznXrayTraceId},
-        {expected_trace_id, ExpectedTraceId},
-        {test_sup, capi_ct_helper:start_mocked_service_sup(?MODULE)}
-        | C
-    ];
 init_per_testcase(_Name, C) ->
     [{test_sup, capi_ct_helper:start_mocked_service_sup(?MODULE)} | C].
 
 -spec end_per_testcase(test_case_name(), config()) -> _.
-end_per_testcase(amzn_xray_header_for_otel_ctx, C) ->
-    _ = capi_ct_helper:stop_mocked_service_sup(?config(test_sup, C)),
-    meck:unload(otel_ctx),
-    meck:unload(capi_client_lib),
-    ok;
 end_per_testcase(_Name, C) ->
     _ = capi_ct_helper:stop_mocked_service_sup(?config(test_sup, C)),
     ok.
@@ -184,9 +154,56 @@ query_param_validation(Config) ->
 
 -spec amzn_xray_header_for_otel_ctx(config()) -> _.
 amzn_xray_header_for_otel_ctx(Config) ->
-    _ = oops_body_test(Config),
-    ExpectedTraceId = ?config(expected_trace_id, Config),
-    ?assertMatch(#{otel_trace_id := ExpectedTraceId}, await_latest_otel_span_info(1_000, #{})).
+    _ = capi_ct_helper:mock_services([{invoicing, fun('Get', _) -> {ok, "spanish inquisition"} end}], Config),
+    Fixtures = [
+        {
+            "Root=1-67891233-abcdef012345678912345678;Parent=53995c3f42cd8ad8;Sampled=1",
+            "67891233abcdef012345678912345678"
+        },
+
+        {
+            "Sampled=1;Root=1-67891233-abcdef012345678912345678;Parent=53995c3f42cd8ad8",
+            "67891233abcdef012345678912345678"
+        },
+        {
+            "Root=1-67891233-abcdef012345678912345678;Sampled=1",
+            "67891233abcdef012345678912345678"
+        },
+        {
+            "Root=1-67891233-abcdef012345678912345678;whatever",
+            "67891233abcdef012345678912345678"
+        },
+        {
+            "Root=1-67891233-abcdef012345678912345678",
+            "67891233abcdef012345678912345678"
+        }
+    ],
+    Fun = fun() ->
+        capi_client_invoices:get_invoice_events(?config(context, Config), ?STRING, 1)
+    end,
+    [assert_trace_based_on_header(Header, TraceId, Fun) || {Header, TraceId} <- Fixtures].
+
+assert_trace_based_on_header(AmznTraceIdHeader0, ExpectedTraceId0, Fun) ->
+    AmznTraceIdHeader = list_to_binary(AmznTraceIdHeader0),
+    ExpectedTraceId = list_to_binary(ExpectedTraceId0),
+    meck:expect(capi_client_lib, make_request, fun(Context, Params) ->
+        {Url, PreparedParams, Opts} = meck:passthrough([Context, Params]),
+        UpdFun = fun(Headers) ->
+            Headers#{<<"X-Amzn-Trace-Id">> => AmznTraceIdHeader}
+        end,
+        {Url, maps:update_with(header, UpdFun, PreparedParams), Opts}
+    end),
+    TestProcess = self(),
+    meck:expect(otel_ctx, get_current, fun() ->
+        OtelCtx = meck:passthrough([]),
+        SpanCtx = otel_tracer:current_span_ctx(OtelCtx),
+        TestProcess ! {otel_span_info, otel_span:hex_span_ctx(SpanCtx)},
+        OtelCtx
+    end),
+    _ = Fun(),
+    meck:unload(otel_ctx),
+    meck:unload(capi_client_lib),
+    ?assertMatch(#{otel_trace_id := ExpectedTraceId}, await_latest_otel_span_info(100, #{})).
 
 await_latest_otel_span_info(Timeout, LastValue) ->
     receive
