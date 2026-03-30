@@ -810,6 +810,9 @@ create_payment_with_customer_ok_test(Config) ->
                     P = ?PAYMENT(ID, ?PAYMENT_STATUS_PENDING, ?PAYER),
                     {ok, ?PAYPROC_PAYMENT(P#domain_InvoicePayment{customer_id = <<"test-customer-id">>})}
             end},
+            {customer_management, fun('Get', _) ->
+                {ok, ?CUSTOMER_STATE}
+            end},
             {party_management, fun('GetShop', _) ->
                 {ok, ?SHOP}
             end},

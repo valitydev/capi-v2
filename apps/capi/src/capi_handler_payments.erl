@@ -21,10 +21,15 @@ prepare('CreatePayment' = OperationID, Req, Context) ->
     InvoiceID = maps:get('invoiceID', Req),
     Invoice = get_invoice_by_id(InvoiceID, Context),
     PaymentParams = maps:get('PaymentParams', Req),
+    CustomerID = maps:get(<<"customerID">>, PaymentParams, undefined),
     Authorize = fun() ->
         Prototypes = [
-            {operation, #{id => OperationID, invoice => InvoiceID}},
-            {payproc, #{invoice => Invoice}}
+            {operation,
+                genlib_map:compact(#{
+                    id => OperationID, invoice => InvoiceID, customer => CustomerID
+                })},
+            {payproc, #{invoice => Invoice}},
+            {cubasty, genlib_map:compact(#{customer => CustomerID})}
         ],
         {ok, capi_auth:authorize_operation(Prototypes, Context)}
     end,
@@ -32,7 +37,6 @@ prepare('CreatePayment' = OperationID, Req, Context) ->
         try
             capi_handler:respond_if_undefined(Invoice, general_error(404, <<"Invoice not found">>)),
             DomainInvoice = Invoice#payproc_Invoice.invoice,
-            CustomerID = maps:get(<<"customerID">>, PaymentParams, undefined),
             Result = create_payment(DomainInvoice, PaymentParams, CustomerID, Context, OperationID),
             case Result of
                 {ok, Payment} ->
