@@ -6,7 +6,6 @@
 -include_lib("damsel/include/dmsl_customer_thrift.hrl").
 -include_lib("damsel/include/dmsl_base_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
--include_lib("bender_proto/include/bender_bender_thrift.hrl").
 -include_lib("capi_dummy_data.hrl").
 -include_lib("capi_bouncer_data.hrl").
 
@@ -130,19 +129,24 @@ end_per_testcase(_Name, C) ->
 create_customer_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
-            {customer_management, fun('Create', _) -> {ok, ?CUSTOMER} end}
+            {customer_management, fun('Create', {Params}) ->
+                #customer_CustomerParams{external_id = ?STRING} = Params,
+                {ok, ?CUSTOMER}
+            end}
         ],
         Config
     ),
     _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"CreateCustomer">>, ?STRING, Config),
     Req = #{
         <<"partyID">> => ?STRING,
+        <<"externalID">> => ?STRING,
         <<"contactInfo">> => #{<<"email">> => <<"test@test.ru">>},
         <<"metadata">> => #{<<"key">> => <<"value">>}
     },
     {ok, #{
         <<"customer">> := #{
             <<"id">> := ?STRING,
+            <<"externalID">> := ?STRING,
             <<"createdAt">> := ?TIMESTAMP
         },
         <<"customerAccessToken">> := #{<<"payload">> := _}
@@ -183,24 +187,21 @@ get_customer_by_id_not_found_test(Config) ->
 get_customer_by_external_id_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
-            {bender, fun('GetInternalID', _) ->
-                BenderCtx = capi_msgp_marshalling:marshal(#{<<"context_data">> => #{}}),
-                {ok, capi_ct_helper_bender:get_internal_id_result(?STRING, BenderCtx)}
-            end},
-            {customer_management, fun('Get', _) -> {ok, ?CUSTOMER_STATE} end}
+            {customer_management, fun('GetByExternalID', _) -> {ok, ?CUSTOMER_STATE} end}
         ],
         Config
     ),
     _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetCustomerByExternalID">>, ?STRING, Config),
     {ok, #{
         <<"id">> := ?STRING,
+        <<"externalID">> := ?STRING,
         <<"createdAt">> := ?TIMESTAMP
     }} = capi_client_customers:get_customer_by_external_id(?config(context, Config), ?STRING, ?STRING).
 
 -spec get_customer_by_external_id_not_found_test(config()) -> _.
 get_customer_by_external_id_not_found_test(Config) ->
     _ = capi_ct_helper:mock_services(
-        [{bender, fun('GetInternalID', _) -> {throwing, #bender_InternalIDNotFound{}} end}],
+        [{customer_management, fun('GetByExternalID', _) -> {throwing, #customer_CustomerNotFound{}} end}],
         Config
     ),
     _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetCustomerByExternalID">>, ?STRING, Config),

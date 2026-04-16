@@ -1471,7 +1471,8 @@
     created_at = ?TIMESTAMP,
     status = {active, #customer_CustomerActive{}},
     contact_info = ?CONTACT_INFO,
-    metadata = {obj, #{<<"key">> => {str, <<"value">>}}}
+    metadata = {obj, #{<<"key">> => {str, <<"value">>}}},
+    external_id = ?STRING
 }).
 
 -define(CUSTOMER_STATE, #customer_CustomerState{

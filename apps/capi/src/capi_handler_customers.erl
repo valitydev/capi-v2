@@ -26,34 +26,30 @@ prepare('CreateCustomer' = OperationID, Req, Context) ->
         {ok, Resolution}
     end,
     Process = fun() ->
-        try
-            ExternalID = maps:get(<<"externalID">>, CustomerParams, undefined),
-            ThriftParams = encode_customer_params(PartyID, CustomerParams),
-            Call = {customer_management, 'Create', {ThriftParams}},
-            case capi_handler_utils:service_call(Call, Context) of
-                {ok, Customer} ->
-                    maybe_register_external_id(ExternalID, PartyID, Customer, CustomerParams, Context),
-                    {ok, {201, #{}, make_customer_and_token(Customer, ExternalID, Context)}};
-                {exception, #base_InvalidRequest{errors = Errors}} ->
-                    FormattedErrors = capi_handler_utils:format_request_errors(Errors),
-                    {ok, logic_error('invalidRequest', FormattedErrors)}
-            end
-        catch
-            throw:{external_id_conflict, CustomerID, SourceExternalID, _Schema} ->
-                {ok, conflict_error({CustomerID, SourceExternalID})}
+        ThriftParams = encode_customer_params(PartyID, CustomerParams),
+        Call = {customer_management, 'Create', {ThriftParams}},
+        case capi_handler_utils:service_call(Call, Context) of
+            {ok, Customer} ->
+                {ok, {201, #{}, make_customer_and_token(Customer, Context)}};
+            {exception, #customer_CustomerAlreadyExists{id = ExistingID}} ->
+                ExternalID = maps:get(<<"externalID">>, CustomerParams, undefined),
+                {ok, conflict_error({ExistingID, ExternalID})};
+            {exception, #base_InvalidRequest{errors = Errors}} ->
+                FormattedErrors = capi_handler_utils:format_request_errors(Errors),
+                {ok, logic_error('invalidRequest', FormattedErrors)}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare('GetCustomerByExternalID' = OperationID, Req, Context) ->
     ExternalID = maps:get('externalID', Req),
     PartyID = maps:get('partyID', Req, capi_handler_utils:get_party_id(Context)),
+    PartyRef = #domain_PartyConfigRef{id = PartyID},
+    Call = {customer_management, 'GetByExternalID', {ExternalID, PartyRef}},
     {CustomerID, ResultCustomerState} =
-        case get_customer_by_external_id(PartyID, ExternalID, Context) of
-            {ok, Result} ->
-                Result;
-            {error, internal_id_not_found} ->
-                {undefined, undefined};
-            {exception, _Exception} ->
+        case capi_handler_utils:service_call(Call, Context) of
+            {ok, #customer_CustomerState{customer = C} = State} ->
+                {C#customer_Customer.id, State};
+            {exception, #customer_CustomerNotFound{}} ->
                 {undefined, undefined}
         end,
     Authorize = fun() ->
@@ -66,7 +62,7 @@ prepare('GetCustomerByExternalID' = OperationID, Req, Context) ->
     Process = fun() ->
         capi_handler:respond_if_undefined(ResultCustomerState, general_error(404, <<"Customer not found">>)),
         Customer = ResultCustomerState#customer_CustomerState.customer,
-        {ok, {200, #{}, decode_customer(Customer, ExternalID)}}
+        {ok, {200, #{}, decode_customer(Customer)}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare('GetCustomerByID' = OperationID, Req, Context) ->
@@ -210,10 +206,12 @@ mask_customer_notfound(Resolution) ->
 encode_customer_params(PartyID, Params) ->
     ContactInfo = maps:get(<<"contactInfo">>, Params, undefined),
     Metadata = maps:get(<<"metadata">>, Params, undefined),
+    ExternalID = maps:get(<<"externalID">>, Params, undefined),
     #customer_CustomerParams{
         party_ref = #domain_PartyConfigRef{id = PartyID},
         contact_info = encode_contact_info(ContactInfo),
-        metadata = encode_metadata(Metadata)
+        metadata = encode_metadata(Metadata),
+        external_id = ExternalID
     }.
 
 encode_contact_info(undefined) ->
@@ -228,46 +226,16 @@ encode_metadata(Metadata) ->
 
 %%
 
-maybe_register_external_id(undefined, _PartyID, _Customer, _CustomerParams, _Context) ->
-    ok;
-maybe_register_external_id(ExternalID, PartyID, Customer, CustomerParams, Context) ->
-    #{woody_context := WoodyCtx} = Context,
-    CustomerID = Customer#customer_Customer.id,
-    IdempotentKey = {'CreateCustomer', PartyID, ExternalID},
-    Identity = capi_bender:make_identity(capi_feature_schemas:customer(), CustomerParams),
-    _ = capi_bender:gen_constant(IdempotentKey, Identity, CustomerID, WoodyCtx),
-    ok.
-
-get_customer_by_external_id(PartyID, ExternalID, #{woody_context := WoodyContext} = Context) ->
-    CustomerKey = {'CreateCustomer', PartyID, ExternalID},
-    case capi_bender:get_internal_id(CustomerKey, WoodyContext) of
-        {ok, CustomerID, _CtxData} ->
-            Call = {customer_management, 'Get', {CustomerID}},
-            case capi_handler_utils:service_call(Call, Context) of
-                {ok, CustomerState} ->
-                    {ok, {CustomerID, CustomerState}};
-                Exception ->
-                    Exception
-            end;
-        Error ->
-            Error
-    end.
-
-%%
-
-make_customer_and_token(Customer, ExternalID, Context) ->
+make_customer_and_token(Customer, Context) ->
     #{
-        <<"customer">> => decode_customer(Customer, ExternalID),
+        <<"customer">> => decode_customer(Customer),
         <<"customerAccessToken">> => capi_handler_utils:issue_access_token(Customer, Context)
     }.
 
 decode_customer(Customer) ->
-    decode_customer(Customer, undefined).
-
-decode_customer(Customer, ExternalID) ->
     genlib_map:compact(#{
         <<"id">> => Customer#customer_Customer.id,
-        <<"externalID">> => ExternalID,
+        <<"externalID">> => Customer#customer_Customer.external_id,
         <<"createdAt">> => Customer#customer_Customer.created_at,
         <<"contactInfo">> => decode_contact_info(Customer#customer_Customer.contact_info),
         <<"metadata">> => decode_metadata(Customer#customer_Customer.metadata)
