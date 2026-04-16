@@ -54,9 +54,10 @@ prepare('GetCustomerByExternalID' = OperationID, Req, Context) ->
         end,
     Authorize = fun() ->
         Prototypes = [
-            {operation, #{id => OperationID, party => PartyID, customer => CustomerID}}
+            {operation, #{id => OperationID, party => PartyID, customer => CustomerID}},
+            {cubasty, genlib_map:compact(#{customer => ResultCustomerState})}
         ],
-        Resolution = capi_auth:authorize_operation(Prototypes, Context),
+        Resolution = mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context)),
         {ok, Resolution}
     end,
     Process = fun() ->
@@ -72,7 +73,8 @@ prepare('GetCustomerByID' = OperationID, Req, Context) ->
         Prototypes = [
             {operation, #{
                 id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID
-            }}
+            }},
+            {cubasty, genlib_map:compact(#{customer => ResultCustomerState})}
         ],
         Resolution = mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context)),
         {ok, Resolution}
@@ -90,7 +92,8 @@ prepare('DeleteCustomer' = OperationID, Req, Context) ->
         Prototypes = [
             {operation, #{
                 id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID
-            }}
+            }},
+            {cubasty, genlib_map:compact(#{customer => ResultCustomerState})}
         ],
         Resolution = mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context)),
         {ok, Resolution}
@@ -113,7 +116,8 @@ prepare('CreateCustomerAccessToken' = OperationID, Req, Context) ->
         Prototypes = [
             {operation, #{
                 id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID
-            }}
+            }},
+            {cubasty, genlib_map:compact(#{customer => ResultCustomerState})}
         ],
         Resolution = mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context)),
         {ok, Resolution}
@@ -132,7 +136,8 @@ prepare('GetCustomerPayments' = OperationID, Req, Context) ->
         Prototypes = [
             {operation, #{
                 id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID
-            }}
+            }},
+            {cubasty, genlib_map:compact(#{customer => ResultCustomerState})}
         ],
         Resolution = mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context)),
         {ok, Resolution}
@@ -161,7 +166,8 @@ prepare('GetCustomerBankCards' = OperationID, Req, Context) ->
         Prototypes = [
             {operation, #{
                 id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID
-            }}
+            }},
+            {cubasty, genlib_map:compact(#{customer => ResultCustomerState})}
         ],
         Resolution = mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context)),
         {ok, Resolution}
