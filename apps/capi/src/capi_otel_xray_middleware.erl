@@ -1,4 +1,4 @@
--module(capi_otel_middleware).
+-module(capi_otel_xray_middleware).
 
 %% TODO Adopt https://github.com/cogini/opentelemetry_xray
 -include_lib("opentelemetry_api/include/opentelemetry.hrl").
@@ -22,11 +22,12 @@ execute(#{headers := Headers} = Req, Env) ->
             %% But if trace context headers are present, then get current span context from there
             otel_propagator:builtin_to_module(tracecontext)
         ]},
-    OtelCtx = otel_propagator_text_map:extract_to(otel_ctx:new(), Propagator, maps:to_list(Headers)),
+    Ctx = otel_propagator_text_map:extract_to(otel_ctx:new(), Propagator, maps:to_list(Headers)),
     %% Implicitly puts OTEL context into process dictionary.
     %% Since cowboy does not reuse process for other requests, we don't care
     %% about cleaning it up.
-    _Token = otel_ctx:attach(OtelCtx),
+    _Token = otel_ctx:attach(Ctx),
+    ok = update_process_metadata(Ctx),
     {ok, Req, Env}.
 
 -define(HEADER_KEY, <<"x-amzn-trace-id">>).
@@ -61,8 +62,17 @@ extract(Ctx, Carrier, _CarrierKeysFun, CarrierGet, _Options) ->
             case SpanCtx1 of
                 undefined ->
                     Ctx;
-                _ ->
-                    otel_tracer:set_current_span(Ctx, SpanCtx1)
+                #span_ctx{hex_trace_id = <<Time:8/binary, TraceId/binary>>} ->
+                    %% On successfull extract, remember that xray trace id. Add
+                    %% it to logger metadata on final context attach.
+                    otel_tracer:set_current_span(
+                        Ctx#{
+                            additional_logger_metadata => #{
+                                xray_trace_id => otel_utils:assert_to_binary(["1-", Time, "-", TraceId])
+                            }
+                        },
+                        SpanCtx1
+                    )
             end
     end.
 
@@ -80,3 +90,8 @@ decode(<<"Sampled=1">>, SpanCtx) ->
     SpanCtx#span_ctx{trace_flags = 1};
 decode(_Value, SpanCtx) ->
     SpanCtx.
+
+update_process_metadata(#{additional_logger_metadata := Metadata}) when is_map(Metadata) ->
+    logger:update_process_metadata(Metadata);
+update_process_metadata(_) ->
+    ok.
