@@ -157,58 +157,80 @@ amzn_xray_header_for_otel_ctx(Config) ->
     _ = capi_ct_helper:mock_services([{invoicing, fun('Get', _) -> {ok, "spanish inquisition"} end}], Config),
     Fixtures = [
         {
-            "Root=1-67891233-abcdef012345678912345678;Parent=53995c3f42cd8ad8;Sampled=1",
-            "67891233abcdef012345678912345678"
-        },
-
-        {
-            "Sampled=1;Root=1-67891233-abcdef012345678912345678;Parent=53995c3f42cd8ad8",
-            "67891233abcdef012345678912345678"
-        },
-        {
-            "Root=1-67891233-abcdef012345678912345678;Sampled=1",
-            "67891233abcdef012345678912345678"
+            #{
+                <<"X-Amzn-Trace-Id">> =>
+                    <<"Root=1-67891233-abcdef012345678912345678;Parent=53995c3f42cd8ad8;Sampled=1">>
+            },
+            <<"67891233abcdef012345678912345678">>,
+            <<"1-67891233-abcdef012345678912345678">>
         },
         {
-            "Root=1-67891233-abcdef012345678912345678;whatever",
-            "67891233abcdef012345678912345678"
+            #{
+                <<"X-Amzn-Trace-Id">> =>
+                    <<"Sampled=1;Root=1-67891233-abcdef012345678912345678;Parent=53995c3f42cd8ad8">>
+            },
+            <<"67891233abcdef012345678912345678">>,
+            <<"1-67891233-abcdef012345678912345678">>
         },
         {
-            "Root=1-67891233-abcdef012345678912345678",
-            "67891233abcdef012345678912345678"
+            #{<<"X-Amzn-Trace-Id">> => <<"Root=1-67891233-abcdef012345678912345678;Sampled=1">>},
+            <<"67891233abcdef012345678912345678">>,
+            <<"1-67891233-abcdef012345678912345678">>
+        },
+        {
+            #{<<"X-Amzn-Trace-Id">> => <<"Root=1-67891233-abcdef012345678912345678;whatever">>},
+            <<"67891233abcdef012345678912345678">>,
+            <<"1-67891233-abcdef012345678912345678">>
+        },
+        {
+            #{<<"X-Amzn-Trace-Id">> => <<"Root=1-67891233-abcdef012345678912345678">>},
+            <<"67891233abcdef012345678912345678">>,
+            <<"1-67891233-abcdef012345678912345678">>
+        },
+        %% Last case is like first, but we expect context based on regular
+        %% traceparent header. Still xray trace id must be present in logger's
+        %% process metadata.
+        {
+            #{
+                <<"traceparent">> => <<"00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01">>,
+                <<"X-Amzn-Trace-Id">> =>
+                    <<"Root=1-67891233-abcdef012345678912345678;Parent=53995c3f42cd8ad8;Sampled=1">>
+            },
+            <<"0af7651916cd43dd8448eb211c80319c">>,
+            <<"1-67891233-abcdef012345678912345678">>
         }
     ],
     Fun = fun() ->
         capi_client_invoices:get_invoice_events(?config(context, Config), ?STRING, 1)
     end,
-    [assert_trace_based_on_header(Header, TraceId, Fun) || {Header, TraceId} <- Fixtures].
+    [assert_trace_based_on_header(Headers, TraceId, XRayTraceId, Fun) || {Headers, TraceId, XRayTraceId} <- Fixtures].
 
-assert_trace_based_on_header(AmznTraceIdHeader0, ExpectedTraceId0, Fun) ->
-    AmznTraceIdHeader = list_to_binary(AmznTraceIdHeader0),
-    ExpectedTraceId = list_to_binary(ExpectedTraceId0),
+assert_trace_based_on_header(Headers, ExpectedTraceId, XRayTraceId, Fun) ->
     meck:expect(capi_client_lib, make_request, fun(Context, Params) ->
         {Url, PreparedParams, Opts} = meck:passthrough([Context, Params]),
-        UpdFun = fun(Headers) ->
-            Headers#{<<"X-Amzn-Trace-Id">> => AmznTraceIdHeader}
+        UpdFun = fun(OldHeaders) ->
+            maps:merge(OldHeaders, Headers)
         end,
         {Url, maps:update_with(header, UpdFun, PreparedParams), Opts}
     end),
     TestProcess = self(),
-    meck:expect(otel_ctx, get_current, fun() ->
-        OtelCtx = meck:passthrough([]),
-        SpanCtx = otel_tracer:current_span_ctx(OtelCtx),
-        TestProcess ! {otel_span_info, otel_span:hex_span_ctx(SpanCtx)},
-        OtelCtx
+    meck:expect(otel_ctx, attach, fun(Ctx) ->
+        Token = meck:passthrough([Ctx]),
+        TestProcess ! {otel_span_info, logger:get_process_metadata()},
+        Token
     end),
     _ = Fun(),
     meck:unload(otel_ctx),
     meck:unload(capi_client_lib),
-    ?assertMatch(#{otel_trace_id := ExpectedTraceId}, await_latest_otel_span_info(100, #{})).
+    ?assertMatch(
+        #{otel_trace_id := ExpectedTraceId, xray_trace_id := XRayTraceId},
+        await_latest_otel_span_info(100, #{})
+    ).
 
 await_latest_otel_span_info(Timeout, LastValue) ->
     receive
-        {otel_span_info, HexSpanCtx} ->
-            await_latest_otel_span_info(Timeout, HexSpanCtx)
+        {otel_span_info, LoggerMetadata} ->
+            await_latest_otel_span_info(Timeout, LoggerMetadata)
     after Timeout ->
         LastValue
     end.
