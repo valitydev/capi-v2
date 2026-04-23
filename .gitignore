@@ -11,3 +11,6 @@ log
 # make stuff
 /.image.*
 Makefile.env
+
+.claude
+CLAUDE.md
