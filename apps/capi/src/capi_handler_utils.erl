@@ -2,6 +2,7 @@
 
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
+-include_lib("damsel/include/dmsl_customer_thrift.hrl").
 
 -export([conflict_error/1]).
 -export([general_error/2]).
@@ -39,7 +40,8 @@
 -type response() :: capi_handler:response().
 -type entity() ::
     dmsl_domain_thrift:'Invoice'()
-    | dmsl_domain_thrift:'InvoiceTemplate'().
+    | dmsl_domain_thrift:'InvoiceTemplate'()
+    | dmsl_customer_thrift:'Customer'().
 -type token_source() :: capi_auth:token_spec() | entity().
 
 -spec conflict_error(binary() | {binary(), binary()}) -> response().
@@ -131,6 +133,12 @@ issue_access_token(#domain_InvoiceTemplate{} = InvoiceTpl, ProcessingContext) ->
         party => InvoiceTpl#domain_InvoiceTemplate.party_ref#domain_PartyConfigRef.id,
         scope => {invoice_template, InvoiceTpl#domain_InvoiceTemplate.id},
         shop => InvoiceTpl#domain_InvoiceTemplate.shop_ref#domain_ShopConfigRef.id
+    },
+    issue_access_token(TokenSpec, ProcessingContext);
+issue_access_token(#customer_Customer{} = Customer, ProcessingContext) ->
+    TokenSpec = #{
+        party => Customer#customer_Customer.party_ref#domain_PartyConfigRef.id,
+        scope => {customer, Customer#customer_Customer.id}
     },
     issue_access_token(TokenSpec, ProcessingContext);
 issue_access_token(TokenSpec, ProcessingContext) ->

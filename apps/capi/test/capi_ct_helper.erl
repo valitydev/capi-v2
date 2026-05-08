@@ -172,7 +172,8 @@ start_capi(Config, ExtraEnv) ->
                         party_id => ?TK_META_PARTY_ID,
                         token_consumer => ?TK_META_TOKEN_CONSUMER,
                         user_id => ?TK_META_USER_ID,
-                        user_email => ?TK_META_USER_EMAIL
+                        user_email => ?TK_META_USER_EMAIL,
+                        customer_id => ?TK_META_CUSTOMER_ID
                     }
                 }}
             ],

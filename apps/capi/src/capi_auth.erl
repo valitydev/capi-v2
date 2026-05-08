@@ -27,7 +27,7 @@
 -type consumer() :: client | merchant | provider.
 -type token_spec() :: #{
     party := binary(),
-    scope := {invoice | invoice_template, binary()},
+    scope := {invoice | invoice_template | customer, binary()},
     shop => binary(),
     lifetime => pos_integer() | unlimited,
     metadata => token_keeper_client:metadata()
@@ -168,7 +168,8 @@ resolve_auth_scope(TokenSpec) ->
     ).
 
 resolve_auth_method(#{scope := {invoice, _}}) -> ?CTX_V1_AUTHMETHOD_INVOICEACCESSTOKEN;
-resolve_auth_method(#{scope := {invoice_template, _}}) -> ?CTX_V1_AUTHMETHOD_INVOICETEMPLATEACCESSTOKEN.
+resolve_auth_method(#{scope := {invoice_template, _}}) -> ?CTX_V1_AUTHMETHOD_INVOICETEMPLATEACCESSTOKEN;
+resolve_auth_method(#{scope := {customer, _}}) -> ?CTX_V1_AUTHMETHOD_CUSTOMERACCESSTOKEN.
 
 resolve_auth_expiration(TokenSpec) ->
     case get_token_lifetime(TokenSpec) of
@@ -185,10 +186,13 @@ get_token_lifetime(#{lifetime := LifeTime} = TokenSpec) when LifeTime =/= undefi
 get_token_lifetime(#{scope := {invoice, _}}) ->
     ?DEFAULT_INVOICE_ACCESS_TOKEN_LIFETIME;
 get_token_lifetime(#{scope := {invoice_template, _}}) ->
+    unlimited;
+get_token_lifetime(#{scope := {customer, _}}) ->
     unlimited.
 
 verify_token_lifetime(#{scope := {invoice, _}}, LifeTime) when LifeTime =/= unlimited -> ok;
-verify_token_lifetime(#{scope := {invoice_template, _}}, _LifeTime) -> ok.
+verify_token_lifetime(#{scope := {invoice_template, _}}, _LifeTime) -> ok;
+verify_token_lifetime(#{scope := {customer, _}}, _LifeTime) -> ok.
 
 %%
 
@@ -196,7 +200,13 @@ create_metadata(TokenSpec) ->
     PartyID = maps:get(party, TokenSpec),
     Metadata0 = maps:get(metadata, TokenSpec, #{}),
     Metadata1 = put_metadata(get_metadata_mapped_key(party_id), PartyID, Metadata0),
-    put_metadata(get_metadata_mapped_key(token_consumer), <<"client">>, Metadata1).
+    Metadata2 = put_metadata(get_metadata_mapped_key(token_consumer), <<"client">>, Metadata1),
+    maybe_put_customer_id(TokenSpec, Metadata2).
+
+maybe_put_customer_id(#{scope := {customer, CustomerID}}, Metadata) ->
+    put_metadata(get_metadata_mapped_key(customer_id), CustomerID, Metadata);
+maybe_put_customer_id(_TokenSpec, Metadata) ->
+    Metadata.
 
 extract_auth_context(#{swagger_context := #{auth_context := AuthContext}}) ->
     AuthContext.

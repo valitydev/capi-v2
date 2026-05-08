@@ -47,7 +47,8 @@ get_cowboy_config(AdditionalRoutes, LogicHandler, SwaggerHandlerOpts) ->
             capi_otel_middleware,
             cowboy_router,
             cowboy_cors,
-            cowboy_handler
+            cowboy_handler,
+            capi_otel_middleware
         ],
         stream_handlers => [
             cowboy_access_log_h,

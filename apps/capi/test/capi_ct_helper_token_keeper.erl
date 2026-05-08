@@ -20,6 +20,7 @@
 -export([mock_api_key_token/2]).
 -export([mock_invoice_access_token/3]).
 -export([mock_invoice_template_access_token/3]).
+-export([mock_customer_access_token/3]).
 
 -spec mock_token(token_handler(), sup_or_config()) -> list(app_name()).
 mock_token(HandlerFun, SupOrConfig) ->
@@ -118,6 +119,21 @@ mock_invoice_template_access_token(PartyID, InvoiceTemplateID, SupOrConfig) ->
             scope => [#{party => #{id => PartyID}, invoice_template => #{id => InvoiceTemplateID}}]
         },
         {<<"dev.vality.capi">>, create_bouncer_context(AuthParams), api_key_metadata()}
+    end),
+    mock_token(Handler, SupOrConfig).
+
+-spec mock_customer_access_token(binary(), binary(), sup_or_config()) -> list(app_name()).
+mock_customer_access_token(PartyID, CustomerID, SupOrConfig) ->
+    Handler = make_authenticator_handler(fun() ->
+        AuthParams = #{
+            method => <<"CustomerAccessToken">>,
+            expiration => posix_to_rfc3339(lifetime_to_expiration(?TOKEN_LIFETIME)),
+            token => #{id => ?STRING},
+            scope => [#{party => #{id => PartyID}, customer => #{id => CustomerID}}]
+        },
+        {<<"dev.vality.capi">>, create_bouncer_context(AuthParams), [
+            api_key_metadata(), consumer_metadata(<<"client">>)
+        ]}
     end),
     mock_token(Handler, SupOrConfig).
 

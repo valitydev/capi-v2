@@ -76,11 +76,13 @@
 -define(postal_code, 71).
 -define(date_of_birth, 72).
 -define(document_id, 73).
+-define(metadata, 74).
 
 -export([payment/0]).
 -export([invoice/0]).
 -export([invoice_template/0]).
 -export([refund/0]).
+-export([customer/0]).
 
 -spec payment() -> schema().
 payment() ->
@@ -164,6 +166,28 @@ refund() ->
         ?currency => <<"currency">>,
         ?cart => {<<"cart">>, {set, cart_line_schema()}},
         ?allocation => {<<"allocation">>, {set, allocation_transaction()}}
+    }.
+
+-spec customer() -> schema().
+customer() ->
+    #{
+        ?contact_info => {<<"contactInfo">>, contact_info_schema()},
+        ?metadata => <<"metadata">>
+    }.
+
+contact_info_schema() ->
+    #{
+        ?email => <<"email">>,
+        ?phone_number => <<"phoneNumber">>,
+        ?first_name => <<"firstName">>,
+        ?last_name => <<"lastName">>,
+        ?country => <<"country">>,
+        ?state => <<"state">>,
+        ?city => <<"city">>,
+        ?address => <<"address">>,
+        ?postal_code => <<"postalCode">>,
+        ?date_of_birth => <<"dateOfBirth">>,
+        ?document_id => <<"documentId">>
     }.
 
 -spec payment_tool_schema() -> schema().

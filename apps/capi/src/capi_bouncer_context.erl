@@ -6,6 +6,7 @@
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("damsel/include/dmsl_webhooker_thrift.hrl").
+-include_lib("damsel/include/dmsl_customer_thrift.hrl").
 
 -type fragment() :: bouncer_client:context_fragment().
 -type acc() :: bouncer_context_helpers:context_fragment().
@@ -20,6 +21,7 @@
     {operation, prototype_operation()}
     | {payproc, prototype_payproc()}
     | {webhooks, prototype_webhooks()}
+    | {cubasty, prototype_cubasty()}
 ].
 
 -type prototype_operation() :: #{
@@ -30,7 +32,8 @@
     payment => entity_id(),
     refund => entity_id(),
     invoice_template => entity_id(),
-    webhook => entity_id()
+    webhook => entity_id(),
+    customer => entity_id()
 }.
 
 -type prototype_payproc() :: #{
@@ -40,6 +43,10 @@
 
 -type prototype_webhooks() :: #{
     webhook => webhook_id() | webhook() | undefined
+}.
+
+-type prototype_cubasty() :: #{
+    customer => entity_id() | undefined
 }.
 
 -type invoice_id() :: dmsl_domain_thrift:'InvoiceID'().
@@ -57,6 +64,7 @@
 -export_type([prototype_operation/0]).
 -export_type([prototype_payproc/0]).
 -export_type([prototype_webhooks/0]).
+-export_type([prototype_cubasty/0]).
 
 -export([new/0]).
 -export([build/3]).
@@ -89,7 +97,8 @@ build(operation, #{id := OperationID} = Params, Acc, _WoodyCtx) ->
                 payment = maybe_entity(payment, Params),
                 refund = maybe_entity(refund, Params),
                 invoice_template = maybe_entity(invoice_template, Params),
-                webhook = maybe_entity(webhook, Params)
+                webhook = maybe_entity(webhook, Params),
+                customer = maybe_entity(customer, Params)
             }
         }
     };
@@ -115,6 +124,16 @@ build(webhooks, #{} = Params, Acc, WoodyCtx) ->
                 webhook,
                 Params,
                 fun(V) -> build_webhook_ctx(V, WoodyCtx) end
+            )
+        }
+    };
+build(cubasty, #{} = Params, Acc, WoodyCtx) ->
+    Acc#ctx_v1_ContextFragment{
+        cubasty = #ctx_v1_ContextCustomerManagement{
+            customer = maybe_with(
+                customer,
+                Params,
+                fun(V) -> build_customer_ctx(V, WoodyCtx) end
             )
         }
     }.
@@ -195,6 +214,23 @@ build_webhook_filter({Type, Filter}) ->
 
 build_webhook_filter_details(#webhooker_InvoiceEventFilter{shop_ref = #domain_ShopConfigRef{id = ShopID}}, Ctx) ->
     Ctx#ctx_v1_WebhookFilter{shop = 'maybe'(ShopID, fun build_entity/1)}.
+
+build_customer_ctx(ID, WoodyCtx) when is_binary(ID) ->
+    maybe_with_woody_result(
+        customer_management,
+        'Get',
+        {ID},
+        WoodyCtx,
+        fun build_customer_ctx/1
+    );
+build_customer_ctx(CustomerState, _WoodyCtx) ->
+    build_customer_ctx(CustomerState).
+
+build_customer_ctx(#customer_CustomerState{customer = Customer}) ->
+    #ctx_v1_Customer{
+        id = Customer#customer_Customer.id,
+        party = build_entity(Customer#customer_Customer.party_ref#domain_PartyConfigRef.id)
+    }.
 
 %%
 
