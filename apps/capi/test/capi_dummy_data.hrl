@@ -108,7 +108,8 @@
     shop_ref = #domain_ShopConfigRef{id = ?STRING},
     party_ref = #domain_PartyConfigRef{id = OwnerID},
     template_id = ?STRING,
-    external_id = EID
+    external_id = EID,
+    client_info = #domain_InvoiceClientInfo{trust_level = well_known}
 }).
 
 -define(SWAG_INVOICE_CART, [
@@ -1421,7 +1422,8 @@
         <<"accountType">> => <<"InvoiceRussianBankAccount">>,
         <<"account">> => <<"12345678901234567890">>,
         <<"bankBik">> => <<"123456789">>
-    }
+    },
+    <<"clientInfo">> => #{<<"trustLevel">> => <<"wellKnown">>}
 }).
 
 -define(PAYMENT_PARAMS(EID, Token), #{

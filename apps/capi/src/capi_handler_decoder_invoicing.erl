@@ -493,7 +493,8 @@ decode_invoice(Invoice) ->
             <<"bankAccount">> => decode_invoice_bank_account(Details#domain_InvoiceDetails.bank_account),
             <<"invoiceTemplateID">> => Invoice#domain_Invoice.template_id,
             <<"allocation">> => capi_allocation:decode(Invoice#domain_Invoice.allocation),
-            <<"amountRandomized">> => capi_mutation:decode_invoice_amount_mutation(Invoice#domain_Invoice.mutations)
+            <<"amountRandomized">> => capi_mutation:decode_invoice_amount_mutation(Invoice#domain_Invoice.mutations),
+            <<"clientInfo">> => decode_invoice_client_info(Invoice#domain_Invoice.client_info)
         },
         decode_invoice_status(Invoice#domain_Invoice.status)
     ).
@@ -545,6 +546,13 @@ decode_invoice_line_tax_mode(#{<<"TaxMode">> := {str, TM}}) ->
         <<"rate">> => TM
     };
 decode_invoice_line_tax_mode(_) ->
+    undefined.
+
+decode_invoice_client_info(#domain_InvoiceClientInfo{trust_level = well_known}) ->
+    #{<<"trustLevel">> => <<"wellKnown">>};
+decode_invoice_client_info(#domain_InvoiceClientInfo{trust_level = unknown}) ->
+    #{<<"trustLevel">> => <<"unknown">>};
+decode_invoice_client_info(_) ->
     undefined.
 
 -spec decode_payment_methods(undefined | list()) -> list(decode_data()).

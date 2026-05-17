@@ -256,7 +256,8 @@ create_invoice_ok_test(Config) ->
         Config
     ),
     _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"CreateInvoice">>, ?STRING, ?STRING, Config),
-    {ok, _} = capi_client_invoices:create_invoice(?config(context, Config), ?INVOICE_PARAMS).
+    {ok, #{<<"invoice">> := Invoice}} = capi_client_invoices:create_invoice(?config(context, Config), ?INVOICE_PARAMS),
+    ?assertMatch(#{<<"clientInfo">> := #{<<"trustLevel">> := <<"wellKnown">>}}, Invoice).
 
 -spec create_invoice_rand_amount_ok_test(config()) -> _.
 create_invoice_rand_amount_ok_test(Config) ->
