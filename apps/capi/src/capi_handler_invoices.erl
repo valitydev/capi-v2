@@ -86,6 +86,24 @@ prepare('CreateInvoiceAccessToken' = OperationID, Req, Context) ->
         {ok, {201, #{}, Response}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
+prepare('CreateInvoiceCheckoutUrl' = OperationID, Req, Context) ->
+    InvoiceID = maps:get('invoiceID', Req),
+    ResultInvoice = map_service_result(capi_handler_utils:get_invoice_by_id(InvoiceID, Context)),
+    Authorize = fun() ->
+        Prototypes = [
+            {operation, #{id => OperationID, invoice => InvoiceID}},
+            {payproc, #{invoice => ResultInvoice}}
+        ],
+        Resolution = capi_auth:authorize_operation(Prototypes, Context),
+        {ok, Resolution}
+    end,
+    Process = fun() ->
+        capi_handler:respond_if_undefined(ResultInvoice, general_error(404, <<"Invoice not found">>)),
+        Invoice = ResultInvoice#payproc_Invoice.invoice,
+        Response = capi_handler_utils:create_checkout_url(Invoice, maps:get(<<"checkoutParameters">>, Req), Context),
+        {ok, {201, #{}, Response}}
+    end,
+    {ok, #{authorize => Authorize, process => Process}};
 prepare('GetInvoiceByID' = OperationID, Req, Context) ->
     InvoiceID = maps:get('invoiceID', Req),
     ResultInvoice = map_service_result(capi_handler_utils:get_invoice_by_id(InvoiceID, Context)),
