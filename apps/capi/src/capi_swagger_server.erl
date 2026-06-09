@@ -44,9 +44,9 @@ get_cowboy_config(AdditionalRoutes, LogicHandler, SwaggerHandlerOpts) ->
             cors_policy => capi_cors_policy
         },
         middlewares => [
-            capi_otel_xray_middleware,
             cowboy_router,
             cowboy_cors,
+            capi_otel_xray_middleware,
             cowboy_handler
         ],
         stream_handlers => [
