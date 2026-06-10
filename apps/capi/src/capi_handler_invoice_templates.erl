@@ -156,10 +156,12 @@ prepare('CreateInvoiceWithTemplate' = OperationID, Req, Context) ->
     Process = fun() ->
         capi_handler:respond_if_undefined(InvoiceTpl, general_error(404, <<"Invoice template not found">>)),
         InvoiceParams = maps:get('InvoiceParamsWithTemplate', Req),
+        UrlParams = maps:get(<<"urlParams">>, InvoiceParams, #{}),
+        ok = validate_checkout_url_params(UrlParams),
         PartyID = InvoiceTpl#domain_InvoiceTemplate.party_ref#domain_PartyConfigRef.id,
         try create_invoice(PartyID, InvoiceTplID, InvoiceParams, Context, OperationID) of
             {ok, #'payproc_Invoice'{invoice = Invoice}} ->
-                {ok, {201, #{}, capi_handler_decoder_invoicing:make_invoice_and_token(Invoice, Context)}};
+                {ok, {201, #{}, capi_handler_decoder_invoicing:make_invoice_and_token(Invoice, UrlParams, Context)}};
             {exception, #base_InvalidRequest{errors = Errors}} ->
                 FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                 {ok, logic_error('invalidRequest', FormattedErrors)};
@@ -285,6 +287,12 @@ mask_invoice_template_notfound(Resolution) ->
     capi_handler:respond_if_forbidden(Resolution, general_error(404, <<"Invoice template not found">>)).
 
 %%
+
+validate_checkout_url_params(UrlParams) ->
+    case capi_handler_utils:validate_checkout_url_params(UrlParams) of
+        ok -> ok;
+        {error, Reason} -> erlang:throw({invalid_url_params, Reason})
+    end.
 
 create_invoice(PartyID, InvoiceTplID, InvoiceParams, Context, BenderPrefix) ->
     #{woody_context := WoodyCtx} = Context,

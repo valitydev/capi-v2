@@ -28,11 +28,14 @@ prepare('CreateInvoice' = OperationID, Req, Context) ->
     end,
     Process = fun() ->
         try
+            UrlParams = maps:get(<<"urlParams">>, InvoiceParams, #{}),
+            ok = validate_checkout_url_params(UrlParams),
             Allocation = maps:get(<<"allocation">>, InvoiceParams, undefined),
             ok = validate_allocation(Allocation),
             case create_invoice(PartyID, InvoiceParams, Context, OperationID) of
                 {ok, #'payproc_Invoice'{invoice = Invoice}} ->
-                    {ok, {201, #{}, capi_handler_decoder_invoicing:make_invoice_and_token(Invoice, Context)}};
+                    {ok,
+                        {201, #{}, capi_handler_decoder_invoicing:make_invoice_and_token(Invoice, UrlParams, Context)}};
                 {exception, #'payproc_PartyNotFound'{}} ->
                     {ok, logic_error('invalidPartyID', <<"Party not found">>)};
                 {exception, #base_InvalidRequest{errors = Errors}} ->
@@ -55,6 +58,8 @@ prepare('CreateInvoice' = OperationID, Req, Context) ->
                     {ok, logic_error('invalidAllocation', Message)}
             end
         catch
+            throw:{invalid_url_params, _Reason} ->
+                {ok, logic_error('invalidUrlParams', <<"Bad URL params">>)};
             throw:invoice_cart_empty ->
                 {ok, logic_error('invalidInvoiceCart', <<"Wrong size. Path to item: cart">>)};
             throw:invalid_invoice_cost ->
@@ -86,7 +91,7 @@ prepare('CreateInvoiceAccessToken' = OperationID, Req, Context) ->
         {ok, {201, #{}, Response}}
     end,
     {ok, #{authorize => Authorize, process => Process}};
-prepare('CreateInvoiceCheckoutUrl' = OperationID, Req, Context) ->
+prepare('CreateInvoiceUrl' = OperationID, Req, Context) ->
     InvoiceID = maps:get('invoiceID', Req),
     ResultInvoice = map_service_result(capi_handler_utils:get_invoice_by_id(InvoiceID, Context)),
     Authorize = fun() ->
@@ -98,10 +103,17 @@ prepare('CreateInvoiceCheckoutUrl' = OperationID, Req, Context) ->
         {ok, Resolution}
     end,
     Process = fun() ->
-        capi_handler:respond_if_undefined(ResultInvoice, general_error(404, <<"Invoice not found">>)),
-        Invoice = ResultInvoice#payproc_Invoice.invoice,
-        Response = capi_handler_utils:create_checkout_url(Invoice, maps:get(<<"checkoutParameters">>, Req), Context),
-        {ok, {201, #{}, Response}}
+        UrlParams = maps:get(<<"params">>, Req),
+        case capi_handler_utils:validate_checkout_url_params(UrlParams) of
+            ok ->
+                capi_handler:respond_if_undefined(ResultInvoice, general_error(404, <<"Invoice not found">>)),
+                Invoice = ResultInvoice#payproc_Invoice.invoice,
+                #{<<"payload">> := AccessToken} = capi_handler_utils:issue_access_token(Invoice, Context),
+                Response = capi_handler_utils:create_checkout_url(Invoice, AccessToken, UrlParams, Context),
+                {ok, {201, #{}, Response}};
+            {error, _Reason} ->
+                {ok, logic_error('invalidUrlParams', <<"Bad URL params">>)}
+        end
     end,
     {ok, #{authorize => Authorize, process => Process}};
 prepare('GetInvoiceByID' = OperationID, Req, Context) ->
@@ -273,6 +285,12 @@ prepare(_OperationID, _Req, _Context) ->
     {error, noimpl}.
 
 %%
+
+validate_checkout_url_params(UrlParams) ->
+    case capi_handler_utils:validate_checkout_url_params(UrlParams) of
+        ok -> ok;
+        {error, Reason} -> erlang:throw({invalid_url_params, Reason})
+    end.
 
 validate_allocation(Allocation) ->
     case capi_allocation:validate(Allocation) of

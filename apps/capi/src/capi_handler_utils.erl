@@ -24,7 +24,8 @@
 -export([get_party_id/1]).
 
 -export([issue_access_token/2]).
--export([create_checkout_url/3]).
+-export([validate_checkout_url_params/1]).
+-export([create_checkout_url/4]).
 -export([merge_and_compact/2]).
 -export([get_time/2]).
 -export([collect_events/4]).
@@ -37,6 +38,8 @@
 
 -export([emplace_token_provider_data/3]).
 
+-export_type([url_params/0]).
+
 -type processing_context() :: capi_handler:processing_context().
 -type response() :: capi_handler:response().
 -type entity() ::
@@ -45,7 +48,7 @@
     | dmsl_customer_thrift:'Customer'().
 -type token_source() :: capi_auth:token_spec() | entity().
 
--type checkout_params() :: #{binary() => binary()}.
+-type url_params() :: #{binary() => binary()}.
 
 -spec conflict_error(binary() | {binary(), binary()}) -> response().
 conflict_error({ID, ExternalID}) ->
@@ -123,35 +126,53 @@ get_party_id(Context) ->
 
 %% Utils
 
--spec create_checkout_url(dmsl_domain_thrift:'Invoice'(), checkout_params(), processing_context()) -> map().
-create_checkout_url(#domain_Invoice{} = Invoice, Params0, ProcessingContext) ->
+-spec validate_checkout_url_params(url_params()) -> ok | {error, Reason :: {atom(), term()}}.
+validate_checkout_url_params(Params0) ->
     UrlGenOpts = genlib_app:env(capi, checkout_url_generation),
     Params1 = maps:with(maps:get(parameters_whitelist, UrlGenOpts, []), Params0),
-    TokenSpec = #{
-        party => Invoice#domain_Invoice.party_ref#domain_PartyConfigRef.id,
-        scope => {invoice, Invoice#domain_Invoice.id},
-        shop => Invoice#domain_Invoice.shop_ref#domain_ShopConfigRef.id
-    },
+    case uri_string:compose_query(maps:to_list(Params1), [{encoding, utf8}]) of
+        {error, Error, Term} ->
+            {error, {Error, Term}};
+        _ ->
+            ok
+    end.
+
+-spec create_checkout_url(
+    dmsl_domain_thrift:'Invoice'(),
+    token_keeper_client:token(),
+    url_params(),
+    processing_context()
+) -> map() | no_return().
+create_checkout_url(Invoice, AccessToken, Params0, ProcessingContext) ->
+    UrlGenOpts = genlib_app:env(capi, checkout_url_generation),
+    Params1 = maps:with(maps:get(parameters_whitelist, UrlGenOpts, []), Params0),
     Params2 = maps:merge(Params1, #{
         <<"invoiceID">> => Invoice#domain_Invoice.id,
-        <<"invoiceAccessToken">> => capi_auth:issue_access_token(TokenSpec, get_woody_context(ProcessingContext))
+        <<"invoiceAccessToken">> => AccessToken
     }),
-    PartyID = Invoice#domain_Invoice.party_ref#domain_PartyConfigRef.id,
-    ShopID = Invoice#domain_Invoice.shop_ref#domain_ShopConfigRef.id,
-    BaseUrl =
-        case capi_party:get_shop(PartyID, ShopID, ProcessingContext) of
-            {ok, #domain_ShopConfig{checkout_base_url = V}} when V =/= undefined ->
-                V;
-            _ ->
-                maps:get(default_base_url, UrlGenOpts)
-        end,
-    #{
-        <<"checkoutUrl">> => iolist_to_binary([
-            BaseUrl,
-            "?",
-            uri_string:compose_query(maps:to_list(Params2), [{encoding, utf8}])
-        ])
-    }.
+    BaseUrl = get_base_url(Invoice, UrlGenOpts, ProcessingContext),
+    case uri_string:compose_query(maps:to_list(Params2), [{encoding, utf8}]) of
+        {error, Error, Term} ->
+            erlang:throw({Error, Term});
+        ParamsStr ->
+            #{<<"url">> => <<BaseUrl/binary, $?, ParamsStr/binary>>}
+    end.
+
+get_base_url(
+    #domain_Invoice{party_ref = #domain_PartyConfigRef{id = PartyID}, shop_ref = #domain_ShopConfigRef{id = ShopID}},
+    #{default_base_url := Default},
+    ProcessingContext
+) ->
+    case capi_party:get_shop(PartyID, ShopID, ProcessingContext) of
+        {ok, #domain_ShopConfig{
+            checkout_location = #domain_ShopCheckoutLocation{
+                locations = [#domain_CheckoutLocation{base_url = V} | _]
+            }
+        }} ->
+            V;
+        _ ->
+            Default
+    end.
 
 -spec issue_access_token(token_source(), processing_context()) -> map().
 issue_access_token(#domain_Invoice{} = Invoice, ProcessingContext) ->

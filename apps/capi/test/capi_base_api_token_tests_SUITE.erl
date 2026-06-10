@@ -30,7 +30,7 @@
     get_invoice_by_external_id_for_party/1,
     get_invoice_by_external_id_not_impl_error/1,
     create_invoice_access_token_ok_test/1,
-    create_invoice_checkout_url_ok_test/1,
+    create_invoice_url_ok_test/1,
     create_invoice_template_ok_test/1,
     create_invoice_template_w_randomization_ok_test/1,
     create_invoice_with_template_test/1,
@@ -131,7 +131,7 @@ groups() ->
             get_invoice_by_external_id_not_impl_error,
             check_no_invoice_by_external_id_test,
             create_invoice_access_token_ok_test,
-            create_invoice_checkout_url_ok_test,
+            create_invoice_url_ok_test,
             create_invoice_template_ok_test,
             create_invoice_template_w_randomization_ok_test,
             create_invoice_template_autorization_error_test,
@@ -405,8 +405,9 @@ create_invoice_access_token_ok_test(Config) ->
     ),
     {ok, _} = capi_client_invoices:create_invoice_access_token(?config(context, Config), ?STRING).
 
--spec create_invoice_checkout_url_ok_test(config()) -> _.
-create_invoice_checkout_url_ok_test(Config) ->
+%% TODO More tests to assert filtering out bullshit input in query params
+-spec create_invoice_url_ok_test(config()) -> _.
+create_invoice_url_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
             {invoicing, fun('Get', _) -> {ok, ?PAYPROC_INVOICE} end}
@@ -414,15 +415,15 @@ create_invoice_checkout_url_ok_test(Config) ->
         Config
     ),
     _ = capi_ct_helper_bouncer:mock_assert_invoice_op_ctx(
-        <<"CreateInvoiceCheckoutUrl">>,
+        <<"CreateInvoiceUrl">>,
         ?STRING,
         ?STRING,
         ?STRING,
         Config
     ),
     Params = #{},
-    {ok, #{<<"checkoutUrl">> => <<"http://shop-specific.local/path/to/checkout?">>}} =
-        capi_client_invoices:create_invoice_checkout_url(?config(context, Config), Params, ?STRING).
+    {ok, #{<<"url">> => <<"http://shop-specific.local/path/to/checkout?">>}} =
+        capi_client_invoices:create_invoice_url(?config(context, Config), Params, ?STRING).
 
 -spec create_invoice_template_ok_test(config()) -> _.
 create_invoice_template_ok_test(Config) ->

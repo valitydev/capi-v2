@@ -25,7 +25,7 @@
 -export([decode_recurrent_parent/1]).
 -export([decode_make_recurrent/1]).
 
--export([make_invoice_and_token/2]).
+-export([make_invoice_and_token/3]).
 
 -type processing_context() :: capi_handler:processing_context().
 -type decode_data() :: capi_handler_decoder_utils:decode_data().
@@ -718,12 +718,16 @@ decode_mobile_phone(#domain_MobilePhone{cc = Cc, ctn = Ctn}) ->
 gen_phone_number(#{<<"cc">> := Cc, <<"ctn">> := Ctn}) ->
     <<"+", Cc/binary, Ctn/binary>>.
 
--spec make_invoice_and_token(capi_handler_encoder:encode_data(), processing_context()) ->
+-spec make_invoice_and_token(capi_handler_encoder:encode_data(), capi_handler_utils:url_params(), processing_context()) ->
     capi_handler_decoder_utils:decode_data().
-make_invoice_and_token(Invoice, ProcessingContext) ->
+
+make_invoice_and_token(Invoice, UrlParams, ProcessingContext) ->
+    #{<<"payload">> := AccessToken} =
+        InvoiceAccessToken = capi_handler_utils:issue_access_token(Invoice, ProcessingContext),
     #{
         <<"invoice">> => decode_invoice(Invoice),
-        <<"invoiceAccessToken">> => capi_handler_utils:issue_access_token(Invoice, ProcessingContext)
+        <<"invoiceAccessToken">> => InvoiceAccessToken,
+        <<"invoiceUrl">> => capi_handler_utils:create_checkout_url(Invoice, AccessToken, UrlParams, ProcessingContext)
     }.
 
 %%
