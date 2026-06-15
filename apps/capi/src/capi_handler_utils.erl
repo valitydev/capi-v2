@@ -129,7 +129,7 @@ get_party_id(Context) ->
 -spec validate_checkout_url_params(url_params()) -> ok | {error, Reason :: {atom(), term()}}.
 validate_checkout_url_params(Params0) ->
     UrlGenOpts = genlib_app:env(capi, checkout_url_generation),
-    Params1 = maps:with(maps:get(parameters_whitelist, UrlGenOpts, []), Params0),
+    Params1 = maps:with(maps:get(params_whitelist, UrlGenOpts, []), Params0),
     case uri_string:compose_query(maps:to_list(Params1), [{encoding, utf8}]) of
         {error, Error, Term} ->
             {error, {Error, Term}};
@@ -145,17 +145,19 @@ validate_checkout_url_params(Params0) ->
 ) -> map() | no_return().
 create_checkout_url(Invoice, AccessToken, Params0, ProcessingContext) ->
     UrlGenOpts = genlib_app:env(capi, checkout_url_generation),
-    Params1 = maps:with(maps:get(parameters_whitelist, UrlGenOpts, []), Params0),
+    Params1 = maps:with(maps:get(params_whitelist, UrlGenOpts, []), Params0),
+    %% TODO Warn if params filtered out
     Params2 = maps:merge(Params1, #{
         <<"invoiceID">> => Invoice#domain_Invoice.id,
         <<"invoiceAccessToken">> => AccessToken
     }),
     BaseUrl = get_base_url(Invoice, UrlGenOpts, ProcessingContext),
+    %% TODO Sanitize params?
     case uri_string:compose_query(maps:to_list(Params2), [{encoding, utf8}]) of
         {error, Error, Term} ->
             erlang:throw({Error, Term});
-        ParamsStr ->
-            #{<<"url">> => <<BaseUrl/binary, $?, ParamsStr/binary>>}
+        EncodedParams ->
+            #{<<"url">> => <<BaseUrl/binary, $?, EncodedParams/binary>>}
     end.
 
 get_base_url(

@@ -258,7 +258,16 @@ create_invoice_ok_test(Config) ->
         Config
     ),
     _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"CreateInvoice">>, ?STRING, ?STRING, Config),
-    {ok, #{<<"invoice">> := Invoice}} = capi_client_invoices:create_invoice(?config(context, Config), ?INVOICE_PARAMS),
+    InvoiceParams0 = ?INVOICE_PARAMS,
+    UrlParams = #{
+        <<"theme">> => ?STRING,
+        <<"locale">> => ?STRING,
+        <<"not-whitelisted">> => ?STRING
+    },
+    InvoiceParams1 = maps:merge(InvoiceParams0, #{<<"urlParams">> => UrlParams}),
+    {ok, #{<<"invoice">> := Invoice, <<"invoiceUrl">> := InvoiceUrl}} =
+        capi_client_invoices:create_invoice(?config(context, Config), InvoiceParams1),
+    assert_invoice_url(?STRING, ?CHECKOUT_URL, UrlParams, InvoiceUrl),
     ?assertMatch(#{<<"clientInfo">> := #{<<"trustLevel">> := <<"wellKnown">>}}, Invoice).
 
 -spec create_invoice_rand_amount_ok_test(config()) -> _.
@@ -405,7 +414,6 @@ create_invoice_access_token_ok_test(Config) ->
     ),
     {ok, _} = capi_client_invoices:create_invoice_access_token(?config(context, Config), ?STRING).
 
-%% TODO More tests to assert filtering out bullshit input in query params
 -spec create_invoice_url_ok_test(config()) -> _.
 create_invoice_url_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
@@ -426,19 +434,8 @@ create_invoice_url_ok_test(Config) ->
         <<"locale">> => ?STRING,
         <<"not-whitelisted">> => ?STRING
     },
-    EncodedParams = uri_string:compose_query(
-        maps:to_list(
-            maps:without([<<"not-whitelisted">>], Params#{
-                <<"invoiceAccessToken">> => ?API_TOKEN,
-                <<"invoiceID">> => ?STRING
-            })
-        ),
-        [{encoding, utf8}]
-    ),
-    ?assertMatch(
-        {ok, #{<<"url">> := <<"http://shop-specific.local/path/to/checkout?", EncodedParams/binary>>}},
-        capi_client_invoices:create_invoice_url(?config(context, Config), Params, ?STRING)
-    ).
+    {ok, InvoiceUrl} = capi_client_invoices:create_invoice_url(?config(context, Config), Params, ?STRING),
+    assert_invoice_url(?STRING, ?CHECKOUT_URL, Params, InvoiceUrl).
 
 -spec create_invoice_template_ok_test(config()) -> _.
 create_invoice_template_ok_test(Config) ->
@@ -596,12 +593,17 @@ create_invoice_with_template_test(Config) ->
         ],
         Config
     ),
-
+    UrlParams = #{
+        <<"theme">> => ?STRING,
+        <<"locale">> => ?STRING,
+        <<"not-whitelisted">> => ?STRING
+    },
     Req = #{
         <<"amount">> => ?INTEGER,
         <<"currency">> => ?RUB,
         <<"metadata">> => #{<<"invoice_dummy_metadata">> => <<"test_value">>},
-        <<"externalID">> => ExternalID
+        <<"externalID">> => ExternalID,
+        <<"urlParams">> => UrlParams
     },
     Ctx = ?config(context, Config),
     _ = capi_ct_helper_bouncer:mock_assert_invoice_tpl_op_ctx(
@@ -611,9 +613,9 @@ create_invoice_with_template_test(Config) ->
         ?STRING,
         Config
     ),
-
-    {ok, #{<<"invoice">> := Invoice}} =
+    {ok, #{<<"invoice">> := Invoice, <<"invoiceUrl">> := InvoiceUrl}} =
         capi_client_invoice_templates:create_invoice(Ctx, ?STRING, Req),
+    assert_invoice_url(BenderKey, ?CHECKOUT_URL, UrlParams, InvoiceUrl),
     ?assertEqual(BenderKey, maps:get(<<"id">>, Invoice)),
     ?assertEqual(ExternalID, maps:get(<<"externalID">>, Invoice)).
 
@@ -1851,3 +1853,17 @@ different_ip_header(Config) ->
     Context0 = ?config(context, Config),
     Context1 = Context0#{ip_address => IPAddress},
     {ok, _} = capi_client_shops:get_shop_by_id_for_party(Context1, ?STRING, ?STRING).
+
+-spec assert_invoice_url(binary(), binary(), map(), map()) -> ok | no_return().
+assert_invoice_url(InvoiceID, BaseUrl, Params0, InvoiceUrl) ->
+    UrlGenOpts = genlib_app:env(capi, checkout_url_generation),
+    Params1 = maps:with(maps:get(params_whitelist, UrlGenOpts, []), Params0),
+    EncodedParams = uri_string:compose_query(
+        maps:to_list(Params1#{
+            <<"invoiceAccessToken">> => ?API_TOKEN,
+            <<"invoiceID">> => InvoiceID
+        }),
+        [{encoding, utf8}]
+    ),
+    Expected = <<BaseUrl/binary, $?, EncodedParams/binary>>,
+    ?assertMatch(#{<<"url">> := Expected}, InvoiceUrl).

@@ -31,6 +31,7 @@
 -define(TEST_RULESET_ID, <<"test/api">>).
 -define(API_TOKEN, <<"letmein">>).
 -define(EMAIL, <<"test@test.ru">>).
+-define(CHECKOUT_URL, <<"http://shop-specific.local/path/to/checkout">>).
 
 -define(KZT_PARTY_ID, <<"95a158c2-343a-40c9-b690-247dbee3fa40">>).
 -define(KZT_SHOP_ID, <<"bbe49f63-0ff8-4cc4-99e8-00892a683cec">>).
@@ -458,7 +459,7 @@
     location = ?SHOP_LOCATION,
     category = #domain_CategoryRef{id = ?INTEGER},
     checkout_location = #domain_ShopCheckoutLocation{
-        locations = [#domain_CheckoutLocation{base_url = <<"http://shop-specific.local/path/to/checkout">>}]
+        locations = [#domain_CheckoutLocation{base_url = ?CHECKOUT_URL}]
     }
 }).
 

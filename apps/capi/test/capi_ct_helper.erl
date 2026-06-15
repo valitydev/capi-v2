@@ -178,7 +178,7 @@ start_capi(Config, ExtraEnv) ->
                 }},
                 {checkout_url_generation, #{
                     default_base_url => <<"https://checkout.example.com/pay">>,
-                    parameters_whitelist => [
+                    params_whitelist => [
                         <<"name">>,
                         <<"description">>,
                         <<"obscureCardCvv">>,
