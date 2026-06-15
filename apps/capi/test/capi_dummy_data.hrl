@@ -457,7 +457,9 @@
     party_ref = #domain_PartyConfigRef{id = ?STRING},
     location = ?SHOP_LOCATION,
     category = #domain_CategoryRef{id = ?INTEGER},
-    checkout_base_url = <<"http://shop-specific.local/path/to/checkout">>
+    checkout_location = #domain_ShopCheckoutLocation{
+        locations = [#domain_CheckoutLocation{base_url = <<"http://shop-specific.local/path/to/checkout">>}]
+    }
 }).
 
 -define(SHOP, ?SHOP(?RUB)).

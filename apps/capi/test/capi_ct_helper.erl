@@ -175,6 +175,32 @@ start_capi(Config, ExtraEnv) ->
                         user_email => ?TK_META_USER_EMAIL,
                         customer_id => ?TK_META_CUSTOMER_ID
                     }
+                }},
+                {checkout_url_generation, #{
+                    default_base_url => <<"https://checkout.example.com/pay">>,
+                    parameters_whitelist => [
+                        <<"name">>,
+                        <<"description">>,
+                        <<"obscureCardCvv">>,
+                        <<"requireCardHolder">>,
+                        <<"redirectUrl">>,
+                        <<"cancelUrl">>,
+                        <<"locale">>,
+                        <<"recurring">>,
+                        <<"metadata">>,
+                        <<"terminalFormValues">>,
+                        <<"skipUserInteraction">>,
+                        <<"isExternalIDIncluded">>,
+                        <<"theme">>,
+                        <<"paymentFlow">>,
+                        <<"deepLink">>,
+                        <<"email">>,
+                        <<"phoneNumber">>,
+                        <<"dateOfBirth">>,
+                        <<"documentId">>,
+                        <<"firstName">>,
+                        <<"lastName">>
+                    ]
                 }}
             ],
     start_app(capi, CapiEnv).

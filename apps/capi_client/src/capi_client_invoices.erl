@@ -2,6 +2,7 @@
 
 -export([create_invoice/2]).
 -export([create_invoice_access_token/2]).
+-export([create_invoice_url/3]).
 -export([get_invoice_events/3]).
 -export([get_invoice_events/4]).
 -export([get_invoice_by_id/2]).
@@ -25,6 +26,16 @@ create_invoice_access_token(Context, InvoiceID) ->
     Params = #{binding => #{<<"invoiceID">> => InvoiceID}},
     {Url, PreparedParams, Opts} = capi_client_lib:make_request(Context, Params),
     Response = swag_client_invoices_api:create_invoice_access_token(Url, PreparedParams, Opts),
+    capi_client_lib:handle_response(Response).
+
+-spec create_invoice_url(context(), map(), binary()) -> {ok, term()} | {error, term()}.
+create_invoice_url(Context, UrlParams, InvoiceID) when is_map(UrlParams) ->
+    Params = #{
+        binding => #{<<"invoiceID">> => InvoiceID},
+        body => UrlParams
+    },
+    {Url, PreparedParams, Opts} = capi_client_lib:make_request(Context, Params),
+    Response = swag_client_invoices_api:create_invoice_url(Url, PreparedParams, Opts),
     capi_client_lib:handle_response(Response).
 
 -spec get_invoice_events(context(), binary(), integer()) -> {ok, term()} | {error, term()}.

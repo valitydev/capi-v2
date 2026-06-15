@@ -421,9 +421,24 @@ create_invoice_url_ok_test(Config) ->
         ?STRING,
         Config
     ),
-    Params = #{},
-    {ok, #{<<"url">> => <<"http://shop-specific.local/path/to/checkout?">>}} =
-        capi_client_invoices:create_invoice_url(?config(context, Config), Params, ?STRING).
+    Params = #{
+        <<"theme">> => ?STRING,
+        <<"locale">> => ?STRING,
+        <<"not-whitelisted">> => ?STRING
+    },
+    EncodedParams = uri_string:compose_query(
+        maps:to_list(
+            maps:without([<<"not-whitelisted">>], Params#{
+                <<"invoiceAccessToken">> => ?API_TOKEN,
+                <<"invoiceID">> => ?STRING
+            })
+        ),
+        [{encoding, utf8}]
+    ),
+    ?assertMatch(
+        {ok, #{<<"url">> := <<"http://shop-specific.local/path/to/checkout?", EncodedParams/binary>>}},
+        capi_client_invoices:create_invoice_url(?config(context, Config), Params, ?STRING)
+    ).
 
 -spec create_invoice_template_ok_test(config()) -> _.
 create_invoice_template_ok_test(Config) ->

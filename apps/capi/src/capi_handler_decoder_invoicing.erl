@@ -718,9 +718,11 @@ decode_mobile_phone(#domain_MobilePhone{cc = Cc, ctn = Ctn}) ->
 gen_phone_number(#{<<"cc">> := Cc, <<"ctn">> := Ctn}) ->
     <<"+", Cc/binary, Ctn/binary>>.
 
--spec make_invoice_and_token(capi_handler_encoder:encode_data(), capi_handler_utils:url_params(), processing_context()) ->
-    capi_handler_decoder_utils:decode_data().
-
+-spec make_invoice_and_token(
+    capi_handler_encoder:encode_data(),
+    capi_handler_utils:url_params(),
+    processing_context()
+) -> capi_handler_decoder_utils:decode_data().
 make_invoice_and_token(Invoice, UrlParams, ProcessingContext) ->
     #{<<"payload">> := AccessToken} =
         InvoiceAccessToken = capi_handler_utils:issue_access_token(Invoice, ProcessingContext),

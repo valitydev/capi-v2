@@ -103,7 +103,7 @@ prepare('CreateInvoiceUrl' = OperationID, Req, Context) ->
         {ok, Resolution}
     end,
     Process = fun() ->
-        UrlParams = maps:get(<<"params">>, Req),
+        UrlParams = maps:get('InvoiceUrlParams', Req),
         case capi_handler_utils:validate_checkout_url_params(UrlParams) of
             ok ->
                 capi_handler:respond_if_undefined(ResultInvoice, general_error(404, <<"Invoice not found">>)),
