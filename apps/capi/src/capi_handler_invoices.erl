@@ -8,7 +8,13 @@
 
 -export([prepare/3]).
 
--import(capi_handler_utils, [general_error/2, logic_error/2, conflict_error/1, map_service_result/1]).
+-import(capi_handler_utils, [
+    general_error/2,
+    logic_error/2,
+    conflict_error/1,
+    invalid_url_params_error/1,
+    map_service_result/1
+]).
 
 -spec prepare(
     OperationID :: capi_handler:operation_id(),
@@ -58,8 +64,8 @@ prepare('CreateInvoice' = OperationID, Req, Context) ->
                     {ok, logic_error('invalidAllocation', Message)}
             end
         catch
-            throw:{invalid_url_params, _Reason} ->
-                {ok, logic_error('invalidUrlParams', <<"Bad URL params">>)};
+            throw:{invalid_url_params, Reason} ->
+                {ok, invalid_url_params_error(Reason)};
             throw:invoice_cart_empty ->
                 {ok, logic_error('invalidInvoiceCart', <<"Wrong size. Path to item: cart">>)};
             throw:invalid_invoice_cost ->
@@ -111,8 +117,8 @@ prepare('CreateInvoiceUrl' = OperationID, Req, Context) ->
                 #{<<"payload">> := AccessToken} = capi_handler_utils:issue_access_token(Invoice, Context),
                 Response = capi_handler_utils:create_checkout_url(Invoice, AccessToken, UrlParams, Context),
                 {ok, {201, #{}, Response}};
-            {error, _Reason} ->
-                {ok, logic_error('invalidUrlParams', <<"Bad URL params">>)}
+            {error, Reason} ->
+                {ok, invalid_url_params_error(Reason)}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};

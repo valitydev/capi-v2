@@ -10,6 +10,7 @@
 -export([logic_error/2]).
 -export([server_error/1]).
 -export([format_request_errors/1]).
+-export([invalid_url_params_error/1]).
 
 -export([assert_party_accessible/2]).
 -export([run_if_party_accessible/3]).
@@ -92,6 +93,19 @@ server_error(Code) when Code >= 500 andalso Code < 600 ->
 format_request_errors([]) -> <<>>;
 format_request_errors(Errors) -> genlib_string:join(<<"\n">>, Errors).
 
+-spec invalid_url_params_error(term()) -> response().
+invalid_url_params_error({bad_keys, [_ | _] = BadKeys, Whitelist}) when is_list(BadKeys) andalso is_list(Whitelist) ->
+    Message = [
+        <<"Bad keys: ">>,
+        genlib_string:join(<<", ">>, BadKeys),
+        <<$\n>>,
+        <<"Allowed keys: ">>,
+        genlib_string:join(<<", ">>, Whitelist)
+    ],
+    logic_error('invalidUrlParams', genlib_string:join(<<>>, Message));
+invalid_url_params_error(_Reason) ->
+    logic_error('invalidUrlParams', <<"Bad URL params">>).
+
 %%%
 
 -spec service_call({atom(), atom(), tuple()}, processing_context()) -> woody:result().
@@ -126,15 +140,26 @@ get_party_id(Context) ->
 
 %% Utils
 
--spec validate_checkout_url_params(url_params()) -> ok | {error, Reason :: {atom(), term()}}.
+-spec validate_checkout_url_params(url_params()) ->
+    ok
+    | {error,
+        Reason ::
+            {invalid_input | invalid_encoding, term()}
+            | {bad_keys, [binary()], [binary()]}}.
 validate_checkout_url_params(Params0) ->
     UrlGenOpts = genlib_app:env(capi, checkout_url_generation),
-    Params1 = maps:with(maps:get(params_whitelist, UrlGenOpts, []), Params0),
-    case uri_string:compose_query(maps:to_list(Params1), [{encoding, utf8}]) of
-        {error, Error, Term} ->
-            {error, {Error, Term}};
-        _ ->
-            ok
+    Whitelist = maps:get(params_whitelist, UrlGenOpts, []),
+    case maps:keys(maps:without(Whitelist, Params0)) of
+        [] ->
+            Params1 = maps:with(Whitelist, Params0),
+            case uri_string:compose_query(maps:to_list(Params1), [{encoding, utf8}]) of
+                {error, Error, Term} ->
+                    {error, {Error, Term}};
+                _ ->
+                    ok
+            end;
+        BadKeys ->
+            {error, {bad_keys, BadKeys, Whitelist}}
     end.
 
 -spec create_checkout_url(

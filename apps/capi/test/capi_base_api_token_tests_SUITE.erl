@@ -24,6 +24,7 @@
 
 -export([
     create_invoice_ok_test/1,
+    create_invoice_bad_keys_test/1,
     create_invoice_rand_amount_ok_test/1,
     create_invoice_autorization_error_test/1,
     get_invoice_by_external_id/1,
@@ -31,9 +32,11 @@
     get_invoice_by_external_id_not_impl_error/1,
     create_invoice_access_token_ok_test/1,
     create_invoice_url_ok_test/1,
+    create_invoice_url_not_allowed_test/1,
     create_invoice_template_ok_test/1,
     create_invoice_template_w_randomization_ok_test/1,
     create_invoice_with_template_test/1,
+    create_invoice_with_template_bad_keys_test/1,
     create_invoice_template_autorization_error_test/1,
     rescind_invoice_ok_test/1,
     fulfill_invoice_ok_test/1,
@@ -124,6 +127,7 @@ groups() ->
         ]},
         {operations_by_any_token, [], [
             create_invoice_ok_test,
+            create_invoice_bad_keys_test,
             create_invoice_rand_amount_ok_test,
             create_invoice_autorization_error_test,
             get_invoice_by_external_id,
@@ -132,10 +136,12 @@ groups() ->
             check_no_invoice_by_external_id_test,
             create_invoice_access_token_ok_test,
             create_invoice_url_ok_test,
+            create_invoice_url_not_allowed_test,
             create_invoice_template_ok_test,
             create_invoice_template_w_randomization_ok_test,
             create_invoice_template_autorization_error_test,
             create_invoice_with_template_test,
+            create_invoice_with_template_bad_keys_test,
             rescind_invoice_ok_test,
             fulfill_invoice_ok_test,
             update_invoice_template_ok_test,
@@ -261,14 +267,29 @@ create_invoice_ok_test(Config) ->
     InvoiceParams0 = ?INVOICE_PARAMS,
     UrlParams = #{
         <<"theme">> => ?STRING,
-        <<"locale">> => ?STRING,
-        <<"not-whitelisted">> => ?STRING
+        <<"locale">> => ?STRING
     },
     InvoiceParams1 = maps:merge(InvoiceParams0, #{<<"urlParams">> => UrlParams}),
     {ok, #{<<"invoice">> := Invoice, <<"invoiceUrl">> := InvoiceUrl}} =
         capi_client_invoices:create_invoice(?config(context, Config), InvoiceParams1),
     assert_invoice_url(?STRING, ?CHECKOUT_URL, UrlParams, InvoiceUrl),
     ?assertMatch(#{<<"clientInfo">> := #{<<"trustLevel">> := <<"wellKnown">>}}, Invoice).
+
+-spec create_invoice_bad_keys_test(config()) -> _.
+create_invoice_bad_keys_test(Config) ->
+    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"CreateInvoice">>, ?STRING, ?STRING, Config),
+    InvoiceParams0 = ?INVOICE_PARAMS,
+    UrlParams = #{
+        <<"theme">> => ?STRING,
+        <<"locale">> => ?STRING,
+        <<"not-whitelisted">> => ?STRING
+    },
+    InvoiceParams1 = maps:merge(InvoiceParams0, #{<<"urlParams">> => UrlParams}),
+    ?assertMatch(
+        {error,
+            {400, #{<<"code">> := <<"invalidUrlParams">>, <<"message">> := <<"Bad keys: not-whitelisted", _/binary>>}}},
+        capi_client_invoices:create_invoice(?config(context, Config), InvoiceParams1)
+    ).
 
 -spec create_invoice_rand_amount_ok_test(config()) -> _.
 create_invoice_rand_amount_ok_test(Config) ->
@@ -431,11 +452,36 @@ create_invoice_url_ok_test(Config) ->
     ),
     Params = #{
         <<"theme">> => ?STRING,
-        <<"locale">> => ?STRING,
-        <<"not-whitelisted">> => ?STRING
+        <<"locale">> => ?STRING
     },
     {ok, InvoiceUrl} = capi_client_invoices:create_invoice_url(?config(context, Config), Params, ?STRING),
     assert_invoice_url(?STRING, ?CHECKOUT_URL, Params, InvoiceUrl).
+
+-spec create_invoice_url_not_allowed_test(config()) -> _.
+create_invoice_url_not_allowed_test(Config) ->
+    _ = capi_ct_helper:mock_services(
+        [
+            {invoicing, fun('Get', _) -> {ok, ?PAYPROC_INVOICE} end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_invoice_op_ctx(
+        <<"CreateInvoiceUrl">>,
+        ?STRING,
+        ?STRING,
+        ?STRING,
+        Config
+    ),
+    Params = #{
+        <<"theme">> => ?STRING,
+        <<"locale">> => ?STRING,
+        <<"not-whitelisted">> => ?STRING
+    },
+    ?assertMatch(
+        {error,
+            {400, #{<<"code">> := <<"invalidUrlParams">>, <<"message">> := <<"Bad keys: not-whitelisted", _/binary>>}}},
+        capi_client_invoices:create_invoice_url(?config(context, Config), Params, ?STRING)
+    ).
 
 -spec create_invoice_template_ok_test(config()) -> _.
 create_invoice_template_ok_test(Config) ->
@@ -595,8 +641,7 @@ create_invoice_with_template_test(Config) ->
     ),
     UrlParams = #{
         <<"theme">> => ?STRING,
-        <<"locale">> => ?STRING,
-        <<"not-whitelisted">> => ?STRING
+        <<"locale">> => ?STRING
     },
     Req = #{
         <<"amount">> => ?INTEGER,
@@ -618,6 +663,44 @@ create_invoice_with_template_test(Config) ->
     assert_invoice_url(BenderKey, ?CHECKOUT_URL, UrlParams, InvoiceUrl),
     ?assertEqual(BenderKey, maps:get(<<"id">>, Invoice)),
     ?assertEqual(ExternalID, maps:get(<<"externalID">>, Invoice)).
+
+-spec create_invoice_with_template_bad_keys_test(config()) -> _.
+create_invoice_with_template_bad_keys_test(Config) ->
+    ExternalID = <<"external_id">>,
+    _ = capi_ct_helper:mock_services(
+        [
+            {invoice_templating, fun
+                ('Create', _) -> {ok, ?INVOICE_TPL};
+                ('Get', _) -> {ok, ?INVOICE_TPL}
+            end}
+        ],
+        Config
+    ),
+    UrlParams = #{
+        <<"theme">> => ?STRING,
+        <<"locale">> => ?STRING,
+        <<"not-whitelisted">> => ?STRING
+    },
+    Req = #{
+        <<"amount">> => ?INTEGER,
+        <<"currency">> => ?RUB,
+        <<"metadata">> => #{<<"invoice_dummy_metadata">> => <<"test_value">>},
+        <<"externalID">> => ExternalID,
+        <<"urlParams">> => UrlParams
+    },
+    Ctx = ?config(context, Config),
+    _ = capi_ct_helper_bouncer:mock_assert_invoice_tpl_op_ctx(
+        <<"CreateInvoiceWithTemplate">>,
+        ?STRING,
+        ?STRING,
+        ?STRING,
+        Config
+    ),
+    ?assertMatch(
+        {error,
+            {400, #{<<"code">> := <<"invalidUrlParams">>, <<"message">> := <<"Bad keys: not-whitelisted", _/binary>>}}},
+        capi_client_invoice_templates:create_invoice(Ctx, ?STRING, Req)
+    ).
 
 -spec check_no_internal_id_for_external_id_test(config()) -> _.
 check_no_internal_id_for_external_id_test(Config) ->
@@ -1856,10 +1939,8 @@ different_ip_header(Config) ->
 
 -spec assert_invoice_url(binary(), binary(), map(), map()) -> ok | no_return().
 assert_invoice_url(InvoiceID, BaseUrl, Params0, InvoiceUrl) ->
-    UrlGenOpts = genlib_app:env(capi, checkout_url_generation),
-    Params1 = maps:with(maps:get(params_whitelist, UrlGenOpts, []), Params0),
     EncodedParams = uri_string:compose_query(
-        maps:to_list(Params1#{
+        maps:to_list(Params0#{
             <<"invoiceAccessToken">> => ?API_TOKEN,
             <<"invoiceID">> => InvoiceID
         }),

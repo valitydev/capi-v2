@@ -11,7 +11,13 @@
 -behaviour(woody_server_thrift_handler).
 -export([handle_function/4]).
 
--import(capi_handler_utils, [general_error/2, logic_error/2, conflict_error/1, map_service_result/1]).
+-import(capi_handler_utils, [
+    general_error/2,
+    logic_error/2,
+    conflict_error/1,
+    invalid_url_params_error/1,
+    map_service_result/1
+]).
 
 -spec prepare(
     OperationID :: capi_handler:operation_id(),
@@ -157,25 +163,30 @@ prepare('CreateInvoiceWithTemplate' = OperationID, Req, Context) ->
         capi_handler:respond_if_undefined(InvoiceTpl, general_error(404, <<"Invoice template not found">>)),
         InvoiceParams = maps:get('InvoiceParamsWithTemplate', Req),
         UrlParams = maps:get(<<"urlParams">>, InvoiceParams, #{}),
-        ok = validate_checkout_url_params(UrlParams),
         PartyID = InvoiceTpl#domain_InvoiceTemplate.party_ref#domain_PartyConfigRef.id,
-        try create_invoice(PartyID, InvoiceTplID, InvoiceParams, Context, OperationID) of
-            {ok, #'payproc_Invoice'{invoice = Invoice}} ->
-                {ok, {201, #{}, capi_handler_decoder_invoicing:make_invoice_and_token(Invoice, UrlParams, Context)}};
-            {exception, #base_InvalidRequest{errors = Errors}} ->
-                FormattedErrors = capi_handler_utils:format_request_errors(Errors),
-                {ok, logic_error('invalidRequest', FormattedErrors)};
-            {exception, #payproc_InvalidPartyStatus{}} ->
-                {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
-            {exception, #payproc_InvalidShopStatus{}} ->
-                {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)};
-            {exception, #payproc_InvoiceTemplateNotFound{}} ->
-                {ok, general_error(404, <<"Invoice Template not found">>)};
-            {exception, #payproc_InvoiceTemplateRemoved{}} ->
-                {ok, general_error(404, <<"Invoice Template not found">>)};
-            {exception, #payproc_InvoiceTermsViolated{}} ->
-                {ok, logic_error('invoiceTermsViolated', <<"Invoice parameters violate terms">>)}
+        try
+            ok = validate_checkout_url_params(UrlParams),
+            case create_invoice(PartyID, InvoiceTplID, InvoiceParams, Context, OperationID) of
+                {ok, #'payproc_Invoice'{invoice = Invoice}} ->
+                    {ok,
+                        {201, #{}, capi_handler_decoder_invoicing:make_invoice_and_token(Invoice, UrlParams, Context)}};
+                {exception, #base_InvalidRequest{errors = Errors}} ->
+                    FormattedErrors = capi_handler_utils:format_request_errors(Errors),
+                    {ok, logic_error('invalidRequest', FormattedErrors)};
+                {exception, #payproc_InvalidPartyStatus{}} ->
+                    {ok, logic_error('invalidPartyStatus', <<"Invalid party status">>)};
+                {exception, #payproc_InvalidShopStatus{}} ->
+                    {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)};
+                {exception, #payproc_InvoiceTemplateNotFound{}} ->
+                    {ok, general_error(404, <<"Invoice Template not found">>)};
+                {exception, #payproc_InvoiceTemplateRemoved{}} ->
+                    {ok, general_error(404, <<"Invoice Template not found">>)};
+                {exception, #payproc_InvoiceTermsViolated{}} ->
+                    {ok, logic_error('invoiceTermsViolated', <<"Invoice parameters violate terms">>)}
+            end
         catch
+            throw:{invalid_url_params, Reason} ->
+                {ok, invalid_url_params_error(Reason)};
             throw:{bad_invoice_params, currency_no_amount} ->
                 {ok, logic_error('invalidRequest', <<"Amount is required for the currency">>)};
             throw:{bad_invoice_params, amount_no_currency} ->
