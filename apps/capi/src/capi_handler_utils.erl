@@ -10,6 +10,7 @@
 -export([logic_error/2]).
 -export([server_error/1]).
 -export([format_request_errors/1]).
+-export([invalid_url_params_error/1]).
 
 -export([assert_party_accessible/2]).
 -export([run_if_party_accessible/3]).
@@ -24,6 +25,8 @@
 -export([get_party_id/1]).
 
 -export([issue_access_token/2]).
+-export([validate_checkout_url_params/1]).
+-export([create_checkout_url/4]).
 -export([merge_and_compact/2]).
 -export([get_time/2]).
 -export([collect_events/4]).
@@ -36,6 +39,8 @@
 
 -export([emplace_token_provider_data/3]).
 
+-export_type([url_params/0]).
+
 -type processing_context() :: capi_handler:processing_context().
 -type response() :: capi_handler:response().
 -type entity() ::
@@ -43,6 +48,8 @@
     | dmsl_domain_thrift:'InvoiceTemplate'()
     | dmsl_customer_thrift:'Customer'().
 -type token_source() :: capi_auth:token_spec() | entity().
+
+-type url_params() :: #{binary() => binary()}.
 
 -spec conflict_error(binary() | {binary(), binary()}) -> response().
 conflict_error({ID, ExternalID}) ->
@@ -86,6 +93,19 @@ server_error(Code) when Code >= 500 andalso Code < 600 ->
 format_request_errors([]) -> <<>>;
 format_request_errors(Errors) -> genlib_string:join(<<"\n">>, Errors).
 
+-spec invalid_url_params_error(term()) -> response().
+invalid_url_params_error({bad_keys, [_ | _] = BadKeys, Whitelist}) when is_list(BadKeys) andalso is_list(Whitelist) ->
+    Message = [
+        <<"Bad keys: ">>,
+        genlib_string:join(<<", ">>, BadKeys),
+        <<$\n>>,
+        <<"Allowed keys: ">>,
+        genlib_string:join(<<", ">>, Whitelist)
+    ],
+    logic_error('invalidUrlParams', genlib_string:join(<<>>, Message));
+invalid_url_params_error(_Reason) ->
+    logic_error('invalidUrlParams', <<"Bad URL params">>).
+
 %%%
 
 -spec service_call({atom(), atom(), tuple()}, processing_context()) -> woody:result().
@@ -119,6 +139,67 @@ get_party_id(Context) ->
     capi_auth:get_party_id(get_auth_context(Context)).
 
 %% Utils
+
+-spec validate_checkout_url_params(url_params()) ->
+    ok
+    | {error,
+        Reason ::
+            {invalid_input | invalid_encoding, term()}
+            | {bad_keys, [binary()], [binary()]}}.
+validate_checkout_url_params(Params0) ->
+    UrlGenOpts = genlib_app:env(capi, checkout_url_generation),
+    Whitelist = maps:get(params_whitelist, UrlGenOpts, []),
+    case maps:keys(maps:without(Whitelist, Params0)) of
+        [] ->
+            Params1 = maps:with(Whitelist, Params0),
+            case uri_string:compose_query(maps:to_list(Params1), [{encoding, utf8}]) of
+                {error, Error, Term} ->
+                    {error, {Error, Term}};
+                _ ->
+                    ok
+            end;
+        BadKeys ->
+            {error, {bad_keys, BadKeys, Whitelist}}
+    end.
+
+-spec create_checkout_url(
+    dmsl_domain_thrift:'Invoice'(),
+    token_keeper_client:token(),
+    url_params(),
+    processing_context()
+) -> map() | no_return().
+create_checkout_url(Invoice, AccessToken, Params0, ProcessingContext) ->
+    UrlGenOpts = genlib_app:env(capi, checkout_url_generation),
+    Params1 = maps:with(maps:get(params_whitelist, UrlGenOpts, []), Params0),
+    %% TODO Warn if params filtered out
+    Params2 = maps:merge(Params1, #{
+        <<"invoiceID">> => Invoice#domain_Invoice.id,
+        <<"invoiceAccessToken">> => AccessToken
+    }),
+    BaseUrl = get_base_url(Invoice, UrlGenOpts, ProcessingContext),
+    %% TODO Sanitize params?
+    case uri_string:compose_query(maps:to_list(Params2), [{encoding, utf8}]) of
+        {error, Error, Term} ->
+            erlang:throw({Error, Term});
+        EncodedParams ->
+            #{<<"url">> => <<BaseUrl/binary, $?, EncodedParams/binary>>}
+    end.
+
+get_base_url(
+    #domain_Invoice{party_ref = #domain_PartyConfigRef{id = PartyID}, shop_ref = #domain_ShopConfigRef{id = ShopID}},
+    #{default_base_url := Default},
+    ProcessingContext
+) ->
+    case capi_party:get_shop(PartyID, ShopID, ProcessingContext) of
+        {ok, #domain_ShopConfig{
+            checkout_location = #domain_ShopCheckoutLocation{
+                locations = [#domain_CheckoutLocation{base_url = V} | _]
+            }
+        }} ->
+            V;
+        _ ->
+            Default
+    end.
 
 -spec issue_access_token(token_source(), processing_context()) -> map().
 issue_access_token(#domain_Invoice{} = Invoice, ProcessingContext) ->
