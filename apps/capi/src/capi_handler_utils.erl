@@ -190,16 +190,29 @@ get_base_url(
     #{default_base_url := Default},
     ProcessingContext
 ) ->
-    case capi_party:get_shop(PartyID, ShopID, ProcessingContext) of
-        {ok, #domain_ShopConfig{
-            checkout_location = #domain_ShopCheckoutLocation{
-                locations = [#domain_CheckoutLocation{base_url = V} | _]
-            }
-        }} ->
-            V;
-        _ ->
-            Default
+    ShopUrl =
+        case capi_party:get_shop(PartyID, ShopID, ProcessingContext) of
+            {ok, #domain_ShopConfig{checkout_locations = ShopLocations}} ->
+                checkout_base_url(ShopLocations);
+            _ ->
+                undefined
+        end,
+    case ShopUrl of
+        undefined ->
+            case capi_party:get_party(PartyID, ProcessingContext) of
+                {ok, #domain_PartyConfig{checkout_locations = PartyLocations}} ->
+                    checkout_base_url(PartyLocations);
+                _ ->
+                    Default
+            end;
+        ShopBaseUrl ->
+            ShopBaseUrl
     end.
+
+checkout_base_url(#domain_CheckoutLocations{locations = [#domain_CheckoutLocation{base_url = BaseUrl} | _]}) ->
+    BaseUrl;
+checkout_base_url(_) ->
+    undefined.
 
 -spec issue_access_token(token_source(), processing_context()) -> map().
 issue_access_token(#domain_Invoice{} = Invoice, ProcessingContext) ->
