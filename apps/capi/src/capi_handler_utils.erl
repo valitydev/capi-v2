@@ -185,34 +185,26 @@ create_checkout_url(Invoice, AccessToken, Params0, ProcessingContext) ->
             #{<<"url">> => <<BaseUrl/binary, $?, EncodedParams/binary>>}
     end.
 
+-define(CHECKOUT_BASE_URL(BaseUrl), #domain_CheckoutLocations{
+    locations = [#domain_CheckoutLocation{base_url = BaseUrl} | _]
+}).
+
 get_base_url(
     #domain_Invoice{party_ref = #domain_PartyConfigRef{id = PartyID}, shop_ref = #domain_ShopConfigRef{id = ShopID}},
     #{default_base_url := Default},
     ProcessingContext
 ) ->
-    ShopUrl =
-        case capi_party:get_shop(PartyID, ShopID, ProcessingContext) of
-            {ok, #domain_ShopConfig{checkout_locations = ShopLocations}} ->
-                checkout_base_url(ShopLocations);
-            _ ->
-                undefined
-        end,
-    case ShopUrl of
-        undefined ->
+    case capi_party:get_shop(PartyID, ShopID, ProcessingContext) of
+        {ok, #domain_ShopConfig{checkout_locations = ?CHECKOUT_BASE_URL(V)}} ->
+            V;
+        _ ->
             case capi_party:get_party(PartyID, ProcessingContext) of
-                {ok, #domain_PartyConfig{checkout_locations = PartyLocations}} ->
-                    checkout_base_url(PartyLocations);
+                {ok, #domain_PartyConfig{checkout_locations = ?CHECKOUT_BASE_URL(V)}} ->
+                    V;
                 _ ->
                     Default
-            end;
-        ShopBaseUrl ->
-            ShopBaseUrl
+            end
     end.
-
-checkout_base_url(#domain_CheckoutLocations{locations = [#domain_CheckoutLocation{base_url = BaseUrl} | _]}) ->
-    BaseUrl;
-checkout_base_url(_) ->
-    undefined.
 
 -spec issue_access_token(token_source(), processing_context()) -> map().
 issue_access_token(#domain_Invoice{} = Invoice, ProcessingContext) ->
