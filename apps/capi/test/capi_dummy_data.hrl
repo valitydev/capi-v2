@@ -458,7 +458,7 @@
     party_ref = #domain_PartyConfigRef{id = ?STRING},
     location = ?SHOP_LOCATION,
     category = #domain_CategoryRef{id = ?INTEGER},
-    checkout_location = #domain_ShopCheckoutLocation{
+    checkout_locations = #domain_CheckoutLocations{
         locations = [#domain_CheckoutLocation{base_url = ?CHECKOUT_URL}]
     }
 }).

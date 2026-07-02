@@ -185,20 +185,25 @@ create_checkout_url(Invoice, AccessToken, Params0, ProcessingContext) ->
             #{<<"url">> => <<BaseUrl/binary, $?, EncodedParams/binary>>}
     end.
 
+-define(CHECKOUT_BASE_URL(BaseUrl), #domain_CheckoutLocations{
+    locations = [#domain_CheckoutLocation{base_url = BaseUrl} | _]
+}).
+
 get_base_url(
     #domain_Invoice{party_ref = #domain_PartyConfigRef{id = PartyID}, shop_ref = #domain_ShopConfigRef{id = ShopID}},
     #{default_base_url := Default},
     ProcessingContext
 ) ->
     case capi_party:get_shop(PartyID, ShopID, ProcessingContext) of
-        {ok, #domain_ShopConfig{
-            checkout_location = #domain_ShopCheckoutLocation{
-                locations = [#domain_CheckoutLocation{base_url = V} | _]
-            }
-        }} ->
+        {ok, #domain_ShopConfig{checkout_locations = ?CHECKOUT_BASE_URL(V)}} ->
             V;
         _ ->
-            Default
+            case capi_party:get_party(PartyID, ProcessingContext) of
+                {ok, #domain_PartyConfig{checkout_locations = ?CHECKOUT_BASE_URL(V)}} ->
+                    V;
+                _ ->
+                    Default
+            end
     end.
 
 -spec issue_access_token(token_source(), processing_context()) -> map().
