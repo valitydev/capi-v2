@@ -34,6 +34,7 @@
     create_invoice_url_ok_test/1,
     create_invoice_url_not_allowed_test/1,
     create_invoice_template_ok_test/1,
+    create_invoice_template_bad_keys_test/1,
     create_invoice_template_w_randomization_ok_test/1,
     create_invoice_with_template_test/1,
     create_invoice_with_template_bad_keys_test/1,
@@ -138,6 +139,7 @@ groups() ->
             create_invoice_url_ok_test,
             create_invoice_url_not_allowed_test,
             create_invoice_template_ok_test,
+            create_invoice_template_bad_keys_test,
             create_invoice_template_w_randomization_ok_test,
             create_invoice_template_autorization_error_test,
             create_invoice_with_template_test,
@@ -497,11 +499,16 @@ create_invoice_template_ok_test(Config) ->
         Config
     ),
     _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"CreateInvoiceTemplate">>, ?STRING, ?STRING, Config),
+    UrlParams = #{
+        <<"theme">> => ?STRING,
+        <<"locale">> => ?STRING
+    },
     Req = #{
         <<"shopID">> => ?STRING,
         <<"lifetime">> => capi_ct_helper:get_lifetime(),
         <<"description">> => <<"test_invoice_template_description">>,
-        <<"metadata">> => #{<<"invoice_template_dummy_metadata">> => <<"test_value">>}
+        <<"metadata">> => #{<<"invoice_template_dummy_metadata">> => <<"test_value">>},
+        <<"urlParams">> => UrlParams
     },
     Details0 = #{
         <<"templateType">> => <<"InvoiceTemplateSingleLine">>,
@@ -513,9 +520,34 @@ create_invoice_template_ok_test(Config) ->
         }
     },
     {ok, _} = capi_client_invoice_templates:create(?config(context, Config), Req#{<<"details">> => Details0}),
-    {ok, _} = capi_client_invoice_templates:create(?config(context, Config), Req#{
-        <<"details">> => ?INVOICE_TMPL_DETAILS_PARAMS
-    }).
+    {ok, #{<<"invoiceTemplate">> := _, <<"invoiceTemplateUrl">> := InvoiceTemplateUrl}} =
+        capi_client_invoice_templates:create(?config(context, Config), Req#{
+            <<"details">> => ?INVOICE_TMPL_DETAILS_PARAMS
+        }),
+    assert_invoice_template_url(?STRING, ?CHECKOUT_URL, UrlParams, InvoiceTemplateUrl).
+
+-spec create_invoice_template_bad_keys_test(config()) -> _.
+create_invoice_template_bad_keys_test(Config) ->
+    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"CreateInvoiceTemplate">>, ?STRING, ?STRING, Config),
+    UrlParams = #{
+        <<"theme">> => ?STRING,
+        <<"locale">> => ?STRING,
+        <<"not-whitelisted">> => ?STRING
+    },
+    Req = #{
+        <<"shopID">> => ?STRING,
+        <<"lifetime">> => capi_ct_helper:get_lifetime(),
+        <<"description">> => <<"test_invoice_template_description">>,
+        <<"metadata">> => #{<<"invoice_template_dummy_metadata">> => <<"test_value">>},
+        <<"urlParams">> => UrlParams
+    },
+    ?assertMatch(
+        {error,
+            {400, #{<<"code">> := <<"invalidUrlParams">>, <<"message">> := <<"Bad keys: not-whitelisted", _/binary>>}}},
+        capi_client_invoice_templates:create(?config(context, Config), Req#{
+            <<"details">> => ?INVOICE_TMPL_DETAILS_PARAMS
+        })
+    ).
 
 -spec create_invoice_template_w_randomization_ok_test(config()) -> _.
 create_invoice_template_w_randomization_ok_test(Config) ->
@@ -1948,3 +1980,15 @@ assert_invoice_url(InvoiceID, BaseUrl, Params0, InvoiceUrl) ->
     ),
     Expected = <<BaseUrl/binary, $?, EncodedParams/binary>>,
     ?assertMatch(#{<<"url">> := Expected}, InvoiceUrl).
+
+-spec assert_invoice_template_url(binary(), binary(), map(), map()) -> ok | no_return().
+assert_invoice_template_url(InvoiceTemplateID, BaseUrl, Params0, InvoiceTemplateUrl) ->
+    EncodedParams = uri_string:compose_query(
+        maps:to_list(Params0#{
+            <<"invoiceTemplateAccessToken">> => ?API_TOKEN,
+            <<"invoiceTemplateID">> => InvoiceTemplateID
+        }),
+        [{encoding, utf8}]
+    ),
+    Expected = <<BaseUrl/binary, $?, EncodedParams/binary>>,
+    ?assertMatch(#{<<"url">> := Expected}, InvoiceTemplateUrl).

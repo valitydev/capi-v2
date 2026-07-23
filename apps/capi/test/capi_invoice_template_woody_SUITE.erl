@@ -5,7 +5,6 @@
 
 -include_lib("capi_dummy_data.hrl").
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
-%% -include_lib("damsel/include/dmsl_base_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("damsel/include/dmsl_api_ext_thrift.hrl").
 
@@ -21,9 +20,12 @@
 -export([init/1]).
 
 -export([create_invoice_template_ok_test/1]).
+-export([create_invoice_template_bad_keys_test/1]).
 -export([update_invoice_template_ok_test/1]).
 -export([get_invoice_template_ok_test/1]).
 -export([delete_invoice_template_ok_test/1]).
+-export([create_invoice_template_url_ok_test/1]).
+-export([create_invoice_template_url_bad_keys_test/1]).
 
 -type test_case_name() :: atom().
 -type config() :: [{atom(), any()}].
@@ -47,9 +49,12 @@ groups() ->
         %% NOTE Sequential execution due to mocks.
         {default, [sequence], [
             create_invoice_template_ok_test,
+            create_invoice_template_bad_keys_test,
             update_invoice_template_ok_test,
             get_invoice_template_ok_test,
-            delete_invoice_template_ok_test
+            delete_invoice_template_ok_test,
+            create_invoice_template_url_ok_test,
+            create_invoice_template_url_bad_keys_test
         ]}
     ].
 
@@ -92,33 +97,40 @@ end_per_testcase(_Name, C) ->
 
 %% TESTS
 
+-define(INVOICE_TPL_CREATE_PARAMS(UrlParams), #api_ext_InvoiceTemplateCreateParams{
+    external_id = ?STRING,
+    party_id = #domain_PartyConfigRef{id = <<"2">>},
+    shop_id = #domain_ShopConfigRef{id = <<"1">>},
+    invoice_lifetime = #domain_LifetimeInterval{days = ?INTEGER, months = ?INTEGER, years = ?INTEGER},
+    description = <<"Sample text">>,
+    details =
+        {cart, #domain_InvoiceCart{
+            lines = [
+                #domain_InvoiceLine{
+                    product = ?STRING,
+                    quantity = ?INTEGER,
+                    price = ?CASH,
+                    metadata = #{?STRING => {obj, #{}}}
+                },
+                #domain_InvoiceLine{
+                    product = ?STRING,
+                    quantity = ?INTEGER,
+                    price = ?CASH,
+                    metadata = #{<<"TaxMode">> => {str, <<"18%">>}}
+                }
+            ]
+        }},
+    context = ?CONTENT,
+    url_params = UrlParams
+}).
+
 -spec create_invoice_template_ok_test(config()) -> _.
 create_invoice_template_ok_test(Config) ->
-    Params = #api_ext_InvoiceTemplateCreateParams{
-        external_id = ?STRING,
-        party_id = #domain_PartyConfigRef{id = <<"2">>},
-        shop_id = #domain_ShopConfigRef{id = <<"1">>},
-        invoice_lifetime = #domain_LifetimeInterval{days = ?INTEGER, months = ?INTEGER, years = ?INTEGER},
-        description = <<"Sample text">>,
-        details =
-            {cart, #domain_InvoiceCart{
-                lines = [
-                    #domain_InvoiceLine{
-                        product = ?STRING,
-                        quantity = ?INTEGER,
-                        price = ?CASH,
-                        metadata = #{?STRING => {obj, #{}}}
-                    },
-                    #domain_InvoiceLine{
-                        product = ?STRING,
-                        quantity = ?INTEGER,
-                        price = ?CASH,
-                        metadata = #{<<"TaxMode">> => {str, <<"18%">>}}
-                    }
-                ]
-            }},
-        context = ?CONTENT
+    UrlParams = #{
+        <<"theme">> => ?STRING,
+        <<"locale">> => ?STRING
     },
+    Params = ?INVOICE_TPL_CREATE_PARAMS(UrlParams),
     InvoiceTemplateID = genlib:unique(),
     _ = capi_ct_helper:mock_services(
         [
@@ -134,11 +146,29 @@ create_invoice_template_ok_test(Config) ->
         ],
         Config
     ),
+    ExpectedUrl = make_invoice_url(InvoiceTemplateID, ?CHECKOUT_URL, UrlParams),
     ?assertMatch(
         {ok, #api_ext_InvoiceTemplateAndToken{
             invoice_template = #domain_InvoiceTemplate{id = InvoiceTemplateID},
-            invoice_template_access_token = #api_ext_AccessToken{payload = ?API_TOKEN}
+            invoice_template_access_token = #api_ext_AccessToken{payload = ?API_TOKEN},
+            invoice_template_url = #api_ext_InvoiceTemplateUrl{url = ExpectedUrl}
         }},
+        woody_client:call({{dmsl_api_ext_thrift, 'InvoiceTemplating'}, 'Create', {Params}}, #{
+            url => "http://localhost:8022/v2/extensions/invoice_templating",
+            event_handler => scoper_woody_event_handler
+        })
+    ).
+
+-spec create_invoice_template_bad_keys_test(config()) -> _.
+create_invoice_template_bad_keys_test(_Config) ->
+    UrlParams = #{
+        <<"theme">> => ?STRING,
+        <<"locale">> => ?STRING,
+        <<"not-whitelisted">> => ?STRING
+    },
+    Params = ?INVOICE_TPL_CREATE_PARAMS(UrlParams),
+    ?assertMatch(
+        {exception, #base_InvalidRequest{errors = [<<"Bad keys: not-whitelisted", _/binary>>]}},
         woody_client:call({{dmsl_api_ext_thrift, 'InvoiceTemplating'}, 'Create', {Params}}, #{
             url => "http://localhost:8022/v2/extensions/invoice_templating",
             event_handler => scoper_woody_event_handler
@@ -231,3 +261,55 @@ delete_invoice_template_ok_test(Config) ->
             event_handler => scoper_woody_event_handler
         })
     ).
+
+-spec create_invoice_template_url_ok_test(config()) -> _.
+create_invoice_template_url_ok_test(Config) ->
+    UrlParams = #{
+        <<"theme">> => ?STRING,
+        <<"locale">> => ?STRING
+    },
+    InvoiceTemplateID = genlib:unique(),
+    _ = capi_ct_helper:mock_services(
+        [
+            {invoice_templating, fun('Get', {TemplateID}) ->
+                {ok, ?INVOICE_TPL(TemplateID)}
+            end}
+        ],
+        Config
+    ),
+    ExpectedUrl = make_invoice_url(InvoiceTemplateID, ?CHECKOUT_URL, UrlParams),
+    ?assertMatch(
+        {ok, #api_ext_InvoiceTemplateUrl{url = ExpectedUrl}},
+        woody_client:call({{dmsl_api_ext_thrift, 'InvoiceTemplating'}, 'CreateUrl', {InvoiceTemplateID, UrlParams}}, #{
+            url => "http://localhost:8022/v2/extensions/invoice_templating",
+            event_handler => scoper_woody_event_handler
+        })
+    ).
+
+-spec create_invoice_template_url_bad_keys_test(config()) -> _.
+create_invoice_template_url_bad_keys_test(_Config) ->
+    UrlParams = #{
+        <<"theme">> => ?STRING,
+        <<"locale">> => ?STRING,
+        <<"not-whitelisted">> => ?STRING
+    },
+    InvoiceTemplateID = genlib:unique(),
+    ?assertMatch(
+        {exception, #base_InvalidRequest{errors = [<<"Bad keys: not-whitelisted", _/binary>>]}},
+        woody_client:call({{dmsl_api_ext_thrift, 'InvoiceTemplating'}, 'CreateUrl', {InvoiceTemplateID, UrlParams}}, #{
+            url => "http://localhost:8022/v2/extensions/invoice_templating",
+            event_handler => scoper_woody_event_handler
+        })
+    ).
+
+%%
+
+make_invoice_url(InvoiceTemplateID, BaseUrl, Params0) ->
+    EncodedParams = uri_string:compose_query(
+        maps:to_list(Params0#{
+            <<"invoiceTemplateAccessToken">> => ?API_TOKEN,
+            <<"invoiceTemplateID">> => InvoiceTemplateID
+        }),
+        [{encoding, utf8}]
+    ),
+    <<BaseUrl/binary, $?, EncodedParams/binary>>.

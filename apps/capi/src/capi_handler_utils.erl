@@ -11,6 +11,7 @@
 -export([server_error/1]).
 -export([format_request_errors/1]).
 -export([invalid_url_params_error/1]).
+-export([invalid_url_params_message/1]).
 
 -export([assert_party_accessible/2]).
 -export([run_if_party_accessible/3]).
@@ -94,7 +95,11 @@ format_request_errors([]) -> <<>>;
 format_request_errors(Errors) -> genlib_string:join(<<"\n">>, Errors).
 
 -spec invalid_url_params_error(term()) -> response().
-invalid_url_params_error({bad_keys, [_ | _] = BadKeys, Whitelist}) when is_list(BadKeys) andalso is_list(Whitelist) ->
+invalid_url_params_error(Reason) ->
+    logic_error('invalidUrlParams', invalid_url_params_message(Reason)).
+
+-spec invalid_url_params_message(term()) -> binary().
+invalid_url_params_message({bad_keys, [_ | _] = BadKeys, Whitelist}) when is_list(BadKeys) andalso is_list(Whitelist) ->
     Message = [
         <<"Bad keys: ">>,
         genlib_string:join(<<", ">>, BadKeys),
@@ -102,9 +107,9 @@ invalid_url_params_error({bad_keys, [_ | _] = BadKeys, Whitelist}) when is_list(
         <<"Allowed keys: ">>,
         genlib_string:join(<<", ">>, Whitelist)
     ],
-    logic_error('invalidUrlParams', genlib_string:join(<<>>, Message));
-invalid_url_params_error(_Reason) ->
-    logic_error('invalidUrlParams', <<"Bad URL params">>).
+    genlib_string:join(<<>>, Message);
+invalid_url_params_message(_Reason) ->
+    <<"Bad URL params">>.
 
 %%%
 
@@ -163,26 +168,43 @@ validate_checkout_url_params(Params0) ->
     end.
 
 -spec create_checkout_url(
-    dmsl_domain_thrift:'Invoice'(),
+    dmsl_domain_thrift:'Invoice'() | dmsl_domain_thrift:'InvoiceTemplate'(),
     token_keeper_client:token(),
     url_params(),
     processing_context()
-) -> map() | no_return().
-create_checkout_url(Invoice, AccessToken, Params0, ProcessingContext) ->
+) -> binary() | no_return().
+create_checkout_url(#domain_Invoice{id = InvoiceID} = Invoice, AccessToken, Params0, ProcessingContext) ->
     UrlGenOpts = genlib_app:env(capi, checkout_url_generation),
+    BaseUrl = get_base_url(Invoice, UrlGenOpts, ProcessingContext),
+    BaseParams = #{
+        <<"invoiceID">> => InvoiceID,
+        <<"invoiceAccessToken">> => AccessToken
+    },
+    create_checkout_url_(BaseUrl, BaseParams, Params0, UrlGenOpts);
+create_checkout_url(
+    #domain_InvoiceTemplate{id = InvoiceTemplateID} = InvoiceTemplate,
+    AccessToken,
+    Params0,
+    ProcessingContext
+) ->
+    UrlGenOpts = genlib_app:env(capi, checkout_url_generation),
+    BaseUrl = get_base_url(InvoiceTemplate, UrlGenOpts, ProcessingContext),
+    BaseParams = #{
+        <<"invoiceTemplateID">> => InvoiceTemplateID,
+        <<"invoiceTemplateAccessToken">> => AccessToken
+    },
+    create_checkout_url_(BaseUrl, BaseParams, Params0, UrlGenOpts).
+
+create_checkout_url_(BaseUrl, BaseParams, Params0, UrlGenOpts) ->
     Params1 = maps:with(maps:get(params_whitelist, UrlGenOpts, []), Params0),
     %% TODO Warn if params filtered out
-    Params2 = maps:merge(Params1, #{
-        <<"invoiceID">> => Invoice#domain_Invoice.id,
-        <<"invoiceAccessToken">> => AccessToken
-    }),
-    BaseUrl = get_base_url(Invoice, UrlGenOpts, ProcessingContext),
+    Params2 = maps:merge(Params1, BaseParams),
     %% TODO Sanitize params?
     case uri_string:compose_query(maps:to_list(Params2), [{encoding, utf8}]) of
         {error, Error, Term} ->
             erlang:throw({Error, Term});
         EncodedParams ->
-            #{<<"url">> => <<BaseUrl/binary, $?, EncodedParams/binary>>}
+            <<BaseUrl/binary, $?, EncodedParams/binary>>
     end.
 
 -define(CHECKOUT_BASE_URL(BaseUrl), #domain_CheckoutLocations{
@@ -190,7 +212,21 @@ create_checkout_url(Invoice, AccessToken, Params0, ProcessingContext) ->
 }).
 
 get_base_url(
-    #domain_Invoice{party_ref = #domain_PartyConfigRef{id = PartyID}, shop_ref = #domain_ShopConfigRef{id = ShopID}},
+    #domain_Invoice{party_ref = PartyRef, shop_ref = ShopRef},
+    UrlGenOpts,
+    ProcessingContext
+) ->
+    get_base_url_(PartyRef, ShopRef, UrlGenOpts, ProcessingContext);
+get_base_url(
+    #domain_InvoiceTemplate{party_ref = PartyRef, shop_ref = ShopRef},
+    UrlGenOpts,
+    ProcessingContext
+) ->
+    get_base_url_(PartyRef, ShopRef, UrlGenOpts, ProcessingContext).
+
+get_base_url_(
+    #domain_PartyConfigRef{id = PartyID},
+    #domain_ShopConfigRef{id = ShopID},
     #{default_base_url := Default},
     ProcessingContext
 ) ->

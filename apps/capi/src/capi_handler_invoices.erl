@@ -115,7 +115,9 @@ prepare('CreateInvoiceUrl' = OperationID, Req, Context) ->
                 capi_handler:respond_if_undefined(ResultInvoice, general_error(404, <<"Invoice not found">>)),
                 Invoice = ResultInvoice#payproc_Invoice.invoice,
                 #{<<"payload">> := AccessToken} = capi_handler_utils:issue_access_token(Invoice, Context),
-                Response = capi_handler_utils:create_checkout_url(Invoice, AccessToken, UrlParams, Context),
+                Response = #{
+                    <<"url">> => capi_handler_utils:create_checkout_url(Invoice, AccessToken, UrlParams, Context)
+                },
                 {ok, {201, #{}, Response}};
             {error, Reason} ->
                 {ok, invalid_url_params_error(Reason)}
