@@ -729,7 +729,9 @@ make_invoice_and_token(Invoice, UrlParams, ProcessingContext) ->
     #{
         <<"invoice">> => decode_invoice(Invoice),
         <<"invoiceAccessToken">> => InvoiceAccessToken,
-        <<"invoiceUrl">> => capi_handler_utils:create_checkout_url(Invoice, AccessToken, UrlParams, ProcessingContext)
+        <<"invoiceUrl">> => #{
+            <<"url">> => capi_handler_utils:create_checkout_url(Invoice, AccessToken, UrlParams, ProcessingContext)
+        }
     }.
 
 %%

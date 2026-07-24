@@ -16,6 +16,7 @@
     logic_error/2,
     conflict_error/1,
     invalid_url_params_error/1,
+    invalid_url_params_message/1,
     map_service_result/1
 ]).
 
@@ -34,7 +35,9 @@ prepare('CreateInvoiceTemplate' = OperationID, Req, Context) ->
         {ok, Resolution}
     end,
     Process = fun() ->
+        UrlParams = maps:get(<<"urlParams">>, InvoiceTemplateParams, #{}),
         try
+            ok = validate_checkout_url_params(UrlParams),
             InvoiceTemplateID = generate_invoice_template_id(OperationID, InvoiceTemplateParams, PartyID, Context),
             CallArgs = {encode_invoice_tpl_create_params(InvoiceTemplateID, PartyID, InvoiceTemplateParams)},
             capi_handler_utils:service_call(
@@ -43,7 +46,7 @@ prepare('CreateInvoiceTemplate' = OperationID, Req, Context) ->
             )
         of
             {ok, InvoiceTpl} ->
-                {ok, {201, #{}, make_invoice_tpl_and_token(InvoiceTpl, Context)}};
+                {ok, {201, #{}, make_invoice_tpl_and_token(InvoiceTpl, UrlParams, Context)}};
             {exception, #base_InvalidRequest{errors = Errors}} ->
                 FormattedErrors = capi_handler_utils:format_request_errors(Errors),
                 {ok, logic_error('invalidRequest', FormattedErrors)};
@@ -56,6 +59,8 @@ prepare('CreateInvoiceTemplate' = OperationID, Req, Context) ->
             {exception, #payproc_InvalidShopStatus{}} ->
                 {ok, logic_error('invalidShopStatus', <<"Invalid shop status">>)}
         catch
+            throw:{invalid_url_params, Reason} ->
+                {ok, invalid_url_params_error(Reason)};
             throw:invoice_cart_empty ->
                 {ok, logic_error('invalidInvoiceCart', <<"Wrong size. Path to item: cart">>)};
             throw:zero_invoice_lifetime ->
@@ -228,7 +233,7 @@ prepare('GetInvoicePaymentMethodsByTemplateID' = OperationID, Req, Context) ->
 prepare(_OperationID, _Req, _Context) ->
     {error, noimpl}.
 
--spec handle_function(woody:func(), woody:args(), woody_context:ctx(), _) ->
+-spec handle_function(woody:func(), woody:args(), woody_context:ctx(), #{party_client := party_client:client()}) ->
     {ok, term()} | no_return().
 handle_function(Function, Args, WoodyContext, Opts) ->
     scoper:scope(
@@ -252,6 +257,8 @@ handle_function(Function, Args, WoodyContext, Opts) ->
                 {exception, #base_InvalidRequest{errors = Errors}} ->
                     woody_error:raise(business, #base_InvalidRequest{errors = Errors})
             catch
+                throw:{invalid_url_params, Reason} ->
+                    woody_error:raise(business, #base_InvalidRequest{errors = [invalid_url_params_message(Reason)]});
                 throw:(#payproc_InvoiceTemplateNotFound{} = Exception) ->
                     woody_error:raise(business, Exception);
                 throw:(#payproc_InvoiceTemplateRemoved{} = Exception) ->
@@ -268,15 +275,17 @@ handle_function(Function, Args, WoodyContext, Opts) ->
         end
     ).
 
-handle_function_('Create', {InvoiceTemplateParams}, WoodyContext, _Opts) ->
+handle_function_('Create', {InvoiceTemplateParams}, WoodyContext, Opts) ->
+    #api_ext_InvoiceTemplateCreateParams{url_params = UrlParams} = InvoiceTemplateParams,
+    ok = validate_checkout_url_params(UrlParams),
     %% NOTE Use same operation ID as the original in swagger/JSON API
-    InvoiceTemplateID = generate_thrift_invoice_template_id(
-        'CreateInvoiceTemplate', InvoiceTemplateParams, WoodyContext
-    ),
+    OperationID = 'CreateInvoiceTemplate',
+    ProcessingContext = create_processing_context(OperationID, WoodyContext, Opts),
+    InvoiceTemplateID = generate_thrift_invoice_template_id(OperationID, InvoiceTemplateParams, WoodyContext),
     CallArgs = {encode_thrift_invoice_tpl_create_params(InvoiceTemplateID, InvoiceTemplateParams)},
     case capi_woody_client:call_service(invoice_templating, 'Create', CallArgs, WoodyContext) of
         {ok, InvoiceTpl} ->
-            {ok, make_thrift_invoice_tpl_and_token(InvoiceTpl, WoodyContext)};
+            {ok, make_thrift_invoice_tpl_and_token(InvoiceTpl, UrlParams, ProcessingContext)};
         Passthrough ->
             Passthrough
     end;
@@ -286,7 +295,29 @@ handle_function_('Update', {InvoiceTemplateID, InvoiceTemplateParams}, WoodyCont
     Params = encode_thrift_invoice_tpl_update_params(InvoiceTemplateParams),
     capi_woody_client:call_service(invoice_templating, 'Update', {InvoiceTemplateID, Params}, WoodyContext);
 handle_function_('Delete', {InvoiceTemplateID}, WoodyContext, _Opts) ->
-    capi_woody_client:call_service(invoice_templating, 'Delete', {InvoiceTemplateID}, WoodyContext).
+    capi_woody_client:call_service(invoice_templating, 'Delete', {InvoiceTemplateID}, WoodyContext);
+handle_function_('CreateUrl', {InvoiceTemplateID, UrlParams}, WoodyContext, Opts) ->
+    ok = validate_checkout_url_params(UrlParams),
+    OperationID = 'CreateInvoiceTemplateUrl',
+    ProcessingContext = create_processing_context(OperationID, WoodyContext, Opts),
+    case capi_woody_client:call_service(invoice_templating, 'Get', {InvoiceTemplateID}, WoodyContext) of
+        {ok, InvoiceTpl} ->
+            {_, InvoiceTemplateUrl} = make_thrift_invoice_tpl_token_and_url(InvoiceTpl, UrlParams, ProcessingContext),
+            {ok, InvoiceTemplateUrl};
+        Passthrough ->
+            Passthrough
+    end.
+
+create_processing_context(OperationID, WoodyContext, Opts) ->
+    %% Creates processing context w/o swagger context to reuse it in existing
+    %% code passes for url generation
+    #{
+        operation_id => OperationID,
+        woody_context => WoodyContext,
+        swagger_context => #{},
+        party_client_context => party_client:create_context(#{woody_context => WoodyContext}),
+        party_client => maps:get(party_client, Opts)
+    }.
 
 mask_invoice_template_notfound(Resolution) ->
     % ED-206
@@ -299,6 +330,8 @@ mask_invoice_template_notfound(Resolution) ->
 
 %%
 
+validate_checkout_url_params(undefined) ->
+    ok;
 validate_checkout_url_params(UrlParams) ->
     case capi_handler_utils:validate_checkout_url_params(UrlParams) of
         ok -> ok;
@@ -494,10 +527,17 @@ assert_cart_is_not_empty({cart, #domain_InvoiceCart{lines = []}}) ->
 assert_cart_is_not_empty(_) ->
     ok.
 
-make_invoice_tpl_and_token(InvoiceTpl, ProcessingContext) ->
+make_invoice_tpl_and_token(InvoiceTpl, UrlParams, ProcessingContext) ->
+    #{<<"payload">> := AccessToken} =
+        InvoiceTemplateAccessToken = capi_handler_utils:issue_access_token(InvoiceTpl, ProcessingContext),
     #{
         <<"invoiceTemplate">> => decode_invoice_tpl(InvoiceTpl),
-        <<"invoiceTemplateAccessToken">> => capi_handler_utils:issue_access_token(InvoiceTpl, ProcessingContext)
+        <<"invoiceTemplateAccessToken">> => InvoiceTemplateAccessToken,
+        <<"invoiceTemplateUrl">> => #{
+            <<"url">> => capi_handler_utils:create_checkout_url(
+                InvoiceTpl, AccessToken, UrlParams, ProcessingContext
+            )
+        }
     }.
 
 encode_thrift_invoice_tpl_create_params(InvoiceTemplateID, #api_ext_InvoiceTemplateCreateParams{
@@ -522,16 +562,35 @@ encode_thrift_invoice_tpl_create_params(InvoiceTemplateID, #api_ext_InvoiceTempl
         context = Context
     }.
 
-make_thrift_invoice_tpl_and_token(InvoiceTpl, WoodyContext) ->
+make_thrift_invoice_tpl_token_and_url(
+    #domain_InvoiceTemplate{
+        id = InvoiceTemplateID,
+        party_ref = #domain_PartyConfigRef{id = PartyID},
+        shop_ref = #domain_ShopConfigRef{id = ShopID}
+    } = InvoiceTpl,
+    UrlParams,
+    #{woody_context := WoodyContext} = ProcessingContext
+) ->
     TokenSpec = #{
-        party => InvoiceTpl#domain_InvoiceTemplate.party_ref#domain_PartyConfigRef.id,
-        scope => {invoice_template, InvoiceTpl#domain_InvoiceTemplate.id},
-        shop => InvoiceTpl#domain_InvoiceTemplate.shop_ref#domain_ShopConfigRef.id
+        scope => {invoice_template, InvoiceTemplateID},
+        party => PartyID,
+        shop => ShopID
     },
     TokenPayload = capi_auth:issue_access_token(TokenSpec, WoodyContext),
+    InvoiceTemplateAccessToken = #api_ext_AccessToken{payload = TokenPayload},
+    Url = capi_handler_utils:create_checkout_url(
+        InvoiceTpl, TokenPayload, genlib:define(UrlParams, #{}), ProcessingContext
+    ),
+    InvoiceTemplateUrl = #api_ext_InvoiceTemplateUrl{url = Url},
+    {InvoiceTemplateAccessToken, InvoiceTemplateUrl}.
+
+make_thrift_invoice_tpl_and_token(InvoiceTpl, UrlParams, ProcessingContext) ->
+    {InvoiceTemplateAccessToken, InvoiceTemplateUrl} =
+        make_thrift_invoice_tpl_token_and_url(InvoiceTpl, UrlParams, ProcessingContext),
     #api_ext_InvoiceTemplateAndToken{
         invoice_template = InvoiceTpl,
-        invoice_template_access_token = #api_ext_AccessToken{payload = TokenPayload}
+        invoice_template_access_token = InvoiceTemplateAccessToken,
+        invoice_template_url = InvoiceTemplateUrl
     }.
 
 encode_invoice_tpl_details(#{<<"templateType">> := <<"InvoiceTemplateSingleLine">>} = Details) ->
