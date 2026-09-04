@@ -1377,6 +1377,61 @@
     <<"exp_date">> => <<"12/2012">>
 }).
 
+-define(BROWSER_INFO, #{
+    <<"browserAcceptHeader">> => <<"application/json">>,
+    <<"browserUserAgent">> => <<"chromium">>,
+    <<"browserLanguage">> => <<"ru-RU">>,
+    <<"browserColorDepth">> => <<"24">>,
+    <<"browserScreenWidth">> => <<"1080">>,
+    <<"browserScreenHeight">> => <<"1080">>,
+    <<"browserTZ">> => <<"-480">>
+}).
+
+-define(DEVICE_INFO, #{
+    <<"deviceType">> => <<"desktop">>,
+    <<"osName">> => <<"iOS">>,
+    <<"osVersion">> => <<"17.5.1">>,
+    <<"deviceModel">> => <<"iPhone">>,
+    <<"browserName">> => <<"Safari">>,
+    <<"browserVersion">> => <<"126">>,
+    <<"timeZone">> => <<"Asia/Dubai">>,
+    <<"languages">> => [<<"ru">>, <<"en">>],
+    <<"screenPixelRatio">> => 2,
+    <<"webView">> => true,
+    <<"userAgentBrands">> => [?USER_AGENT_BRAND(<<"Chrome">>), ?USER_AGENT_BRAND(<<"Firefox">>)]
+}).
+
+-define(USER_AGENT_BRAND(Name), #{
+    <<"brand">> => Name
+}).
+
+-define(ENCODED_BROWSER_INFO, #domain_BrowserInfo{
+    accept_header = <<"application/json">>,
+    user_agent = <<"chromium">>,
+    language = <<"ru-RU">>,
+    color_depth = <<"24">>,
+    screen_width = <<"1080">>,
+    screen_height = <<"1080">>,
+    tz_offset = <<"-480">>
+}).
+
+-define(ENCODED_DEVICE_INFO, #domain_DeviceInfo{
+    device_type = {desktop, #domain_DeviceTypeDesktop{}},
+    os_name = <<"iOS">>,
+    os_version = <<"17.5.1">>,
+    device_model = <<"iPhone">>,
+    browser_name = <<"Safari">>,
+    browser_version = <<"126">>,
+    time_zone = <<"Asia/Dubai">>,
+    languages = [<<"ru">>, <<"en">>],
+    screen_pixel_ratio = 2.0,
+    web_view = true,
+    user_agent_brands = [
+        #domain_UserAgentBrand{brand = <<"Chrome">>},
+        #domain_UserAgentBrand{brand = <<"Firefox">>}
+    ]
+}).
+
 -define(TEST_PAYMENT_SESSION, ?TEST_PAYMENT_SESSION(?STRING)).
 
 -define(TEST_PAYMENT_SESSION(Session),
@@ -1386,7 +1441,11 @@
             <<"fingerprint">> => <<"test fingerprint">>,
             <<"ip">> => <<"::ffff:127.0.0.1">>,
             <<"peer_ip">> => <<"::ffff:127.0.0.1">>,
-            <<"user_ip">> => <<"::ffff:127.127.0.1">>
+            <<"user_ip">> => <<"::ffff:127.127.0.1">>,
+            <<"browser_info">> => ?BROWSER_INFO,
+            <<"device_info">> => ?DEVICE_INFO,
+            <<"peer_accept_header">> => <<"application/json">>,
+            <<"peer_user_agent">> => <<"hackney/1.2.3">>
         }
     })
 ).

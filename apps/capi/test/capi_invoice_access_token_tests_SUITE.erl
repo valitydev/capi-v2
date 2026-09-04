@@ -348,12 +348,24 @@ create_payment_ok_test(Config) ->
                     {ok, ?PAYPROC_INVOICE};
                 ('StartPayment', {_, PaymentParams}) ->
                     #payproc_InvoicePaymentParams{
+                        payer =
+                            {payment_resource, #payproc_PaymentResourcePayerParams{
+                                resource = #domain_DisposablePaymentResource{
+                                    client_info = #domain_ClientInfo{
+                                        browser_info = BrowserInfo,
+                                        device_info = DeviceInfo,
+                                        peer_user_agent = <<"hackney/", _Ver/binary>>,
+                                        peer_accept_header = <<"application/json">>
+                                    }
+                                }
+                            }},
                         id = ID,
                         external_id = EID,
-                        payer = {payment_resource, _},
                         payer_session_info = ?PAYER_SESSION_INFO,
                         context = ?CONTENT
                     } = PaymentParams,
+                    ?assertEqual(?ENCODED_BROWSER_INFO, BrowserInfo),
+                    ?assertEqual(?ENCODED_DEVICE_INFO, DeviceInfo),
                     {ok, ?PAYPROC_PAYMENT(?PAYMENT_W_EXTERNAL_ID(ID, EID))}
             end},
             {bender, fun('GenerateID', _) ->
@@ -480,7 +492,11 @@ check_ip_on_payment_creation_ok_test(Config) ->
         fingerprint = <<"test fingerprint">>,
         ip_address = <<"::ffff:127.0.0.1">>,
         peer_ip_address = <<"::ffff:127.0.0.1">>,
-        user_ip_address = <<"::ffff:127.127.0.1">>
+        user_ip_address = <<"::ffff:127.127.0.1">>,
+        browser_info = ?ENCODED_BROWSER_INFO,
+        device_info = ?ENCODED_DEVICE_INFO,
+        peer_accept_header = <<"application/json">>,
+        peer_user_agent = <<"hackney/1.2.3">>
     },
     _ = capi_ct_helper:mock_services(
         [
