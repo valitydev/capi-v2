@@ -26,7 +26,6 @@
         cowboy_access_log,
         cowboy_draining_server,
         woody_user_identity,
-        payproc_errors,
         erl_health,
         bouncer_client,
         token_keeper_client,

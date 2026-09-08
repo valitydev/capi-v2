@@ -771,13 +771,16 @@ get_recurrent_payments_ok_test(Config) ->
 
 -spec get_failed_payment_with_invalid_cvv(config()) -> _.
 get_failed_payment_with_invalid_cvv(Config) ->
-    Failure =
-        payproc_errors:construct(
-            'PaymentFailure',
-            {authorization_failed,
-                {payment_tool_rejected, {bank_card_rejected, {cvv_invalid, #payproc_error_GeneralFailure{}}}}},
-            <<"Reason">>
-        ),
+    Failure = #domain_Failure{
+        reason = <<"Reason">>,
+        code = <<"authorization_failed">>,
+        sub = #domain_SubFailure{
+            code = <<"payment_tool_rejected">>,
+            sub = #domain_SubFailure{
+                code = <<"bank_card_rejected">>, sub = #domain_SubFailure{code = <<"cvv_invalid">>}
+            }
+        }
+    },
     _ = capi_ct_helper:mock_services(
         [
             {invoicing, fun

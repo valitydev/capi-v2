@@ -803,12 +803,11 @@ get_payment_status_preauthorization_failed_test(Config) ->
             <<"code">> => <<"unknown">>
         }
     },
-    Failure =
-        payproc_errors:construct(
-            'PaymentFailure',
-            {preauthorization_failed, {unknown, #payproc_error_GeneralFailure{}}},
-            <<"Reason">>
-        ),
+    Failure = #domain_Failure{
+        reason = <<"Reason">>,
+        code = <<"preauthorization_failed">>,
+        sub = #domain_SubFailure{code = <<"unknown">>}
+    },
     get_merchant_payment_status_test_impl(MappedFailure, Failure, Config).
 
 -spec get_payment_status_payment_tool_rejected_test(config()) -> _.
@@ -824,13 +823,16 @@ get_payment_status_payment_tool_rejected_test(Config) ->
             }
         }
     },
-    Failure =
-        payproc_errors:construct(
-            'PaymentFailure',
-            {authorization_failed,
-                {payment_tool_rejected, {bank_card_rejected, {cvv_invalid, #payproc_error_GeneralFailure{}}}}},
-            <<"Reason">>
-        ),
+    Failure = #domain_Failure{
+        reason = <<"Reason">>,
+        code = <<"authorization_failed">>,
+        sub = #domain_SubFailure{
+            code = <<"payment_tool_rejected">>,
+            sub = #domain_SubFailure{
+                code = <<"bank_card_rejected">>, sub = #domain_SubFailure{code = <<"cvv_invalid">>}
+            }
+        }
+    },
     get_merchant_payment_status_test_impl(MappedFailure, Failure, Config).
 
 -spec get_payment_status_account_limit_exceeded_test(config()) -> _.
@@ -845,12 +847,11 @@ get_payment_status_account_limit_exceeded_test(Config) ->
             }
         }
     },
-    Failure =
-        payproc_errors:construct(
-            'PaymentFailure',
-            {authorization_failed, {account_limit_exceeded, {unknown, #payproc_error_GeneralFailure{}}}},
-            <<"Reason">>
-        ),
+    Failure = #domain_Failure{
+        reason = <<"Reason">>,
+        code = <<"authorization_failed">>,
+        sub = #domain_SubFailure{code = <<"account_limit_exceeded">>, sub = #domain_SubFailure{code = <<"unknown">>}}
+    },
     get_merchant_payment_status_test_impl(MappedFailure, Failure, Config).
 
 -spec get_payment_status_account_blocked_test(config()) -> _.
@@ -880,12 +881,11 @@ get_merchant_payment_status_test_(SubErrorCode, Config) ->
             <<"code">> => atom_to_binary(SubErrorCode)
         }
     },
-    Failure6 =
-        payproc_errors:construct(
-            'PaymentFailure',
-            {authorization_failed, {SubErrorCode, #payproc_error_GeneralFailure{}}},
-            <<"Reason">>
-        ),
+    Failure6 = #domain_Failure{
+        reason = <<"Reason">>,
+        code = <<"authorization_failed">>,
+        sub = #domain_SubFailure{code = atom_to_binary(SubErrorCode)}
+    },
     get_merchant_payment_status_test_impl(MappedFailure6, Failure6, Config).
 
 get_merchant_payment_status_test_impl(MappedFailure, Failure, Config) ->
