@@ -344,24 +344,18 @@ decode_payment_operation_failure({failure, Failure}, Context) ->
         client ->
             payment_error(payment_error_client_maping(Failure));
         merchant ->
-            decode_payment_operation_failure_(
-                binary:split(erlang:list_to_binary(format_failure(Failure)), <<":">>, [global])
-            )
+            decode_payment_operation_failure_(Failure)
     end.
 
--spec format_failure(dmsl_domain_thrift:'OperationFailure'() | undefined) -> iolist().
-format_failure(Failure) -> lists:join($:, extract_failure_code(Failure)).
-
-extract_failure_code(undefined) -> [];
-extract_failure_code(#domain_Failure{code = Code, sub = Sub}) -> [Code | extract_failure_code(Sub)];
-extract_failure_code(#domain_SubFailure{code = Code, sub = Sub}) -> [Code | extract_failure_code(Sub)].
-
-decode_payment_operation_failure_([H | T]) ->
-    R = payment_error(H),
-    case T of
-        [] -> R;
-        _ -> R#{<<"subError">> => decode_payment_operation_failure_(T)}
-    end.
+decode_payment_operation_failure_(undefined) ->
+    undefined;
+decode_payment_operation_failure_(Failure) ->
+    {Code, Sub} =
+        case Failure of
+            #domain_Failure{code = C, sub = S} -> {C, S};
+            #domain_SubFailure{code = C, sub = S} -> {C, S}
+        end,
+    genlib_map:compact((payment_error(Code))#{<<"subError">> => decode_payment_operation_failure_(Sub)}).
 
 decode_flow({instant, _}) ->
     #{<<"type">> => <<"PaymentFlowInstant">>};
