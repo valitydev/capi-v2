@@ -4,7 +4,6 @@
 -include_lib("stdlib/include/assert.hrl").
 
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
--include_lib("damsel/include/dmsl_payproc_error_thrift.hrl").
 -include_lib("damsel/include/dmsl_base_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
 -include_lib("damsel/include/dmsl_user_interaction_thrift.hrl").
@@ -771,13 +770,16 @@ get_recurrent_payments_ok_test(Config) ->
 
 -spec get_failed_payment_with_invalid_cvv(config()) -> _.
 get_failed_payment_with_invalid_cvv(Config) ->
-    Failure =
-        payproc_errors:construct(
-            'PaymentFailure',
-            {authorization_failed,
-                {payment_tool_rejected, {bank_card_rejected, {cvv_invalid, #payproc_error_GeneralFailure{}}}}},
-            <<"Reason">>
-        ),
+    Failure = #domain_Failure{
+        reason = <<"Reason">>,
+        code = <<"authorization_failed">>,
+        sub = #domain_SubFailure{
+            code = <<"payment_tool_rejected">>,
+            sub = #domain_SubFailure{
+                code = <<"bank_card_rejected">>, sub = #domain_SubFailure{code = <<"cvv_invalid">>}
+            }
+        }
+    },
     _ = capi_ct_helper:mock_services(
         [
             {invoicing, fun

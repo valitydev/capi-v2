@@ -335,28 +335,27 @@ decode_payment_status({Status, StatusInfo}, Context) ->
         <<"error">> => Error
     }.
 
--spec decode_payment_operation_failure({atom(), _}, processing_context()) -> decode_data().
+-spec decode_payment_operation_failure(dmsl_domain_thrift:'OperationFailure'(), processing_context()) -> decode_data().
 decode_payment_operation_failure({operation_timeout, _}, _) ->
     payment_error(<<"timeout">>);
 decode_payment_operation_failure({failure, Failure}, Context) ->
     AuthContext = capi_handler_utils:get_auth_context(Context),
     case capi_auth:get_consumer(AuthContext) of
         client ->
-            payment_error(payproc_errors:match('PaymentFailure', Failure, fun payment_error_client_maping/1));
+            payment_error(payment_error_client_maping(Failure));
         merchant ->
-            % чтобы не городить ещё один обход дерева как в payproc_errors проще отформатировать в текст,
-            % а потом уже в json
-            decode_payment_operation_failure_(
-                binary:split(erlang:list_to_binary(payproc_errors:format_raw(Failure)), <<":">>, [global])
-            )
+            decode_payment_operation_failure_(Failure)
     end.
 
-decode_payment_operation_failure_([H | T]) ->
-    R = payment_error(H),
-    case T of
-        [] -> R;
-        _ -> R#{<<"subError">> => decode_payment_operation_failure_(T)}
-    end.
+decode_payment_operation_failure_(undefined) ->
+    undefined;
+decode_payment_operation_failure_(Failure) ->
+    {Code, Sub} =
+        case Failure of
+            #domain_Failure{code = C, sub = S} -> {C, S};
+            #domain_SubFailure{code = C, sub = S} -> {C, S}
+        end,
+    genlib_map:compact((payment_error(Code))#{<<"subError">> => decode_payment_operation_failure_(Sub)}).
 
 decode_flow({instant, _}) ->
     #{<<"type">> => <<"PaymentFlowInstant">>};
@@ -384,21 +383,28 @@ payment_error(Code) ->
     #{<<"code">> => Code}.
 
 %% client error mapping
-%% @see https://github.com/petrkozorezov/swag/blob/master/spec/definitions/PaymentError.yaml
--spec payment_error_client_maping(capi_handler_encoder:encode_data()) -> binary().
-payment_error_client_maping({preauthorization_failed, _}) ->
+-spec payment_error_client_maping(dmsl_domain_thrift:'Failure'()) -> binary().
+payment_error_client_maping(#domain_Failure{code = <<"preauthorization_failed">>}) ->
     <<"PreauthorizationFailed">>;
-payment_error_client_maping({authorization_failed, {account_blocked, _}}) ->
+payment_error_client_maping(#domain_Failure{
+    code = <<"authorization_failed">>, sub = #domain_SubFailure{code = <<"account_blocked">>}
+}) ->
     <<"RejectedByIssuer">>;
-payment_error_client_maping({authorization_failed, {rejected_by_issuer, _}}) ->
-    <<"RejectedByIssuer">>;
-payment_error_client_maping({authorization_failed, {payment_tool_rejected, _}}) ->
+payment_error_client_maping(#domain_Failure{
+    code = <<"authorization_failed">>, sub = #domain_SubFailure{code = <<"payment_tool_rejected">>}
+}) ->
     <<"InvalidPaymentTool">>;
-payment_error_client_maping({authorization_failed, {account_not_found, _}}) ->
+payment_error_client_maping(#domain_Failure{
+    code = <<"authorization_failed">>, sub = #domain_SubFailure{code = <<"account_not_found">>}
+}) ->
     <<"InvalidPaymentTool">>;
-payment_error_client_maping({authorization_failed, {account_limit_exceeded, _}}) ->
+payment_error_client_maping(#domain_Failure{
+    code = <<"authorization_failed">>, sub = #domain_SubFailure{code = <<"account_limit_exceeded">>}
+}) ->
     <<"AccountLimitsExceeded">>;
-payment_error_client_maping({authorization_failed, {insufficient_funds, _}}) ->
+payment_error_client_maping(#domain_Failure{
+    code = <<"authorization_failed">>, sub = #domain_SubFailure{code = <<"insufficient_funds">>}
+}) ->
     <<"InsufficientFunds">>;
 payment_error_client_maping(_) ->
     <<"PaymentRejected">>.
