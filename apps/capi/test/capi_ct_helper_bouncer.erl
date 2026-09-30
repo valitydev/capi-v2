@@ -203,11 +203,13 @@ mock_client(SupOrConfig) ->
                                 })
                             ),
                             {ok, Fragment};
-                        ('GetPartyContext', {UserID}) ->
+                        ('GetPartyContext', {PartyID}) ->
                             {encoded_fragment, Fragment} = bouncer_client:bake_context_fragment(
                                 bouncer_context_helpers:make_party_fragment(#{
-                                    id => UserID,
-                                    organization => #{id => ?STRING, owner => #{id => UserID}, allowed_ips => [?STRING]}
+                                    id => PartyID,
+                                    organization => #{
+                                        id => ?STRING, owner => #{id => ?STRING}, allowed_ips => [?STRING]
+                                    }
                                 })
                             ),
                             {ok, Fragment}
