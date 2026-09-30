@@ -27,8 +27,10 @@ mock_assert_op_ctx(Op, Config) ->
     mock_arbiter(
         ?assertContextMatches(
             #ctx_v1_ContextFragment{
-                capi = ?CTX_CAPI(?CTX_CAPI_OP(Op))
-            }
+                capi = ?CTX_CAPI(?CTX_CAPI_OP(Op)),
+                user = UserCtx,
+                party = PartyCtx
+            } when UserCtx =/= undefined orelse PartyCtx =/= undefined
         ),
         Config
     ).
@@ -38,8 +40,10 @@ mock_assert_party_op_ctx(Op, PartyID, Config) ->
     mock_arbiter(
         ?assertContextMatches(
             #ctx_v1_ContextFragment{
-                capi = ?CTX_CAPI(?CTX_PARTY_OP(Op, PartyID))
-            }
+                capi = ?CTX_CAPI(?CTX_PARTY_OP(Op, PartyID)),
+                user = UserCtx,
+                party = PartyCtx
+            } when UserCtx =/= undefined orelse PartyCtx =/= undefined
         ),
         Config
     ).
@@ -49,8 +53,10 @@ mock_assert_shop_op_ctx(Op, PartyID, ShopID, Config) ->
     mock_arbiter(
         ?assertContextMatches(
             #ctx_v1_ContextFragment{
-                capi = ?CTX_CAPI(?CTX_SHOP_OP(Op, PartyID, ShopID))
-            }
+                capi = ?CTX_CAPI(?CTX_SHOP_OP(Op, PartyID, ShopID)),
+                user = UserCtx,
+                party = PartyCtx
+            } when UserCtx =/= undefined orelse PartyCtx =/= undefined
         ),
         Config
     ).
@@ -63,8 +69,10 @@ mock_assert_invoice_op_ctx(Op, InvoiceID, PartyID, ShopID, Config) ->
                 capi = ?CTX_CAPI(?CTX_INVOICE_OP(Op, InvoiceID)),
                 payment_processing = #ctx_v1_ContextPaymentProcessing{
                     invoice = ?CTX_INVOICE(InvoiceID, PartyID, ShopID)
-                }
-            }
+                },
+                user = UserCtx,
+                party = PartyCtx
+            } when UserCtx =/= undefined orelse PartyCtx =/= undefined
         ),
         Config
     ).
@@ -77,8 +85,10 @@ mock_assert_payment_op_ctx(Op, InvoiceID, PaymentID, PartyID, ShopID, Config) ->
                 capi = ?CTX_CAPI(?CTX_PAYMENT_OP(Op, InvoiceID, PaymentID)),
                 payment_processing = #ctx_v1_ContextPaymentProcessing{
                     invoice = ?CTX_INVOICE(InvoiceID, PartyID, ShopID, [?CTX_PAYMENT(PaymentID)])
-                }
-            }
+                },
+                user = UserCtx,
+                party = PartyCtx
+            } when UserCtx =/= undefined orelse PartyCtx =/= undefined
         ),
         Config
     ).
@@ -91,8 +101,10 @@ mock_assert_payment_op_ctx(Op, InvoiceID, PartyID, ShopID, Config) ->
                 capi = ?CTX_CAPI(?CTX_PAYMENT_OP(Op, InvoiceID)),
                 payment_processing = #ctx_v1_ContextPaymentProcessing{
                     invoice = ?CTX_INVOICE(InvoiceID, PartyID, ShopID, [])
-                }
-            }
+                },
+                user = UserCtx,
+                party = PartyCtx
+            } when UserCtx =/= undefined orelse PartyCtx =/= undefined
         ),
         Config
     ).
@@ -105,8 +117,10 @@ mock_assert_refund_op_ctx(Op, InvoiceID, PaymentID, RefundID, PartyID, ShopID, C
                 capi = ?CTX_CAPI(?CTX_REFUND_OP(Op, InvoiceID, PaymentID, RefundID)),
                 payment_processing = #ctx_v1_ContextPaymentProcessing{
                     invoice = ?CTX_INVOICE(InvoiceID, PartyID, ShopID, [?CTX_PAYMENT(PaymentID)])
-                }
-            }
+                },
+                user = UserCtx,
+                party = PartyCtx
+            } when UserCtx =/= undefined orelse PartyCtx =/= undefined
         ),
         Config
     ).
@@ -119,8 +133,10 @@ mock_assert_invoice_tpl_op_ctx(Op, InvoiceTemplateID, PartyID, ShopID, Config) -
                 capi = ?CTX_CAPI(?CTX_INVOICE_TPL_OP(Op, InvoiceTemplateID)),
                 payment_processing = #ctx_v1_ContextPaymentProcessing{
                     invoice_template = ?CTX_INVOICE_TPL(InvoiceTemplateID, PartyID, ShopID)
-                }
-            }
+                },
+                user = UserCtx,
+                party = PartyCtx
+            } when UserCtx =/= undefined orelse PartyCtx =/= undefined
         ),
         Config
     ).
@@ -133,8 +149,10 @@ mock_assert_webhook_op_ctx(Op, WebhookID, PartyID, Config) ->
                 capi = ?CTX_CAPI(?CTX_WEBHOOK_OP(Op, WebhookID)),
                 webhooks = #ctx_v1_ContextWebhooks{
                     webhook = ?CTX_WEBHOOK(WebhookID, PartyID)
-                }
-            }
+                },
+                user = UserCtx,
+                party = PartyCtx
+            } when UserCtx =/= undefined orelse PartyCtx =/= undefined
         ),
         Config
     ).
@@ -175,15 +193,24 @@ mock_client(SupOrConfig) ->
                 {
                     org_management,
                     {orgmgmt_authctx_provider_thrift, 'AuthContextProvider'},
-                    fun('GetUserContext', {UserID}) ->
-                        {encoded_fragment, Fragment} = bouncer_client:bake_context_fragment(
-                            bouncer_context_helpers:make_user_fragment(#{
-                                id => UserID,
-                                realm => #{id => ?TEST_USER_REALM},
-                                orgs => [#{id => ?STRING, owner => #{id => UserID}, party => #{id => UserID}}]
-                            })
-                        ),
-                        {ok, Fragment}
+                    fun
+                        ('GetUserContext', {UserID}) ->
+                            {encoded_fragment, Fragment} = bouncer_client:bake_context_fragment(
+                                bouncer_context_helpers:make_user_fragment(#{
+                                    id => UserID,
+                                    realm => #{id => ?TEST_USER_REALM},
+                                    orgs => [#{id => ?STRING, owner => #{id => UserID}, party => #{id => UserID}}]
+                                })
+                            ),
+                            {ok, Fragment};
+                        ('GetPartyContext', {UserID}) ->
+                            {encoded_fragment, Fragment} = bouncer_client:bake_context_fragment(
+                                bouncer_context_helpers:make_party_fragment(#{
+                                    id => UserID,
+                                    organization => #{id => ?STRING, owner => #{id => UserID}, allowed_ips => [?STRING]}
+                                })
+                            ),
+                            {ok, Fragment}
                     end
                 }
             ],
