@@ -175,6 +175,10 @@ combine_metadata(#{} = FullMetadata) ->
 
 user_session_metadata() ->
     genlib_map:compact(#{
+        %% TODO In real use, user session keys do not include the party
+        %% ID. However, due to legacy compatibility test cases, it is set in
+        %% this fixture. Therefore, it must be removed along with the test
+        %% suite refactoring.
         ?TK_META_PARTY_ID => ?PARTY_ID,
         ?TK_META_USER_ID => ?USER_ID,
         ?TK_META_USER_EMAIL => ?USER_EMAIL
