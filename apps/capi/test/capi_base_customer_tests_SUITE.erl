@@ -164,8 +164,13 @@ create_customer_authorization_error_test(Config) ->
 
 -spec get_customer_by_id_ok_test(config()) -> _.
 get_customer_by_id_ok_test(Config) ->
+    %% The Customer is looked up in the party of the request
     _ = capi_ct_helper:mock_services(
-        [{customer_management, fun('Get', _) -> {ok, ?CUSTOMER_STATE} end}],
+        [
+            {customer_management, fun('Get', {?STRING, #domain_PartyConfigRef{id = ?STRING}}) ->
+                {ok, ?CUSTOMER_STATE}
+            end}
+        ],
         Config
     ),
     _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetCustomerByID">>, ?STRING, Config),
@@ -236,8 +241,10 @@ get_customer_payments_ok_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
             {customer_management, fun
-                ('Get', _) -> {ok, ?CUSTOMER_STATE};
-                ('GetPayments', _) -> {ok, ?CUSTOMER_PAYMENTS_RESPONSE}
+                ('Get', _) ->
+                    {ok, ?CUSTOMER_STATE};
+                ('GetPayments', {?STRING, #domain_PartyConfigRef{id = ?STRING}, 10, undefined}) ->
+                    {ok, ?CUSTOMER_PAYMENTS_RESPONSE}
             end}
         ],
         Config

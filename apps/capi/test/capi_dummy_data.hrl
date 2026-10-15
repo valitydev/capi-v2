@@ -1543,7 +1543,8 @@
 -define(CUSTOMER_STATE, #customer_CustomerState{
     customer = ?CUSTOMER,
     bank_card_refs = [],
-    payment_refs = []
+    payment_refs = [],
+    withdrawal_refs = []
 }).
 
 -define(CUSTOMER_PAYMENT, #customer_CustomerPayment{

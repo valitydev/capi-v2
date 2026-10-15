@@ -146,7 +146,8 @@ prepare('GetCustomerPayments' = OperationID, Req, Context) ->
         capi_handler:respond_if_undefined(ResultCustomerState, general_error(404, <<"Customer not found">>)),
         Limit = maps:get('limit', Req),
         ContinuationToken = maps:get('continuationToken', Req, undefined),
-        Call = {customer_management, 'GetPayments', {CustomerID, Limit, ContinuationToken}},
+        PartyRef = get_customer_party_ref(ResultCustomerState),
+        Call = {customer_management, 'GetPayments', {CustomerID, PartyRef, Limit, ContinuationToken}},
         case capi_handler_utils:service_call(Call, Context) of
             {ok, #customer_CustomerPaymentsResponse{payments = Payments, continuation_token = CT}} ->
                 Response = genlib_map:compact(#{
@@ -194,12 +195,22 @@ prepare(_OperationID, _Req, _Context) ->
 
 %%
 
+%% A Customer is available to every party it is linked to, so it is looked up in the party of
+%% the request. A request authorized in no party sees no Customer
 get_customer_state(CustomerID, Context) ->
-    Call = {customer_management, 'Get', {CustomerID}},
-    case capi_handler_utils:service_call(Call, Context) of
-        {ok, CustomerState} -> CustomerState;
-        {exception, #customer_CustomerNotFound{}} -> undefined
+    case capi_handler_utils:get_party_id(Context) of
+        PartyID when is_binary(PartyID) ->
+            Call = {customer_management, 'Get', {CustomerID, #domain_PartyConfigRef{id = PartyID}}},
+            case capi_handler_utils:service_call(Call, Context) of
+                {ok, CustomerState} -> CustomerState;
+                {exception, #customer_CustomerNotFound{}} -> undefined
+            end;
+        undefined ->
+            undefined
     end.
+
+get_customer_party_ref(#customer_CustomerState{customer = Customer}) ->
+    Customer#customer_Customer.party_ref.
 
 get_customer_party_id(undefined) ->
     undefined;

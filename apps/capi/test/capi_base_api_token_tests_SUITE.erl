@@ -24,6 +24,9 @@
 
 -export([
     create_invoice_ok_test/1,
+    create_invoice_with_customer_ok_test/1,
+    create_invoice_with_user_ok_test/1,
+    create_invoice_with_unknown_customer_test/1,
     create_invoice_bad_keys_test/1,
     create_invoice_rand_amount_ok_test/1,
     create_invoice_autorization_error_test/1,
@@ -128,6 +131,9 @@ groups() ->
         ]},
         {operations_by_any_token, [], [
             create_invoice_ok_test,
+            create_invoice_with_customer_ok_test,
+            create_invoice_with_user_ok_test,
+            create_invoice_with_unknown_customer_test,
             create_invoice_bad_keys_test,
             create_invoice_rand_amount_ok_test,
             create_invoice_autorization_error_test,
@@ -276,6 +282,76 @@ create_invoice_ok_test(Config) ->
         capi_client_invoices:create_invoice(?config(context, Config), InvoiceParams1),
     assert_invoice_url(?STRING, ?CHECKOUT_URL, UrlParams, InvoiceUrl),
     ?assertMatch(#{<<"clientInfo">> := #{<<"trustLevel">> := <<"wellKnown">>}}, Invoice).
+
+-spec create_invoice_with_customer_ok_test(config()) -> _.
+create_invoice_with_customer_ok_test(Config) ->
+    CustomerID = <<"customer">>,
+    ClientIdentity = #domain_ClientIdentity{customer_id = CustomerID},
+    _ = capi_ct_helper:mock_services(
+        [
+            %% The customer has to be available in the invoice party
+            {customer_management, fun('Get', {ID, #domain_PartyConfigRef{id = ?STRING}}) when ID =:= CustomerID ->
+                {ok, ?CUSTOMER_STATE}
+            end},
+            {invoicing, fun('Create', {#payproc_InvoiceParams{client_identity = CI}}) when CI =:= ClientIdentity ->
+                {ok, ?PAYPROC_INVOICE(?RECORD_UPDATE(#domain_Invoice.client_identity, CI, ?INVOICE), [])}
+            end},
+            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"CreateInvoice">>, ?STRING, ?STRING, Config),
+    Identity = #{<<"clientIdentityType">> => <<"ClientIdentityCustomer">>, <<"customerID">> => CustomerID},
+    {ok, #{<<"invoice">> := Invoice}} =
+        capi_client_invoices:create_invoice(
+            ?config(context, Config), maps:put(<<"clientIdentity">>, Identity, ?INVOICE_PARAMS)
+        ),
+    ?assertEqual(Identity, maps:get(<<"clientIdentity">>, Invoice)).
+
+-spec create_invoice_with_user_ok_test(config()) -> _.
+create_invoice_with_user_ok_test(Config) ->
+    UserID = <<"user">>,
+    ClientIdentity = #domain_ClientIdentity{customer_id = ?STRING, user_id = UserID},
+    _ = capi_ct_helper:mock_services(
+        [
+            %% The user is the Customer with the same external ID in the invoice party
+            {customer_management, fun('FindOrCreateByExternalID', {#domain_PartyConfigRef{id = ?STRING}, ID}) when
+                ID =:= UserID
+            ->
+                {ok, ?CUSTOMER}
+            end},
+            {invoicing, fun('Create', {#payproc_InvoiceParams{client_identity = CI}}) when CI =:= ClientIdentity ->
+                {ok, ?PAYPROC_INVOICE(?RECORD_UPDATE(#domain_Invoice.client_identity, CI, ?INVOICE), [])}
+            end},
+            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"CreateInvoice">>, ?STRING, ?STRING, Config),
+    Identity = #{<<"clientIdentityType">> => <<"ClientIdentityUser">>, <<"userID">> => UserID},
+    {ok, #{<<"invoice">> := Invoice}} =
+        capi_client_invoices:create_invoice(
+            ?config(context, Config), maps:put(<<"clientIdentity">>, Identity, ?INVOICE_PARAMS)
+        ),
+    ?assertEqual(Identity, maps:get(<<"clientIdentity">>, Invoice)).
+
+-spec create_invoice_with_unknown_customer_test(config()) -> _.
+create_invoice_with_unknown_customer_test(Config) ->
+    _ = capi_ct_helper:mock_services(
+        [
+            {customer_management, fun('Get', _) -> {throwing, #customer_CustomerNotFound{}} end},
+            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"CreateInvoice">>, ?STRING, ?STRING, Config),
+    Identity = #{<<"clientIdentityType">> => <<"ClientIdentityCustomer">>, <<"customerID">> => <<"elsewhere">>},
+    ?assertMatch(
+        {error, {400, #{<<"code">> := <<"invalidRequest">>, <<"message">> := <<"Customer not found">>}}},
+        capi_client_invoices:create_invoice(
+            ?config(context, Config), maps:put(<<"clientIdentity">>, Identity, ?INVOICE_PARAMS)
+        )
+    ).
 
 -spec create_invoice_bad_keys_test(config()) -> _.
 create_invoice_bad_keys_test(Config) ->
@@ -950,23 +1026,22 @@ create_payment_with_customer_ok_test(Config) ->
     BenderKey = <<"bender_key">>,
     ExternalID = <<"merch_id">>,
     CustomerID = <<"test-customer-id">>,
+    %% The Customer comes from the invoice, the payment only reports it
+    ClientIdentity = #domain_ClientIdentity{customer_id = CustomerID},
+    Invoice = ?RECORD_UPDATE(#domain_Invoice.client_identity, ClientIdentity, ?INVOICE),
     _ = capi_ct_helper:mock_services(
         [
             {invoicing, fun
                 ('Get', _) ->
-                    {ok, ?PAYPROC_INVOICE};
+                    {ok, ?PAYPROC_INVOICE(Invoice, [])};
                 ('StartPayment', {_, PaymentParams}) ->
                     #payproc_InvoicePaymentParams{
                         id = ID,
-                        payer = {payment_resource, _},
-                        customer_id = <<"test-customer-id">>
+                        payer = {payment_resource, _}
                     } =
                         PaymentParams,
                     P = ?PAYMENT(ID, ?PAYMENT_STATUS_PENDING, ?PAYER),
-                    {ok, ?PAYPROC_PAYMENT(P#domain_InvoicePayment{customer_id = <<"test-customer-id">>})}
-            end},
-            {customer_management, fun('Get', _) ->
-                {ok, ?CUSTOMER_STATE}
+                    {ok, ?PAYPROC_PAYMENT(P#domain_InvoicePayment{customer_id = CustomerID})}
             end},
             {party_management, fun('GetShop', _) ->
                 {ok, ?SHOP}
@@ -986,8 +1061,7 @@ create_payment_with_customer_ok_test(Config) ->
     ),
     PaymentTool = {bank_card, ?BANK_CARD(<<"visa">>, ?EXP_DATE(2, 2020), <<"Degus">>)},
     PaymentToolToken = capi_crypto:encode_token(#{payment_tool => PaymentTool, valid_until => undefined}),
-    Req0 = ?PAYMENT_PARAMS(ExternalID, PaymentToolToken),
-    Req = Req0#{<<"customerID">> => CustomerID},
+    Req = ?PAYMENT_PARAMS(ExternalID, PaymentToolToken),
     {ok, Payment} = capi_client_payments:create_payment(?config(context, Config), Req, ?STRING),
     #{<<"customerID">> := CustomerID} = Payment.
 

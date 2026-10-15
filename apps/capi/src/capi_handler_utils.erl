@@ -139,7 +139,7 @@ get_subject_id(Context) ->
 get_user_id(Context) ->
     capi_auth:get_user_id(get_auth_context(Context)).
 
--spec get_party_id(processing_context()) -> binary().
+-spec get_party_id(processing_context()) -> binary() | undefined.
 get_party_id(Context) ->
     capi_auth:get_party_id(get_auth_context(Context)).
 

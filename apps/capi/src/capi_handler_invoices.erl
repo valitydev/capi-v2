@@ -3,6 +3,7 @@
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_base_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
+-include_lib("damsel/include/dmsl_customer_thrift.hrl").
 
 -behaviour(capi_handler).
 
@@ -75,7 +76,11 @@ prepare('CreateInvoice' = OperationID, Req, Context) ->
             throw:allocation_wrong_cart ->
                 {ok, logic_error('invalidAllocation', <<"Wrong cart">>)};
             throw:allocation_duplicate ->
-                {ok, logic_error('invalidAllocation', <<"Duplicate shop">>)}
+                {ok, logic_error('invalidAllocation', <<"Duplicate shop">>)};
+            throw:client_identity_customer_not_found ->
+                {ok, logic_error('invalidRequest', <<"Customer not found">>)};
+            throw:{invalid_client_identity, IdentityErrors} ->
+                {ok, logic_error('invalidRequest', capi_handler_utils:format_request_errors(IdentityErrors))}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -311,11 +316,40 @@ create_invoice(PartyID, InvoiceParams, Context, BenderPrefix) ->
     ExternalID = maps:get(<<"externalID">>, InvoiceParams, undefined),
     IdempotentKey = {BenderPrefix, PartyID, ExternalID},
     Identity = capi_bender:make_identity(capi_feature_schemas:invoice(), InvoiceParams),
+    ClientIdentity = resolve_client_identity(
+        PartyID, maps:get(<<"clientIdentity">>, InvoiceParams, undefined), Context
+    ),
     InvoiceID = capi_bender:gen_snowflake(IdempotentKey, Identity, WoodyCtx),
-    Call = {invoicing, 'Create', {encode_invoice_params(InvoiceID, PartyID, InvoiceParams)}},
+    Call = {invoicing, 'Create', {encode_invoice_params(InvoiceID, PartyID, InvoiceParams, ClientIdentity)}},
     capi_handler_utils:service_call(Call, Context).
 
-encode_invoice_params(ID, PartyID, InvoiceParams) ->
+%% The payer is resolved to a Customer of the invoice party before the invoice is created:
+%% a passed customer has to be available in the party, and a user of the merchant's system
+%% is found, or created, as the Customer with the same external ID in the party
+resolve_client_identity(_PartyID, undefined, _Context) ->
+    undefined;
+resolve_client_identity(
+    PartyID, #{<<"clientIdentityType">> := <<"ClientIdentityCustomer">>, <<"customerID">> := CustomerID}, Context
+) ->
+    Call = {customer_management, 'Get', {CustomerID, #domain_PartyConfigRef{id = PartyID}}},
+    case capi_handler_utils:service_call(Call, Context) of
+        {ok, #customer_CustomerState{}} ->
+            #domain_ClientIdentity{customer_id = CustomerID};
+        {exception, #customer_CustomerNotFound{}} ->
+            throw(client_identity_customer_not_found)
+    end;
+resolve_client_identity(
+    PartyID, #{<<"clientIdentityType">> := <<"ClientIdentityUser">>, <<"userID">> := UserID}, Context
+) ->
+    Call = {customer_management, 'FindOrCreateByExternalID', {#domain_PartyConfigRef{id = PartyID}, UserID}},
+    case capi_handler_utils:service_call(Call, Context) of
+        {ok, #customer_Customer{id = CustomerID}} ->
+            #domain_ClientIdentity{customer_id = CustomerID, user_id = UserID};
+        {exception, #base_InvalidRequest{errors = Errors}} ->
+            throw({invalid_client_identity, Errors})
+    end.
+
+encode_invoice_params(ID, PartyID, InvoiceParams, ClientIdentity) ->
     Amount = genlib_map:get(<<"amount">>, InvoiceParams),
     Currency = genlib_map:get(<<"currency">>, InvoiceParams),
     Cart = genlib_map:get(<<"cart">>, InvoiceParams),
@@ -331,6 +365,7 @@ encode_invoice_params(ID, PartyID, InvoiceParams) ->
         shop_id = #domain_ShopConfigRef{id = genlib_map:get(<<"shopID">>, InvoiceParams)},
         external_id = genlib_map:get(<<"externalID">>, InvoiceParams, undefined),
         client_info = encode_client_info(ClientInfo),
+        client_identity = ClientIdentity,
         allocation = capi_allocation:encode(Allocation, PartyID),
         mutations = capi_mutation:encode_amount_randomization_params(
             maps:get(<<"randomizeAmount">>, InvoiceParams, undefined)
