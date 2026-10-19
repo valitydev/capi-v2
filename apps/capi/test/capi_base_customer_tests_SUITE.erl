@@ -24,12 +24,15 @@
     create_customer_ok_test/1,
     create_customer_authorization_error_test/1,
     get_customer_by_id_ok_test/1,
+    get_customer_by_id_party_test/1,
     get_customer_by_id_not_found_test/1,
     get_customer_by_external_id_ok_test/1,
+    get_customer_by_external_id_token_party_test/1,
     get_customer_by_external_id_not_found_test/1,
     delete_customer_ok_test/1,
     create_customer_access_token_ok_test/1,
     get_customer_payments_ok_test/1,
+    get_customer_payments_party_test/1,
     get_customer_bank_cards_ok_test/1
 ]).
 
@@ -55,12 +58,15 @@ customer_tests() ->
         create_customer_ok_test,
         create_customer_authorization_error_test,
         get_customer_by_id_ok_test,
+        get_customer_by_id_party_test,
         get_customer_by_id_not_found_test,
         get_customer_by_external_id_ok_test,
+        get_customer_by_external_id_token_party_test,
         get_customer_by_external_id_not_found_test,
         delete_customer_ok_test,
         create_customer_access_token_ok_test,
         get_customer_payments_ok_test,
+        get_customer_payments_party_test,
         get_customer_bank_cards_ok_test
     ].
 
@@ -179,6 +185,21 @@ get_customer_by_id_ok_test(Config) ->
         <<"createdAt">> := ?TIMESTAMP
     }} = capi_client_customers:get_customer_by_id(?config(context, Config), ?STRING).
 
+%% A party passed with the request is the one the Customer is looked up and authorized in
+-spec get_customer_by_id_party_test(config()) -> _.
+get_customer_by_id_party_test(Config) ->
+    PartyID = <<"other-party">>,
+    _ = capi_ct_helper:mock_services(
+        [
+            {customer_management, fun('Get', {?STRING, #domain_PartyConfigRef{id = ID}}) when ID =:= PartyID ->
+                {ok, ?CUSTOMER_STATE}
+            end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetCustomerByID">>, PartyID, Config),
+    {ok, #{<<"id">> := ?STRING}} = capi_client_customers:get_customer_by_id(?config(context, Config), ?STRING, PartyID).
+
 -spec get_customer_by_id_not_found_test(config()) -> _.
 get_customer_by_id_not_found_test(Config) ->
     _ = capi_ct_helper:mock_services(
@@ -202,6 +223,20 @@ get_customer_by_external_id_ok_test(Config) ->
         <<"externalID">> := ?STRING,
         <<"createdAt">> := ?TIMESTAMP
     }} = capi_client_customers:get_customer_by_external_id(?config(context, Config), ?STRING, ?STRING).
+
+%% A request without a party is made in the party of its token
+-spec get_customer_by_external_id_token_party_test(config()) -> _.
+get_customer_by_external_id_token_party_test(Config) ->
+    _ = capi_ct_helper:mock_services(
+        [
+            {customer_management, fun('GetByExternalID', {?STRING, #domain_PartyConfigRef{id = ?STRING}}) ->
+                {ok, ?CUSTOMER_STATE}
+            end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetCustomerByExternalID">>, ?STRING, Config),
+    {ok, #{<<"id">> := ?STRING}} = capi_client_customers:get_customer_by_external_id(?config(context, Config), ?STRING).
 
 -spec get_customer_by_external_id_not_found_test(config()) -> _.
 get_customer_by_external_id_not_found_test(Config) ->
@@ -255,6 +290,28 @@ get_customer_payments_ok_test(Config) ->
             ?config(context, Config),
             ?STRING,
             #{<<"limit">> => <<"10">>}
+        ).
+
+-spec get_customer_payments_party_test(config()) -> _.
+get_customer_payments_party_test(Config) ->
+    PartyID = <<"other-party">>,
+    _ = capi_ct_helper:mock_services(
+        [
+            {customer_management, fun
+                ('Get', {?STRING, #domain_PartyConfigRef{id = ID}}) when ID =:= PartyID ->
+                    {ok, ?CUSTOMER_STATE};
+                ('GetPayments', {?STRING, #domain_PartyConfigRef{id = ID}, 10, undefined}) when ID =:= PartyID ->
+                    {ok, ?CUSTOMER_PAYMENTS_RESPONSE}
+            end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetCustomerPayments">>, PartyID, Config),
+    {ok, #{<<"result">> := [#{<<"invoiceID">> := ?STRING}]}} =
+        capi_client_customers:get_customer_payments(
+            ?config(context, Config),
+            ?STRING,
+            #{<<"limit">> => <<"10">>, <<"partyID">> => PartyID}
         ).
 
 -spec get_customer_bank_cards_ok_test(config()) -> _.

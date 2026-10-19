@@ -27,6 +27,7 @@
     create_invoice_with_customer_ok_test/1,
     create_invoice_with_user_ok_test/1,
     create_invoice_with_unknown_customer_test/1,
+    create_invoice_with_invalid_user_test/1,
     create_invoice_bad_keys_test/1,
     create_invoice_rand_amount_ok_test/1,
     create_invoice_autorization_error_test/1,
@@ -134,6 +135,7 @@ groups() ->
             create_invoice_with_customer_ok_test,
             create_invoice_with_user_ok_test,
             create_invoice_with_unknown_customer_test,
+            create_invoice_with_invalid_user_test,
             create_invoice_bad_keys_test,
             create_invoice_rand_amount_ok_test,
             create_invoice_autorization_error_test,
@@ -285,7 +287,7 @@ create_invoice_ok_test(Config) ->
 
 -spec create_invoice_with_customer_ok_test(config()) -> _.
 create_invoice_with_customer_ok_test(Config) ->
-    CustomerID = <<"customer">>,
+    CustomerID = <<"b6a3f0c2-6f0e-4d6b-9d4c-1f6c2a7e8d90">>,
     ClientIdentity = #domain_ClientIdentity{customer_id = CustomerID},
     _ = capi_ct_helper:mock_services(
         [
@@ -339,15 +341,41 @@ create_invoice_with_user_ok_test(Config) ->
 create_invoice_with_unknown_customer_test(Config) ->
     _ = capi_ct_helper:mock_services(
         [
-            {customer_management, fun('Get', _) -> {throwing, #customer_CustomerNotFound{}} end},
+            %% The customer is looked up in the invoice party
+            {customer_management, fun('Get', {_, #domain_PartyConfigRef{id = ?STRING}}) ->
+                {throwing, #customer_CustomerNotFound{}}
+            end},
             {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
         ],
         Config
     ),
     _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"CreateInvoice">>, ?STRING, ?STRING, Config),
-    Identity = #{<<"clientIdentityType">> => <<"ClientIdentityCustomer">>, <<"customerID">> => <<"elsewhere">>},
+    Identity = #{
+        <<"clientIdentityType">> => <<"ClientIdentityCustomer">>,
+        <<"customerID">> => <<"0f1e2d3c-4b5a-4968-8776-655443322110">>
+    },
     ?assertMatch(
         {error, {400, #{<<"code">> := <<"invalidRequest">>, <<"message">> := <<"Customer not found">>}}},
+        capi_client_invoices:create_invoice(
+            ?config(context, Config), maps:put(<<"clientIdentity">>, Identity, ?INVOICE_PARAMS)
+        )
+    ).
+
+-spec create_invoice_with_invalid_user_test(config()) -> _.
+create_invoice_with_invalid_user_test(Config) ->
+    _ = capi_ct_helper:mock_services(
+        [
+            {customer_management, fun('FindOrCreateByExternalID', _) ->
+                {throwing, #base_InvalidRequest{errors = [<<"Invalid external id">>]}}
+            end},
+            {generator, fun('GenerateID', _) -> capi_ct_helper_bender:generate_id(<<"bender_key">>) end}
+        ],
+        Config
+    ),
+    _ = capi_ct_helper_bouncer:mock_assert_shop_op_ctx(<<"CreateInvoice">>, ?STRING, ?STRING, Config),
+    Identity = #{<<"clientIdentityType">> => <<"ClientIdentityUser">>, <<"userID">> => <<"user">>},
+    ?assertMatch(
+        {error, {400, #{<<"code">> := <<"invalidRequest">>}}},
         capi_client_invoices:create_invoice(
             ?config(context, Config), maps:put(<<"clientIdentity">>, Identity, ?INVOICE_PARAMS)
         )

@@ -42,7 +42,7 @@ prepare('CreateCustomer' = OperationID, Req, Context) ->
     {ok, #{authorize => Authorize, process => Process}};
 prepare('GetCustomerByExternalID' = OperationID, Req, Context) ->
     ExternalID = maps:get('externalID', Req),
-    PartyID = maps:get('partyID', Req, capi_handler_utils:get_party_id(Context)),
+    PartyID = get_request_party_id(Req, Context),
     PartyRef = #domain_PartyConfigRef{id = PartyID},
     Call = {customer_management, 'GetByExternalID', {ExternalID, PartyRef}},
     {CustomerID, ResultCustomerState} =
@@ -68,12 +68,11 @@ prepare('GetCustomerByExternalID' = OperationID, Req, Context) ->
     {ok, #{authorize => Authorize, process => Process}};
 prepare('GetCustomerByID' = OperationID, Req, Context) ->
     CustomerID = maps:get('customerID', Req),
-    ResultCustomerState = get_customer_state(CustomerID, Context),
+    PartyID = get_request_party_id(Req, Context),
+    ResultCustomerState = get_customer_state(CustomerID, PartyID, Context),
     Authorize = fun() ->
         Prototypes = [
-            {operation, #{
-                id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID
-            }},
+            {operation, #{id => OperationID, party => PartyID, customer => CustomerID}},
             {cubasty, genlib_map:compact(#{customer => ResultCustomerState})}
         ],
         Resolution = mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context)),
@@ -87,12 +86,11 @@ prepare('GetCustomerByID' = OperationID, Req, Context) ->
     {ok, #{authorize => Authorize, process => Process}};
 prepare('DeleteCustomer' = OperationID, Req, Context) ->
     CustomerID = maps:get('customerID', Req),
-    ResultCustomerState = get_customer_state(CustomerID, Context),
+    PartyID = get_request_party_id(Req, Context),
+    ResultCustomerState = get_customer_state(CustomerID, PartyID, Context),
     Authorize = fun() ->
         Prototypes = [
-            {operation, #{
-                id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID
-            }},
+            {operation, #{id => OperationID, party => PartyID, customer => CustomerID}},
             {cubasty, genlib_map:compact(#{customer => ResultCustomerState})}
         ],
         Resolution = mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context)),
@@ -111,12 +109,11 @@ prepare('DeleteCustomer' = OperationID, Req, Context) ->
     {ok, #{authorize => Authorize, process => Process}};
 prepare('CreateCustomerAccessToken' = OperationID, Req, Context) ->
     CustomerID = maps:get('customerID', Req),
-    ResultCustomerState = get_customer_state(CustomerID, Context),
+    PartyID = get_request_party_id(Req, Context),
+    ResultCustomerState = get_customer_state(CustomerID, PartyID, Context),
     Authorize = fun() ->
         Prototypes = [
-            {operation, #{
-                id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID
-            }},
+            {operation, #{id => OperationID, party => PartyID, customer => CustomerID}},
             {cubasty, genlib_map:compact(#{customer => ResultCustomerState})}
         ],
         Resolution = mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context)),
@@ -131,12 +128,11 @@ prepare('CreateCustomerAccessToken' = OperationID, Req, Context) ->
     {ok, #{authorize => Authorize, process => Process}};
 prepare('GetCustomerPayments' = OperationID, Req, Context) ->
     CustomerID = maps:get('customerID', Req),
-    ResultCustomerState = get_customer_state(CustomerID, Context),
+    PartyID = get_request_party_id(Req, Context),
+    ResultCustomerState = get_customer_state(CustomerID, PartyID, Context),
     Authorize = fun() ->
         Prototypes = [
-            {operation, #{
-                id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID
-            }},
+            {operation, #{id => OperationID, party => PartyID, customer => CustomerID}},
             {cubasty, genlib_map:compact(#{customer => ResultCustomerState})}
         ],
         Resolution = mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context)),
@@ -146,7 +142,7 @@ prepare('GetCustomerPayments' = OperationID, Req, Context) ->
         capi_handler:respond_if_undefined(ResultCustomerState, general_error(404, <<"Customer not found">>)),
         Limit = maps:get('limit', Req),
         ContinuationToken = maps:get('continuationToken', Req, undefined),
-        PartyRef = get_customer_party_ref(ResultCustomerState),
+        PartyRef = #domain_PartyConfigRef{id = PartyID},
         Call = {customer_management, 'GetPayments', {CustomerID, PartyRef, Limit, ContinuationToken}},
         case capi_handler_utils:service_call(Call, Context) of
             {ok, #customer_CustomerPaymentsResponse{payments = Payments, continuation_token = CT}} ->
@@ -162,12 +158,11 @@ prepare('GetCustomerPayments' = OperationID, Req, Context) ->
     {ok, #{authorize => Authorize, process => Process}};
 prepare('GetCustomerBankCards' = OperationID, Req, Context) ->
     CustomerID = maps:get('customerID', Req),
-    ResultCustomerState = get_customer_state(CustomerID, Context),
+    PartyID = get_request_party_id(Req, Context),
+    ResultCustomerState = get_customer_state(CustomerID, PartyID, Context),
     Authorize = fun() ->
         Prototypes = [
-            {operation, #{
-                id => OperationID, party => get_customer_party_id(ResultCustomerState), customer => CustomerID
-            }},
+            {operation, #{id => OperationID, party => PartyID, customer => CustomerID}},
             {cubasty, genlib_map:compact(#{customer => ResultCustomerState})}
         ],
         Resolution = mask_customer_notfound(capi_auth:authorize_operation(Prototypes, Context)),
@@ -195,27 +190,24 @@ prepare(_OperationID, _Req, _Context) ->
 
 %%
 
-%% A Customer is available to every party it is linked to, so it is looked up in the party of
-%% the request. A request authorized in no party sees no Customer
-get_customer_state(CustomerID, Context) ->
-    case capi_handler_utils:get_party_id(Context) of
-        PartyID when is_binary(PartyID) ->
-            Call = {customer_management, 'Get', {CustomerID, #domain_PartyConfigRef{id = PartyID}}},
-            case capi_handler_utils:service_call(Call, Context) of
-                {ok, CustomerState} -> CustomerState;
-                {exception, #customer_CustomerNotFound{}} -> undefined
-            end;
-        undefined ->
-            undefined
+%% A request names its party, or is made in the party of its token. An absent query parameter
+%% is passed as undefined
+get_request_party_id(Req, Context) ->
+    case maps:get('partyID', Req, undefined) of
+        undefined -> capi_handler_utils:get_party_id(Context);
+        PartyID -> PartyID
     end.
 
-get_customer_party_ref(#customer_CustomerState{customer = Customer}) ->
-    Customer#customer_Customer.party_ref.
-
-get_customer_party_id(undefined) ->
+%% A Customer is available to every party it is linked to, so it is looked up in the party of
+%% the request. A request naming no party sees no Customer
+get_customer_state(_CustomerID, undefined, _Context) ->
     undefined;
-get_customer_party_id(#customer_CustomerState{customer = Customer}) ->
-    Customer#customer_Customer.party_ref#domain_PartyConfigRef.id.
+get_customer_state(CustomerID, PartyID, Context) ->
+    Call = {customer_management, 'Get', {CustomerID, #domain_PartyConfigRef{id = PartyID}}},
+    case capi_handler_utils:service_call(Call, Context) of
+        {ok, CustomerState} -> CustomerState;
+        {exception, #customer_CustomerNotFound{}} -> undefined
+    end.
 
 mask_customer_notfound(Resolution) ->
     capi_handler:respond_if_forbidden(Resolution, general_error(404, <<"Customer not found">>)).

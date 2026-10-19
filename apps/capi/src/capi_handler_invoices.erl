@@ -316,16 +316,18 @@ create_invoice(PartyID, InvoiceParams, Context, BenderPrefix) ->
     ExternalID = maps:get(<<"externalID">>, InvoiceParams, undefined),
     IdempotentKey = {BenderPrefix, PartyID, ExternalID},
     Identity = capi_bender:make_identity(capi_feature_schemas:invoice(), InvoiceParams),
+    InvoiceID = capi_bender:gen_snowflake(IdempotentKey, Identity, WoodyCtx),
+    EncodedParams = encode_invoice_params(InvoiceID, PartyID, InvoiceParams),
     ClientIdentity = resolve_client_identity(
         PartyID, maps:get(<<"clientIdentity">>, InvoiceParams, undefined), Context
     ),
-    InvoiceID = capi_bender:gen_snowflake(IdempotentKey, Identity, WoodyCtx),
-    Call = {invoicing, 'Create', {encode_invoice_params(InvoiceID, PartyID, InvoiceParams, ClientIdentity)}},
+    Call = {invoicing, 'Create', {EncodedParams#payproc_InvoiceParams{client_identity = ClientIdentity}}},
     capi_handler_utils:service_call(Call, Context).
 
-%% The payer is resolved to a Customer of the invoice party before the invoice is created:
-%% a passed customer has to be available in the party, and a user of the merchant's system
-%% is found, or created, as the Customer with the same external ID in the party
+%% The payer is resolved to a Customer of the invoice party once the request is known to be
+%% valid, so that an invalid request creates no Customer: a passed customer has to be available
+%% in the party, and a user of the merchant's system is found, or created, as the Customer with
+%% the same external ID in the party
 resolve_client_identity(_PartyID, undefined, _Context) ->
     undefined;
 resolve_client_identity(
@@ -349,7 +351,7 @@ resolve_client_identity(
             throw({invalid_client_identity, Errors})
     end.
 
-encode_invoice_params(ID, PartyID, InvoiceParams, ClientIdentity) ->
+encode_invoice_params(ID, PartyID, InvoiceParams) ->
     Amount = genlib_map:get(<<"amount">>, InvoiceParams),
     Currency = genlib_map:get(<<"currency">>, InvoiceParams),
     Cart = genlib_map:get(<<"cart">>, InvoiceParams),
@@ -365,7 +367,6 @@ encode_invoice_params(ID, PartyID, InvoiceParams, ClientIdentity) ->
         shop_id = #domain_ShopConfigRef{id = genlib_map:get(<<"shopID">>, InvoiceParams)},
         external_id = genlib_map:get(<<"externalID">>, InvoiceParams, undefined),
         client_info = encode_client_info(ClientInfo),
-        client_identity = ClientIdentity,
         allocation = capi_allocation:encode(Allocation, PartyID),
         mutations = capi_mutation:encode_amount_randomization_params(
             maps:get(<<"randomizeAmount">>, InvoiceParams, undefined)
