@@ -77,6 +77,11 @@
 -define(date_of_birth, 72).
 -define(document_id, 73).
 -define(metadata, 74).
+-define(client_identity, 75).
+-define(customer, 76).
+-define(customer_id, 77).
+-define(user, 78).
+-define(user_id, 79).
 
 -export([payment/0]).
 -export([invoice/0]).
@@ -132,8 +137,15 @@ invoice() ->
         ?cart => {<<"cart">>, {set, cart_line_schema()}},
         ?bank_account => {<<"bankAccount">>, bank_account_schema()},
         ?invoice_template_id => <<"invoiceTemplateID">>,
-        ?allocation => {<<"allocation">>, {set, allocation_transaction()}}
+        ?allocation => {<<"allocation">>, {set, allocation_transaction()}},
+        ?client_identity => {<<"clientIdentity">>, client_identity_schema()}
     }.
+
+client_identity_schema() ->
+    {union, <<"clientIdentityType">>, #{
+        <<"ClientIdentityCustomer">> => {?customer, #{?customer_id => <<"customerID">>}},
+        <<"ClientIdentityUser">> => {?user, #{?user_id => <<"userID">>}}
+    }}.
 
 -spec invoice_template() -> schema().
 invoice_template() ->
@@ -479,7 +491,8 @@ read_invoice_features_test() ->
             [0, Product2]
         ],
         ?invoice_template_id => undefined,
-        ?allocation => undefined
+        ?allocation => undefined,
+        ?client_identity => undefined
     },
     Request = #{
         <<"externalID">> => <<"externalID">>,
@@ -506,6 +519,27 @@ read_invoice_features_test() ->
     RequestWithTemplate = Request#{<<"invoiceTemplateID">> => TemplateID},
     FeaturesWithTemplate = read(invoice(), RequestWithTemplate),
     ?assertEqual(hash(TemplateID), maps:get(?invoice_template_id, FeaturesWithTemplate)).
+
+-spec compare_invoice_client_identity_features_test() -> _.
+compare_invoice_client_identity_features_test() ->
+    Request = #{<<"shopID">> => <<"shopus">>, <<"currency">> => <<"RUB">>},
+    Customer = #{<<"clientIdentityType">> => <<"ClientIdentityCustomer">>, <<"customerID">> => <<"42">>},
+    User = #{<<"clientIdentityType">> => <<"ClientIdentityUser">>, <<"userID">> => <<"42">>},
+    WithCustomer = read(invoice(), Request#{<<"clientIdentity">> => Customer}),
+    ?assertEqual(
+        [?customer, #{?customer_id => hash(<<"42">>)}],
+        maps:get(?client_identity, WithCustomer)
+    ),
+    ?assertEqual(true, feat:compare(WithCustomer, WithCustomer)),
+    ?assertMatch({false, _}, feat:compare(WithCustomer, read(invoice(), Request#{<<"clientIdentity">> => User}))),
+    ?assertMatch(
+        {false, _},
+        feat:compare(
+            WithCustomer, read(invoice(), Request#{<<"clientIdentity">> => Customer#{<<"customerID">> => <<"43">>}})
+        )
+    ),
+    %% As with any feature, a retry adding the payer to an invoice created without one is not a conflict
+    ?assertEqual(true, feat:compare(WithCustomer, read(invoice(), Request))).
 
 -spec compare_invoices_features_test() -> _.
 compare_invoices_features_test() ->

@@ -46,7 +46,7 @@
 }.
 
 -type prototype_cubasty() :: #{
-    customer => entity_id() | undefined
+    customer => customer_state() | undefined
 }.
 
 -type invoice_id() :: dmsl_domain_thrift:'InvoiceID'().
@@ -57,6 +57,8 @@
 
 -type webhook_id() :: dmsl_webhooker_thrift:'WebhookID'().
 -type webhook() :: dmsl_webhooker_thrift:'Webhook'().
+
+-type customer_state() :: dmsl_customer_thrift:'CustomerState'().
 
 -type entity_id() :: binary().
 
@@ -127,13 +129,13 @@ build(webhooks, #{} = Params, Acc, WoodyCtx) ->
             )
         }
     };
-build(cubasty, #{} = Params, Acc, WoodyCtx) ->
+build(cubasty, #{} = Params, Acc, _WoodyCtx) ->
     Acc#ctx_v1_ContextFragment{
         cubasty = #ctx_v1_ContextCustomerManagement{
             customer = maybe_with(
                 customer,
                 Params,
-                fun(V) -> build_customer_ctx(V, WoodyCtx) end
+                fun build_customer_ctx/1
             )
         }
     }.
@@ -214,17 +216,6 @@ build_webhook_filter({Type, Filter}) ->
 
 build_webhook_filter_details(#webhooker_InvoiceEventFilter{shop_ref = #domain_ShopConfigRef{id = ShopID}}, Ctx) ->
     Ctx#ctx_v1_WebhookFilter{shop = 'maybe'(ShopID, fun build_entity/1)}.
-
-build_customer_ctx(ID, WoodyCtx) when is_binary(ID) ->
-    maybe_with_woody_result(
-        customer_management,
-        'Get',
-        {ID},
-        WoodyCtx,
-        fun build_customer_ctx/1
-    );
-build_customer_ctx(CustomerState, _WoodyCtx) ->
-    build_customer_ctx(CustomerState).
 
 build_customer_ctx(#customer_CustomerState{customer = Customer}) ->
     #ctx_v1_Customer{

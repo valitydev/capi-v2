@@ -126,8 +126,13 @@ end_per_testcase(_Name, C) ->
 
 -spec get_customer_ok_test(config()) -> _.
 get_customer_ok_test(Config) ->
+    %% A customer access token is issued in the Customer party, which scopes the lookup
     _ = capi_ct_helper:mock_services(
-        [{customer_management, fun('Get', _) -> {ok, ?CUSTOMER_STATE} end}],
+        [
+            {customer_management, fun('Get', {?STRING, #domain_PartyConfigRef{id = ?STRING}}) ->
+                {ok, ?CUSTOMER_STATE}
+            end}
+        ],
         Config
     ),
     _ = capi_ct_helper_bouncer:mock_assert_party_op_ctx(<<"GetCustomerByID">>, ?STRING, Config),

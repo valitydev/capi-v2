@@ -494,7 +494,8 @@ decode_invoice(Invoice) ->
             <<"invoiceTemplateID">> => Invoice#domain_Invoice.template_id,
             <<"allocation">> => capi_allocation:decode(Invoice#domain_Invoice.allocation),
             <<"amountRandomized">> => capi_mutation:decode_invoice_amount_mutation(Invoice#domain_Invoice.mutations),
-            <<"clientInfo">> => decode_invoice_client_info(Invoice#domain_Invoice.client_info)
+            <<"clientInfo">> => decode_invoice_client_info(Invoice#domain_Invoice.client_info),
+            <<"clientIdentity">> => decode_invoice_client_identity(Invoice#domain_Invoice.client_identity)
         },
         decode_invoice_status(Invoice#domain_Invoice.status)
     ).
@@ -553,6 +554,14 @@ decode_invoice_client_info(#domain_InvoiceClientInfo{trust_level = well_known}) 
 decode_invoice_client_info(#domain_InvoiceClientInfo{trust_level = unknown}) ->
     #{<<"trustLevel">> => <<"unknown">>};
 decode_invoice_client_info(_) ->
+    undefined.
+
+%% A Customer found by the user ID is shown as the user it was found by, as the merchant passed it
+decode_invoice_client_identity(#domain_ClientIdentity{user_id = UserID}) when UserID =/= undefined ->
+    #{<<"clientIdentityType">> => <<"ClientIdentityUser">>, <<"userID">> => UserID};
+decode_invoice_client_identity(#domain_ClientIdentity{customer_id = CustomerID}) ->
+    #{<<"clientIdentityType">> => <<"ClientIdentityCustomer">>, <<"customerID">> => CustomerID};
+decode_invoice_client_identity(undefined) ->
     undefined.
 
 -spec decode_payment_methods(undefined | list()) -> list(decode_data()).

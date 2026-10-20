@@ -3,6 +3,7 @@
 -include_lib("damsel/include/dmsl_payproc_thrift.hrl").
 -include_lib("damsel/include/dmsl_base_thrift.hrl").
 -include_lib("damsel/include/dmsl_domain_thrift.hrl").
+-include_lib("damsel/include/dmsl_customer_thrift.hrl").
 
 -behaviour(capi_handler).
 
@@ -75,7 +76,11 @@ prepare('CreateInvoice' = OperationID, Req, Context) ->
             throw:allocation_wrong_cart ->
                 {ok, logic_error('invalidAllocation', <<"Wrong cart">>)};
             throw:allocation_duplicate ->
-                {ok, logic_error('invalidAllocation', <<"Duplicate shop">>)}
+                {ok, logic_error('invalidAllocation', <<"Duplicate shop">>)};
+            throw:client_identity_customer_not_found ->
+                {ok, logic_error('invalidRequest', <<"Customer not found">>)};
+            throw:{invalid_client_identity, IdentityErrors} ->
+                {ok, logic_error('invalidRequest', capi_handler_utils:format_request_errors(IdentityErrors))}
         end
     end,
     {ok, #{authorize => Authorize, process => Process}};
@@ -312,8 +317,39 @@ create_invoice(PartyID, InvoiceParams, Context, BenderPrefix) ->
     IdempotentKey = {BenderPrefix, PartyID, ExternalID},
     Identity = capi_bender:make_identity(capi_feature_schemas:invoice(), InvoiceParams),
     InvoiceID = capi_bender:gen_snowflake(IdempotentKey, Identity, WoodyCtx),
-    Call = {invoicing, 'Create', {encode_invoice_params(InvoiceID, PartyID, InvoiceParams)}},
+    EncodedParams = encode_invoice_params(InvoiceID, PartyID, InvoiceParams),
+    ClientIdentity = resolve_client_identity(
+        PartyID, maps:get(<<"clientIdentity">>, InvoiceParams, undefined), Context
+    ),
+    Call = {invoicing, 'Create', {EncodedParams#payproc_InvoiceParams{client_identity = ClientIdentity}}},
     capi_handler_utils:service_call(Call, Context).
+
+%% The payer is resolved to a Customer of the invoice party once the request is known to be
+%% valid, so that an invalid request creates no Customer: a passed customer has to be available
+%% in the party, and a user of the merchant's system is found, or created, as the Customer with
+%% the same external ID in the party
+resolve_client_identity(_PartyID, undefined, _Context) ->
+    undefined;
+resolve_client_identity(
+    PartyID, #{<<"clientIdentityType">> := <<"ClientIdentityCustomer">>, <<"customerID">> := CustomerID}, Context
+) ->
+    Call = {customer_management, 'Get', {CustomerID, #domain_PartyConfigRef{id = PartyID}}},
+    case capi_handler_utils:service_call(Call, Context) of
+        {ok, #customer_CustomerState{}} ->
+            #domain_ClientIdentity{customer_id = CustomerID};
+        {exception, #customer_CustomerNotFound{}} ->
+            throw(client_identity_customer_not_found)
+    end;
+resolve_client_identity(
+    PartyID, #{<<"clientIdentityType">> := <<"ClientIdentityUser">>, <<"userID">> := UserID}, Context
+) ->
+    Call = {customer_management, 'FindOrCreateByExternalID', {#domain_PartyConfigRef{id = PartyID}, UserID}},
+    case capi_handler_utils:service_call(Call, Context) of
+        {ok, #customer_Customer{id = CustomerID}} ->
+            #domain_ClientIdentity{customer_id = CustomerID, user_id = UserID};
+        {exception, #base_InvalidRequest{errors = Errors}} ->
+            throw({invalid_client_identity, Errors})
+    end.
 
 encode_invoice_params(ID, PartyID, InvoiceParams) ->
     Amount = genlib_map:get(<<"amount">>, InvoiceParams),
